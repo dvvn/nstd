@@ -110,7 +110,7 @@ namespace nstd::enum_operators
 		requires(!bit_and_assign<L, R>)
 	auto& operator&=(L& l, R r)
 	{
-		return do_bit_fn<true>(std::bit_and( ), l, r);
+		return do_bit_fn<false>(std::bit_and( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
@@ -131,7 +131,7 @@ namespace nstd::enum_operators
 		requires(!bit_or<L, R>)
 	auto operator|(L l, R r)
 	{
-		return do_bit_fn<false>(std::bit_or( ), l, r);
+		return do_bit_fn<true>(std::bit_or( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
@@ -154,6 +154,13 @@ namespace nstd::enum_operators
 	{
 		return do_bit_fn<false>(std::bit_not( ), t);
 	}
+
+	/*template <enum_or_integral T>
+		requires(!bit_logical_not<T>)
+	bool operator bool(T t)
+	{
+		return !do_bit_fn<true>(std::logical_not( ), t);
+	}*/
 
 	template <enum_or_integral T>
 		requires(!bit_logical_not<T>)

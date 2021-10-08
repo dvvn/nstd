@@ -249,7 +249,14 @@ namespace nstd
 			requires(!std::derived_from<std::remove_cvref_t<A>, address_pipe_tag>)
 		address_pipe_impl(A&& a, B&& b) -> address_pipe_impl<std::remove_cvref_t<A>, std::remove_cvref_t<B>>;
 
+		template <typename ...Ts>
+		concept address_pipe_constructible = requires(Ts&& ts)
+		{
+			address_pipe_impl(std::forward<Ts>(ts)...);
+		};
+
 		template <typename A, typename B>
+			requires(address_pipe_constructible<A, B>)
 		auto operator|(A&& a, B&& b)
 		{
 			return address_pipe_impl(std::forward<A>(a), std::forward<B>(b));

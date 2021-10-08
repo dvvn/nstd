@@ -74,12 +74,12 @@ namespace nstd
 		/**
 		 * \brief added to prevent create varianle-holder. create backup and call this function from fucntion paramter
 		 */
-		template <typename T1>
+		/*template <typename T1>
 		_NODISCARD T1 val(T1&& val)
 		{
 			(void)this;
 			return val;
-		}
+		}*/
 
 		bool has_value() const
 		{

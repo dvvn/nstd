@@ -1,5 +1,6 @@
 #pragma once
 #include "memory block.h"
+#include "type_traits.h"
 
 namespace nstd
 {
@@ -9,26 +10,30 @@ namespace nstd
 		 * \brief store string viewable data as TEXT all others as BYTES.
 		 * while data is string viewable, even if all bytes are known, TEXT_AS_BYTES is never selected
 		 */
-		AUTO,
+		AUTO
+	   ,
 		/**
 		 * \brief text converted to bytes and stored like raw memory block. all bytes must be known
 		 */
-		TEXT_AS_BYTES,
+		TEXT_AS_BYTES
+	   ,
 		/**
 		 * \brief text converted to bytes and stored inside special container.
 		 * unknown bytes allowed. when possible prefer to TEXT_AS_BYTES if all bytes known
 		 */
-		TEXT,
+		TEXT
+	   ,
 		/**
 		 * \brief raw memory block. any type is stored like range of bytes
 		 */
-		BYTES,
+		BYTES
+	   ,
 	};
 
 	namespace signature_detail
 	{
-		namespace rng=std::ranges;
-		namespace rngv=rng::views;
+		namespace rng = std::ranges;
+		namespace rngv = rng::views;
 
 		constexpr unknown_byte get_byte(known_byte chr)
 		{
@@ -40,17 +45,16 @@ namespace nstd
 			// ReSharper disable once CppInconsistentNaming
 #define _C2N_(num) char_and_number(0x##num, #num[0])
 			constexpr std::array data{
-				_C2N_(0),_C2N_(1),_C2N_(2),_C2N_(3),_C2N_(4),_C2N_(5),_C2N_(6),_C2N_(7),_C2N_(8),_C2N_(9),
-				_C2N_(a),_C2N_(b),_C2N_(c),_C2N_(d),_C2N_(e),_C2N_(f),
-				_C2N_(A),_C2N_(B),_C2N_(C),_C2N_(D),_C2N_(E),_C2N_(F)
+					_C2N_(0),_C2N_(1),_C2N_(2),_C2N_(3),_C2N_(4),_C2N_(5),_C2N_(6),_C2N_(7),_C2N_(8),_C2N_(9), _C2N_(a),_C2N_(b),_C2N_(c),_C2N_(d),_C2N_(e),_C2N_(f), _C2N_(A)
+				   ,_C2N_(B),_C2N_(C),_C2N_(D),_C2N_(E),_C2N_(F)
 			};
 #undef _C2N_
-			for (const auto& [number, character]: data)
+			for (const auto& [number, character] : data)
 			{
 				if (character == chr)
 					return number;
 			}
-			return { };
+			return {};
 			//magic numbers suck
 			/*if (c >= '0' && c <= '9')
 				return c - '0';
@@ -70,13 +74,15 @@ namespace nstd
 				return (static_cast<size_t>(c) <= static_cast<size_t>(std::numeric_limits<known_byte>::max( )));
 		};
 
-		struct simulate_exceptrion final: std::exception
+		struct simulate_exceptrion final : std::exception
 		{
-			simulate_exceptrion(const char* const msg) : std::exception(msg)
+			simulate_exceptrion(const char* const msg)
+				: std::exception(msg)
 			{
 			}
 
-			simulate_exceptrion( ) : std::exception( )
+			simulate_exceptrion()
+				: std::exception( )
 			{
 			}
 		};
@@ -87,7 +93,7 @@ namespace nstd
 			auto sig = std::vector<E>( );
 			sig.reserve(str.size( ));
 			auto add_space = false;
-			for (auto c: str)
+			for (auto c : str)
 			{
 				if (c == static_cast<E>(' '))
 				{
@@ -113,7 +119,7 @@ namespace nstd
 			if (str.starts_with(space) || str.ends_with(space))
 				return false;
 			auto space_detected = false;
-			for (auto chr: str)
+			for (auto chr : str)
 			{
 				if (chr != space)
 					space_detected = false;
@@ -141,9 +147,9 @@ namespace nstd
 					data_.template emplace<in_t>(get_beautiful_sig(str));
 			}
 
-			out_t get( ) const
+			out_t get() const
 			{
-				return std::visit(nstd::overload([](const in_t&  in) { return out_t(in); },
+				return std::visit(nstd::overload([](const in_t& in) { return out_t(in); },
 												 [](const out_t& out) { return out; }), data_);
 			}
 
@@ -187,7 +193,7 @@ namespace nstd
 						NSTD_SIG_SIMULATE(character_is_byte(str[0]), "Incorrect signature: unsupported unicode characted detected");
 						const auto chr = static_cast<known_byte>(str[0]);
 						if (chr == '?')
-							return { };
+							return {};
 						const auto ret = get_byte(chr);
 						NSTD_SIG_SIMULATE(ret.has_value( ), "Incorrect signature: wrong byte");
 						return ret;
@@ -200,7 +206,7 @@ namespace nstd
 						if (chr1 == '?')
 						{
 							NSTD_SIG_SIMULATE(chr2 == '?', "Incorrect signature: second char in known whle first are unknown");
-							return { };
+							return {};
 						}
 						NSTD_SIG_SIMULATE(chr2 != '?', "Incorrect signature: second char in unknown while first are known");
 						const auto byte1 = get_byte(chr1);
@@ -212,7 +218,7 @@ namespace nstd
 					default:
 					{
 						NSTD_SIG_SIMULATE(false, "Incorrect signature: whrong text size");
-						return { };
+						return {};
 					}
 				}
 			};
@@ -251,10 +257,10 @@ namespace nstd
 				NSTD_SIG_SIMULATE(!str.empty( ), "Incorrect signature: whrong text size");
 				auto beautiful_sig      = sig_one_space(str);
 				auto beautiful_sig_view = beautiful_sig.get( );
-			
-				for (auto part: beautiful_sig_view
-								| rngv::split(static_cast<E>(' '))
-								| rngv::transform([](auto&& rng) { return Sv(std::addressof(*rng.begin( )), rng::distance(rng)); }))
+
+				for (auto part : beautiful_sig_view
+								 | rngv::split(static_cast<E>(' '))
+								 | rngv::transform([](auto&& rng) { return Sv(std::addressof(*rng.begin( )), rng::distance(rng)); }))
 				{
 					const auto byte = helpers<Simulate>::text_to_byte(part);
 					std::invoke(store_fn, byte);
@@ -272,7 +278,7 @@ namespace nstd
 			// ReSharper disable once CppRedundantInlineSpecifier
 			_CONSTEXPR20_CONTAINER known_bytes_object operator()(const std::basic_string_view<E, Tr>& str) const
 			{
-				auto       vec      = known_bytes_object( );
+				auto vec            = known_bytes_object( );
 				const auto store_fn = [&vec](const unknown_byte& b)
 				{
 					NSTD_SIG_SIMULATE(b.has_value( ), "Incorrect signature: unknown byte detected, while all bytes must be known in TEXT_AS_BYTES mode!");
@@ -290,7 +296,7 @@ namespace nstd
 			// ReSharper disable once CppRedundantInlineSpecifier
 			_CONSTEXPR20_CONTAINER unknown_bytes_object operator()(const std::basic_string_view<E, Tr>& str) const
 			{
-				auto       vec      = unknown_bytes_object( );
+				auto vec            = unknown_bytes_object( );
 				const auto store_fn = [&](const unknown_byte& b)
 				{
 					vec.push_back(b);
@@ -306,7 +312,6 @@ namespace nstd
 			template <typename T>
 			constexpr auto operator()(const T& val) const
 			{
-				
 				if constexpr (!std::is_trivially_destructible_v<T>)
 				{
 					static_assert(std::_Always_false<T>, __FUNCSIG__": T must be trivially destructible");
@@ -356,24 +361,15 @@ namespace nstd
 			}
 		};
 
-		template <typename>
-		_INLINE_VAR constexpr bool is_std_string_v = false;
-
-		template <typename C, typename Tr>
-		_INLINE_VAR constexpr bool is_std_string_v<std::basic_string_view<C, Tr>> = true;
-
-		template <typename C, typename Tr>
-		_INLINE_VAR constexpr bool is_std_string_v<std::basic_string<C, Tr>> = true;
-
 		template < >
 		struct maker<true, signature_parse_mode::AUTO>
 		{
 			template <typename T>
 			constexpr auto operator()(const T& obj) const
 			{
-				if constexpr (!is_std_string_v<T>)
+				if constexpr (!std_string_or_view<T>)
 				{
-					if constexpr (std::is_bounded_array_v<T> && std::_Is_any_of_v<rng::range_value_t<T>, char, char8_t, wchar_t, char16_t, char32_t>)
+					if constexpr (std::is_bounded_array_v<T> && std::_Is_any_of_v<rng::range_value_t<T>, char, wchar_t, char8_t, char16_t, char32_t>)
 						return std::invoke(*this, std::basic_string_view(obj));
 					else
 						return std::invoke(maker<false, signature_parse_mode::BYTES>( ), obj);
