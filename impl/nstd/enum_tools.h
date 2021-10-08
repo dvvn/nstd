@@ -31,6 +31,9 @@ namespace nstd::enum_operators
 	concept bit_not = requires(T t) { ~t; };
 
 	template <typename T>
+	concept bit_logical_not = requires(T t) { !t; };
+
+	template <typename T>
 	concept enum_or_integral = (std::is_enum_v<T> || std::is_convertible_v<T, size_t>);
 
 	template <typename T>
@@ -66,7 +69,7 @@ namespace nstd::enum_operators
 			return ref_or_copy<decayed_enum_fake<raw_t>>(std::forward<T>(val));
 	}
 
-	template <typename Fn, typename ...Ts>
+	template <bool NumericCompatible, typename Fn, typename ...Ts>
 	decltype(auto) do_bit_fn(Fn&& fn, Ts&&...ts)
 	{
 		auto tpl = std::forward_as_tuple(unwrap_enum(std::forward<Ts>(ts))...);
@@ -85,7 +88,7 @@ namespace nstd::enum_operators
 
 		constexpr bool return_ref = std::is_lvalue_reference_v<std::tuple_element_t<0, decltype(tpl)>>;
 
-		if constexpr (std::convertible_to<value_type, raw_type>)
+		if constexpr (!NumericCompatible || std::convertible_to<value_type, raw_type>)
 		{
 			if constexpr (return_ref)
 				return static_cast<value_type&>(first.val);
@@ -107,48 +110,55 @@ namespace nstd::enum_operators
 		requires(!bit_and_assign<L, R>)
 	auto& operator&=(L& l, R r)
 	{
-		return do_bit_fn(std::bit_and( ), l, r);
+		return do_bit_fn<true>(std::bit_and( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
 		requires(!bit_and<L, R>)
 	auto operator&(L l, R r)
 	{
-		return do_bit_fn(std::bit_and( ), l, r);
+		return do_bit_fn<true>(std::bit_and( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
 		requires(!bit_or_assign<L, R>)
 	auto& operator|=(L& l, R r)
 	{
-		return do_bit_fn(std::bit_or( ), l, r);
+		return do_bit_fn<false>(std::bit_or( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
 		requires(!bit_or<L, R>)
 	auto operator|(L l, R r)
 	{
-		return do_bit_fn(std::bit_or( ), l, r);
+		return do_bit_fn<false>(std::bit_or( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
 		requires(!bit_xor_assign<L, R>)
 	auto& operator^=(L l, R r)
 	{
-		return do_bit_fn(std::bit_xor( ), l, r);
+		return do_bit_fn<false>(std::bit_xor( ), l, r);
 	}
 
 	template <enum_or_integral L, enum_or_integral R>
 		requires(!bit_xor<L, R>)
 	auto operator^(L l, R r)
 	{
-		return do_bit_fn(std::bit_xor( ), l, r);
+		return do_bit_fn<false>(std::bit_xor( ), l, r);
 	}
 
 	template <enum_or_integral T>
 		requires(!bit_not<T>)
 	auto operator~(T t)
 	{
-		return do_bit_fn(std::bit_not( ), t);
+		return do_bit_fn<false>(std::bit_not( ), t);
+	}
+
+	template <enum_or_integral T>
+		requires(!bit_logical_not<T>)
+	bool operator!(T t)
+	{
+		return do_bit_fn<true>(std::logical_not( ), t);
 	}
 }
