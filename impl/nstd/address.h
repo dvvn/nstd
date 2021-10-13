@@ -8,6 +8,18 @@
 
 namespace nstd
 {
+	template <typename From, typename To>
+	concept reinterpret_convertible_to = requires(From val)
+	{
+		reinterpret_cast<To>(val);
+	};
+
+	template <typename From, typename To>
+	concept static_convertible_to = requires(From val)
+	{
+		static_cast<To>(val);
+	};
+
 	// class size is only 4 bytes on x86-32 and 8 bytes on x86-64.
 	class address
 	{
@@ -22,31 +34,47 @@ namespace nstd
 
 		uintptr_t value() const;
 
-		/// @brief cast / add offset and cast.
 		template <typename T>
 		T cast() const
 		{
 			error_handler( );
-			return (T)value_;
+
+			if constexpr (reinterpret_convertible_to<uintptr_t, T>)
+			{
+				return reinterpret_cast<T>(value_);
+			}
+			else if constexpr (std::is_member_pointer_v<T>)
+			{
+				T ret;
+				reinterpret_cast<decltype(ptr_)&>(ret) = ptr_;
+				return ret;
+			}
+			else
+			{
+				static_assert(std::_Always_false<T>,__FUNCTION__": unable to cast");
+				std::terminate( );
+			}
 		}
 
-		template <typename T = uintptr_t>
+		template <typename T>
 		T* ptr() const
 		{
 			return cast<T*>( );
 		}
 
-		template <typename T = uintptr_t>
+		template <typename T>
 		const T& ref() const
 		{
 			return *ptr<T>( );
 		}
 
-		template <typename T = uintptr_t>
+		template <typename T>
 		T& ref()
 		{
 			return *ptr<T>( );
 		}
+
+		//-----
 
 		address operator*() const;
 
@@ -78,6 +106,8 @@ namespace nstd
 		// follow relative8 and relative16/32 offsets.
 		address rel8(size_t offset) const;
 		address rel32(size_t offset) const;
+
+		address jmp( ptrdiff_t offset = 0x1 ) const;
 
 	private:
 		union
@@ -215,32 +245,41 @@ namespace nstd
 			};
 		}
 
-		inline constexpr auto value = [](const address& addr)
+		_INLINE_VAR constexpr auto value = [](const address& addr)
 		{
 			return addr.value( );
 		};
 
 		template <typename T>
-		inline constexpr auto cast = [](const address& addr) -> T
+		_INLINE_VAR constexpr auto cast = [](const address& addr) -> T
 		{
 			return addr.cast<T>( );
 		};
 
 		template <typename T>
-		inline constexpr auto ref = nstd::overload([](const address& addr) -> const T&
-												   {
-													   return addr.ref<T>( );
-												   },
-												   [](address& addr) -> T&
-												   {
-													   return addr.ref<T>( );
-												   });
+		_INLINE_VAR constexpr auto ref = nstd::overload([](const address& addr) -> const T&
+														{
+															return addr.ref<T>( );
+														},
+														[](address& addr) -> T&
+														{
+															return addr.ref<T>( );
+														});
 
 		template <typename T>
-		inline constexpr auto ptr = [](const address& addr) -> T*
+		_INLINE_VAR constexpr auto ptr = [](const address& addr) -> T*
 		{
 			return addr.ptr<T>( );
 		};
+
+
+		inline auto jmp(ptrdiff_t offset= 0x1)
+		{
+			return [=](const address& addr)
+			{
+				return addr.jmp(offset);
+			};
+		}
 
 		template <typename T, typename ...Ts>
 		address_pipe_impl(address_pipe_impl<Ts...>&& old, T&& val) -> address_pipe_impl<Ts..., std::remove_cvref_t<T>>;

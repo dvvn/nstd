@@ -11,13 +11,13 @@ namespace nstd
 		constexpr rt_assert_arg_t(decltype(nullptr))
 		{
 			ptr_   = nullptr;
-			index_ = static_cast<unsigned char>(-1);
+			index_ = static_cast<uint8_t>(-1);
 		}
 
 		constexpr rt_assert_arg_t(const void*)
 		{
 			ptr_   = nullptr;
-			index_ = static_cast<unsigned char>(-1);
+			index_ = static_cast<uint8_t>(-1);
 		}
 
 		constexpr rt_assert_arg_t(const char* wchr)
@@ -32,14 +32,14 @@ namespace nstd
 			index_ = 1;
 		}
 
-		constexpr unsigned char index( ) const
+		constexpr uint8_t index( ) const
 		{
 			return index_;
 		}
 
 		constexpr bool empty( ) const
 		{
-			return index_ == static_cast<unsigned char>(-1);
+			return index_ == static_cast<uint8_t>(-1);
 		}
 
 		template <size_t I>
@@ -53,7 +53,7 @@ namespace nstd
 
 	private:
 		const void*   ptr_;
-		unsigned char index_;
+		uint8_t index_;
 	};
 
 	class rt_assert_handler
@@ -65,14 +65,14 @@ namespace nstd
 		{
 			rt_assert_arg_t  file_name;
 			rt_assert_arg_t  function;
-			unsigned __int64 line;
+			uint64_t line;
 		};
 
 		virtual ~rt_assert_handler( ) = default;
 
 		void handle(bool              result,
 					rt_assert_arg_t&& expression, rt_assert_arg_t&& message,
-					rt_assert_arg_t&& file_name, rt_assert_arg_t&&  function, unsigned __int64 line) noexcept;
+					rt_assert_arg_t&& file_name, rt_assert_arg_t&&  function, uint64_t line) noexcept;
 
 	protected:
 		virtual void handle_impl(const rt_assert_arg_t& expression, const rt_assert_arg_t& message, const info_type& info) noexcept = 0;
@@ -140,7 +140,7 @@ namespace nstd
 									 rt_assert_arg_t&& message,
 									 rt_assert_arg_t&& file_name,
 									 rt_assert_arg_t&& function,
-									 unsigned __int64  line)
+									 uint64_t  line)
 	{
 		// ReSharper disable once CppIfCanBeReplacedByConstexprIf
 		// ReSharper disable once CppRedundantBooleanExpressionArgument

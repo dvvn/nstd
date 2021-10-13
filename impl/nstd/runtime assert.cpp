@@ -6,25 +6,26 @@
 
 using namespace nstd;
 
-void rt_assert_handler::handle(bool result, rt_assert_arg_t&& expression, rt_assert_arg_t&& message, rt_assert_arg_t&& file_name, rt_assert_arg_t&& function, unsigned __int64 line) noexcept
+void rt_assert_handler::handle(bool result, rt_assert_arg_t&& expression, rt_assert_arg_t&& message, rt_assert_arg_t&& file_name, rt_assert_arg_t&& function
+							 , uint64_t line) noexcept
 {
 	if (result == true)
 		return;
 	this->handle_impl(expression, message, {std::move(file_name), std::move(function), line});
 }
 
-struct rt_assert_handler_ex::data_type: std::vector<element_type>
+struct rt_assert_handler_ex::data_type : std::vector<element_type>
 {
 };
 
-rt_assert_handler_ex::rt_assert_handler_ex( )
+rt_assert_handler_ex::rt_assert_handler_ex()
 {
 	data_ = std::make_unique<data_type>( );
 }
 
-rt_assert_handler_ex::~rt_assert_handler_ex( ) = default;
+rt_assert_handler_ex::~rt_assert_handler_ex() = default;
 
-rt_assert_handler_ex::element_type::~element_type( )
+rt_assert_handler_ex::element_type::~element_type()
 {
 	if (allocated_)
 		delete handle_;
@@ -55,7 +56,7 @@ bool rt_assert_handler_ex::element_type::operator==(const rt_assert_handler* oth
 	return handle_ == other;
 }
 
-rt_assert_handler* rt_assert_handler_ex::element_type::operator->( ) const
+rt_assert_handler* rt_assert_handler_ex::element_type::operator->() const
 {
 	return handle_;
 }
@@ -85,6 +86,6 @@ void rt_assert_handler_ex::remove(const rt_assert_handler* handler)
 
 void rt_assert_handler_ex::handle_impl(const rt_assert_arg_t& expression, const rt_assert_arg_t& message, const info_type& info) noexcept
 {
-	for (const auto& elem: *data_)
+	for (const auto& elem : *data_)
 		elem->handle_impl(expression, message, info);
 }

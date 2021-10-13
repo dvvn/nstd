@@ -1,6 +1,45 @@
 ﻿#pragma once
 #include <functional>
 
+namespace nstd
+{
+	template <typename T>
+	union decayed_enum
+	{
+		T val;
+		std::underlying_type_t<T> raw;
+	};
+
+	template <typename T>
+	union decayed_enum_fake
+	{
+		T val, raw;
+	};
+
+	namespace detail
+	{
+		template <typename V, typename T>
+		decltype(auto) ref_or_copy(T&& val)
+		{
+			if constexpr (!std::is_const_v<std::remove_reference_t<T>> && std::is_lvalue_reference_v<T>)
+				return reinterpret_cast<V&>(val);
+			else
+				return reinterpret_cast<V>(val);
+		}
+	}
+
+	template <typename T>
+	decltype(auto) unwrap_enum(T&& val)
+	{
+		using raw_t = std::remove_cvref_t<T>;
+
+		if constexpr (std::is_enum_v<raw_t>)
+			return detail::ref_or_copy<decayed_enum<raw_t>>(std::forward<T>(val));
+		else
+			return detail::ref_or_copy<decayed_enum_fake<raw_t>>(std::forward<T>(val));
+	}
+}
+
 namespace nstd::enum_operators
 {
 	template <typename A, typename B = A>
@@ -35,39 +74,6 @@ namespace nstd::enum_operators
 
 	template <typename T>
 	concept enum_or_integral = (std::is_enum_v<T> || std::is_convertible_v<T, size_t>);
-
-	template <typename T>
-	union decayed_enum
-	{
-		T val;
-		std::underlying_type_t<T> raw;
-	};
-
-	template <typename T>
-	union decayed_enum_fake
-	{
-		T val, raw;
-	};
-
-	template <typename V, typename T>
-	decltype(auto) ref_or_copy(T&& val)
-	{
-		if constexpr (!std::is_const_v<std::remove_reference_t<T>> && std::is_lvalue_reference_v<T>)
-			return reinterpret_cast<V&>(val);
-		else
-			return reinterpret_cast<V>(val);
-	}
-
-	template <typename T>
-	decltype(auto) unwrap_enum(T&& val)
-	{
-		using raw_t = std::remove_cvref_t<T>;
-
-		if constexpr (std::is_enum_v<raw_t>)
-			return ref_or_copy<decayed_enum<raw_t>>(std::forward<T>(val));
-		else
-			return ref_or_copy<decayed_enum_fake<raw_t>>(std::forward<T>(val));
-	}
 
 	template <bool NumericCompatible, typename Fn, typename ...Ts>
 	decltype(auto) do_bit_fn(Fn&& fn, Ts&&...ts)

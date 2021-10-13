@@ -204,3 +204,29 @@ address address::rel32(size_t offset) const
 	// relative to address of next instruction.
 	return (out + 4) + r;
 }
+
+address address::jmp(ptrdiff_t offset) const
+{
+	// Example:
+	// E9 ? ? ? ?
+	// The offset has to skip the E9 (JMP) instruction
+	// Then deref the address coming after that to get to the function
+	// Since the relative JMP is based on the next instruction after the address it has to be skipped
+
+	// Base address is the address that follows JMP ( 0xE9 ) instruction
+	auto base = this->value_ + offset;
+
+	// Store the displacement
+	// Note: Displacement addresses can be signed, thanks d3x
+	auto displacement = *reinterpret_cast<int32_t*>(base);
+
+	// The JMP is based on the instruction after the address
+	// so the address size has to be added
+	// Note: This is always 4 bytes, regardless of architecture, thanks d3x
+	base += sizeof(uint32_t);
+
+	/// Now finally do the JMP by adding the function address
+	base += displacement;
+
+	return (base);
+}
