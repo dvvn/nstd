@@ -1,5 +1,6 @@
 #include "sections mgr.h"
 
+#include "nstd/runtime_assert_fwd.h"
 #include "nstd/os/module info.h"
 
 #include NSTD_OS_MODULE_INFO_DATA_CACHE_INCLUDE
@@ -10,7 +11,7 @@
 
 using namespace nstd::os;
 
-struct sections_mgr::storage_type: NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, section_info>
+struct sections_mgr::storage_type : NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, section_info>
 {
 	storage_type(const storage_type&)            = delete;
 	storage_type& operator=(const storage_type&) = delete;
@@ -18,15 +19,15 @@ struct sections_mgr::storage_type: NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, s
 	storage_type(storage_type&&)            = default;
 	storage_type& operator=(storage_type&&) = default;
 
-	storage_type( ) = default;
+	storage_type() = default;
 };
 
-sections_mgr::sections_mgr( )
+sections_mgr::sections_mgr()
 {
 	storage_ = std::make_unique<storage_type>( );
 }
 
-sections_mgr::~sections_mgr( )                                 = default;
+sections_mgr::~sections_mgr()                                  = default;
 sections_mgr::sections_mgr(sections_mgr&&) noexcept            = default;
 sections_mgr& sections_mgr::operator=(sections_mgr&&) noexcept = default;
 
@@ -40,7 +41,7 @@ const section_info& sections_mgr::at(const std::string_view& name) const
 		if (storage_->empty( ))
 		{
 			storage_type temp_storage;
-			const auto   root = this->root_class( );
+			const auto root = this->root_class( );
 
 			const auto nt           = root->NT( );
 			const auto base_address = root->base( );
@@ -53,8 +54,8 @@ const section_info& sections_mgr::at(const std::string_view& name) const
 
 			for (auto header = section_header; header != last_section_header; ++header)
 			{
-				auto& raw_name  = header->Name;
-				auto  info_name = std::string(raw_name, std::ranges::find(raw_name, '\0'));
+				auto& raw_name = header->Name;
+				auto info_name = std::string(raw_name, std::ranges::find(raw_name, '\0'));
 
 				section_info info;
 				info.block = {base_address + header->VirtualAddress, header->SizeOfRawData};

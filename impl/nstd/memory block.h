@@ -62,9 +62,7 @@ namespace nstd
 		using value_type = std::variant<known_bytes_object, unknown_bytes_object, known_bytes_range_const, unknown_bytes_range_const>;
 
 		_CONSTEXPR20_CONTAINER explicit any_bytes_range(known_bytes_object&& obj)
-			: data_(
-					std::in_place_type<known_bytes_object>, std::move(obj)
-				   )
+			: data_(std::in_place_type<known_bytes_object>, std::move(obj))
 		{
 		}
 
@@ -77,7 +75,7 @@ namespace nstd
 																							   ? value_type(std::in_place_type<known_bytes_object>, make_bytes_known(obj))
 																							   : value_type(std::in_place_type<unknown_bytes_object>, std::move(obj))
 #endif
-				   )
+					)
 		{
 		}
 
@@ -91,10 +89,10 @@ namespace nstd
 		{
 		}
 
-		bool known( ) const;
+		bool known() const;
 
-		known_bytes_range_const   get_known( ) const;
-		unknown_bytes_range_const get_unknown( ) const;
+		known_bytes_range_const get_known() const;
+		unknown_bytes_range_const get_unknown() const;
 
 	private:
 		value_type data_;
@@ -118,7 +116,7 @@ namespace nstd
 		using iterator = known_bytes_range::iterator;
 		using reverse_iterator = known_bytes_range::reverse_iterator;
 
-		memory_block( ) = default;
+		memory_block() = default;
 
 		memory_block(const address& begin, size_type mem_size);
 		memory_block(const address& begin, const address& end);
@@ -185,8 +183,8 @@ namespace nstd
 		///use find_all_blocks directly
 		//std::vector<memory_block> find_xrefs(const address& addr) const;
 
-		address addr( ) const;
-		address last_addr( ) const;
+		address addr() const;
+		address last_addr() const;
 
 		memory_block subblock(size_t offset) const;
 		memory_block shift_to(pointer ptr) const;
@@ -198,13 +196,13 @@ namespace nstd
 		bool have_flags(flags_type flags) const;
 		bool dont_have_flags(flags_type flags) const;
 
-		bool readable( ) const;
-		bool readable_ex( ) const;
-		bool writable( ) const;
-		bool executable( ) const;
-		bool code_padding( ) const;
+		bool readable() const;
+		bool readable_ex() const;
+		bool writable() const;
+		bool executable() const;
+		bool code_padding() const;
 
-		const known_bytes_range& bytes_range( ) const;
+		const known_bytes_range& bytes_range() const;
 
 	private:
 		known_bytes_range bytes_;

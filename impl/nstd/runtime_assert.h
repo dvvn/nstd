@@ -1,5 +1,6 @@
 #pragma once
 
+// ReSharper disable once CppUnusedIncludeDirective
 #include "core.h"
 #include "one_instance.h"
 
@@ -32,18 +33,18 @@ namespace nstd
 			index_ = 1;
 		}
 
-		constexpr uint8_t index( ) const
+		constexpr uint8_t index() const
 		{
 			return index_;
 		}
 
-		constexpr bool empty( ) const
+		constexpr bool empty() const
 		{
 			return index_ == static_cast<uint8_t>(-1);
 		}
 
 		template <size_t I>
-		constexpr auto get( ) const
+		constexpr auto get() const
 		{
 			if constexpr (I == 0)
 				return static_cast<const char*>(ptr_);
@@ -52,7 +53,7 @@ namespace nstd
 		}
 
 	private:
-		const void*   ptr_;
+		const void* ptr_;
 		uint8_t index_;
 	};
 
@@ -63,31 +64,31 @@ namespace nstd
 
 		struct info_type
 		{
-			rt_assert_arg_t  file_name;
-			rt_assert_arg_t  function;
+			rt_assert_arg_t file_name;
+			rt_assert_arg_t function;
 			uint64_t line;
 		};
 
-		virtual ~rt_assert_handler( ) = default;
+		virtual ~rt_assert_handler() = default;
 
-		void handle(bool              result,
+		void handle(bool result,
 					rt_assert_arg_t&& expression, rt_assert_arg_t&& message,
-					rt_assert_arg_t&& file_name, rt_assert_arg_t&&  function, uint64_t line) noexcept;
+					rt_assert_arg_t&& file_name, rt_assert_arg_t&& function, uint64_t line) noexcept;
 
 	protected:
 		virtual void handle_impl(const rt_assert_arg_t& expression, const rt_assert_arg_t& message, const info_type& info) noexcept = 0;
 	};
 
-	class rt_assert_handler_ex final: public rt_assert_handler
+	class rt_assert_handler_ex final : public rt_assert_handler
 	{
 	public:
-		rt_assert_handler_ex( );
-		~rt_assert_handler_ex( ) override;
+		rt_assert_handler_ex();
+		~rt_assert_handler_ex() override;
 
 		class element_type
 		{
 		public:
-			~element_type( );
+			~element_type();
 
 			element_type(element_type&& other) noexcept;
 			element_type& operator=(element_type&& other) noexcept;
@@ -99,11 +100,11 @@ namespace nstd
 
 			bool operator==(const rt_assert_handler* other) const;
 
-			rt_assert_handler* operator->( ) const;
+			rt_assert_handler* operator->() const;
 
 		private:
 			rt_assert_handler* handle_;
-			bool               allocated_;
+			bool allocated_;
 		};
 
 		struct data_type;
@@ -135,12 +136,12 @@ namespace nstd
 		}
 	}
 
-	constexpr void rt_assert_invoker(bool              result,
+	constexpr void rt_assert_invoker(bool result,
 									 rt_assert_arg_t&& expression,
 									 rt_assert_arg_t&& message,
 									 rt_assert_arg_t&& file_name,
 									 rt_assert_arg_t&& function,
-									 uint64_t  line)
+									 uint64_t line)
 	{
 		// ReSharper disable once CppIfCanBeReplacedByConstexprIf
 		// ReSharper disable once CppRedundantBooleanExpressionArgument
@@ -153,12 +154,12 @@ namespace nstd
 		{
 			// ReSharper disable once CppUnreachableCode
 			rt_assert_object::get_ptr( )->handle
-				(result,
-				 static_cast<rt_assert_arg_t&&>(expression),
-				 static_cast<rt_assert_arg_t&&>(message),
-				 static_cast<rt_assert_arg_t&&>(file_name),
-				 static_cast<rt_assert_arg_t&&>(function),
-				 line);
+					(result,
+					 static_cast<rt_assert_arg_t&&>(expression),
+					 static_cast<rt_assert_arg_t&&>(message),
+					 static_cast<rt_assert_arg_t&&>(file_name),
+					 static_cast<rt_assert_arg_t&&>(function),
+					 line);
 		}
 	}
 }
@@ -179,18 +180,3 @@ namespace std
 		}
 	}
 }
-
-#define NSTD_WIDE(x) NSTD_CONCAT(L, x)
-
-// ReSharper disable CppInconsistentNaming
-#ifdef _DEBUG
-#define runtime_assert(_ARG_, ...)\
-	nstd::rt_assert_invoker(\
-		nstd::detail::detect_msg<decltype(_ARG_)> ? false : !!(_ARG_),\
-		nstd::detail::detect_msg<decltype(_ARG_)> ? (void*)nullptr : NSTD_WIDE(#_ARG_),\
-		nstd::detail::expr_or_msg(NSTD_WIDE(#_ARG_), ##__VA_ARGS__),\
-		NSTD_WIDE(__FILE__), NSTD_WIDE(__FUNCSIG__), __LINE__)
-#else
-#define runtime_assert(...) (void)0
-#endif
-// ReSharper restore CppInconsistentNaming

@@ -1,6 +1,7 @@
 #pragma once
 #include "memory block.h"
 #include "type_traits.h"
+#include "overload.h"
 
 namespace nstd
 {
@@ -32,9 +33,6 @@ namespace nstd
 
 	namespace signature_detail
 	{
-		namespace rng = std::ranges;
-		namespace rngv = rng::views;
-
 		constexpr unknown_byte get_byte(known_byte chr)
 		{
 			struct char_and_number
@@ -66,7 +64,7 @@ namespace nstd
 			return std::nullopt;*/
 		}
 
-		constexpr auto character_is_byte = []<typename Chr>(Chr c)
+		_INLINE_VAR constexpr auto character_are_byte = []<typename Chr>(Chr c)
 		{
 			if constexpr (sizeof(Chr) == sizeof(known_byte))
 				return true;
@@ -88,10 +86,10 @@ namespace nstd
 		};
 
 		template <typename E, typename Tr>
-		std::vector<E> get_beautiful_sig(const std::basic_string_view<E, Tr>& str)
+		std::vector<E> make_sig_beautiful(const std::basic_string_view<E, Tr>& str)
 		{
 			auto sig = std::vector<E>( );
-			sig.reserve(str.size( ));
+			//sig.reserve(str.size( ));
 			auto add_space = false;
 			for (auto c : str)
 			{
@@ -113,7 +111,7 @@ namespace nstd
 		}
 
 		template <typename E, typename Tr>
-		bool is_sig_beautiful(const std::basic_string_view<E, Tr>& str)
+		constexpr bool is_sig_beautiful(const std::basic_string_view<E, Tr>& str)
 		{
 			constexpr auto space = static_cast<E>(' ');
 			if (str.starts_with(space) || str.ends_with(space))
@@ -144,13 +142,13 @@ namespace nstd
 				if (is_sig_beautiful(str))
 					data_.template emplace<out_t>(str);
 				else
-					data_.template emplace<in_t>(get_beautiful_sig(str));
+					data_.template emplace<in_t>(make_sig_beautiful(str));
 			}
 
 			out_t get() const
 			{
-				return std::visit(nstd::overload([](const in_t& in) { return out_t(in); },
-												 [](const out_t& out) { return out; }), data_);
+				return std::visit(nstd::overload([](const in_t& in)-> out_t { return (in); },
+												 [](const out_t& out)-> out_t { return out; }), data_);
 			}
 
 		private:
@@ -190,7 +188,7 @@ namespace nstd
 				{
 					case 1:
 					{
-						NSTD_SIG_SIMULATE(character_is_byte(str[0]), "Incorrect signature: unsupported unicode characted detected");
+						NSTD_SIG_SIMULATE(character_are_byte(str[0]), "Incorrect signature: unsupported unicode characted detected");
 						const auto chr = static_cast<known_byte>(str[0]);
 						if (chr == '?')
 							return {};
@@ -200,7 +198,7 @@ namespace nstd
 					}
 					case 2:
 					{
-						NSTD_SIG_SIMULATE(rng::all_of(str, character_is_byte), "Unable to convert unicode text to byte");
+						NSTD_SIG_SIMULATE(std::ranges::all_of(str, character_are_byte), "Unable to convert unicode text to byte");
 						const auto chr1 = static_cast<known_byte>(str[0]);
 						const auto chr2 = static_cast<known_byte>(str[1]);
 						if (chr1 == '?')
@@ -259,8 +257,8 @@ namespace nstd
 				auto beautiful_sig_view = beautiful_sig.get( );
 
 				for (auto part : beautiful_sig_view
-								 | rngv::split(static_cast<E>(' '))
-								 | rngv::transform([](auto&& rng) { return Sv(std::addressof(*rng.begin( )), rng::distance(rng)); }))
+								 | std::views::split(static_cast<E>(' '))
+								 | std::views::transform([](auto&& rng) { return Sv(std::addressof(*rng.begin( )), std::ranges::distance(rng)); }))
 				{
 					const auto byte = helpers<Simulate>::text_to_byte(part);
 					std::invoke(store_fn, byte);
@@ -336,18 +334,18 @@ namespace nstd
 				}
 				else
 				{
-					if constexpr (!rng::random_access_range<T>)
+					if constexpr (!std::ranges::random_access_range<T>)
 					{
-						static_assert(!rng::range<T>, "T shouldn't be a range");
+						static_assert(!std::ranges::range<T>, "T shouldn't be a range");
 						return std::as_bytes(std::span(std::addressof(val), 1));
 					}
 					else
 					{
-						using rng_val = rng::range_value_t<T>;
+						using rng_val = std::ranges::range_value_t<T>;
 						static_assert(!std::is_pointer_v<rng_val>, "T shouldn't be a pointer");
 						if constexpr (sizeof(rng_val) != sizeof(known_byte))
 						{
-							return std::as_bytes(std::span(rng::data(val), rng::size(val)));
+							return std::as_bytes(std::span(std::ranges::data(val), std::ranges::size(val)));
 						}
 						else
 						{
@@ -369,7 +367,7 @@ namespace nstd
 			{
 				if constexpr (!std_string_or_view<T>)
 				{
-					if constexpr (std::is_bounded_array_v<T> && std::_Is_any_of_v<rng::range_value_t<T>, char, wchar_t, char8_t, char16_t, char32_t>)
+					if constexpr (std::is_bounded_array_v<T> && std::_Is_any_of_v<std::ranges::range_value_t<T>, char, wchar_t, char8_t, char16_t, char32_t>)
 						return std::invoke(*this, std::basic_string_view(obj));
 					else
 						return std::invoke(maker<false, signature_parse_mode::BYTES>( ), obj);
@@ -381,11 +379,11 @@ namespace nstd
 					const auto to_unknown = []<typename T1>(const T1 & bytes)
 					{
 						static_assert(sizeof(typename T1::value_type) == sizeof(known_byte));
-						auto tmp = rngv::transform(bytes, [](auto b) { return unknown_byte(static_cast<known_byte>(b)); });
+						auto tmp = std::views::transform(bytes, [](auto b) { return unknown_byte(static_cast<known_byte>(b)); });
 						return unknown_bytes_object(tmp.begin( ), tmp.end( ));
 					};
 #endif
-					if (rng::all_of(obj, character_is_byte))
+					if (std::ranges::all_of(obj, character_are_byte))
 					{
 						try
 						{
@@ -393,7 +391,7 @@ namespace nstd
 							//return to_unknown(bytes);
 							return any_bytes_range(std::move(bytes));
 						}
-						catch (const simulate_exceptrion& e)
+						catch ([[maybe_unused]]const simulate_exceptrion& e)
 						{
 						}
 						try

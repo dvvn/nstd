@@ -1,13 +1,15 @@
 #include "vtables mgr.h"
 
+#include <nstd/runtime_assert_fwd.h>
 #include <nstd/os/module info.h>
 
 #include NSTD_OS_MODULE_INFO_DATA_CACHE_INCLUDE
 
 #include <mutex>
+
 using namespace nstd::os;
 
-struct vtables_mgr::storage_type: NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, vtable_info>
+struct vtables_mgr::storage_type : NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, vtable_info>
 {
 	storage_type(const storage_type&)            = delete;
 	storage_type& operator=(const storage_type&) = delete;
@@ -15,22 +17,22 @@ struct vtables_mgr::storage_type: NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, vt
 	storage_type(storage_type&&)            = default;
 	storage_type& operator=(storage_type&&) = default;
 
-	storage_type( ) = default;
+	storage_type() = default;
 };
 
-vtables_mgr::vtables_mgr( )
+vtables_mgr::vtables_mgr()
 {
 	storage_ = std::make_unique<storage_type>( );
 }
 
-vtables_mgr::~vtables_mgr( )                                = default;
+vtables_mgr::~vtables_mgr()                                 = default;
 vtables_mgr::vtables_mgr(vtables_mgr&&) noexcept            = default;
 vtables_mgr& vtables_mgr::operator=(vtables_mgr&&) noexcept = default;
 
 //todo: add x64 support
 static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdata, const section_info& dot_text, nstd::address type_descriptor)
 {
-	for (const auto& block: dot_rdata.block.find_all_blocks(type_descriptor.value( )))
+	for (const auto& block : dot_rdata.block.find_all_blocks(type_descriptor.value( )))
 	{
 		const auto xr = block.addr( );
 
@@ -66,7 +68,7 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 		return info;
 	}
 
-	return { };
+	return {};
 }
 
 vtable_info vtables_mgr::at(const std::string_view& class_name) const
@@ -106,7 +108,7 @@ vtable_info vtables_mgr::at(const std::string_view& class_name) const
 
 		const auto result = _Load_vtable_info(dot_rdata, dot_text, type_descriptor);
 		runtime_assert(result.has_value( ));
-		
+
 		ret = storage_->emplace(std::string(class_name), *result).first;
 	}
 

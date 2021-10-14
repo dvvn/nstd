@@ -1,5 +1,5 @@
 #pragma once
-#include "runtime assert.h"
+#include "runtime_assert_fwd.h"
 
 #include <chrono>
 
@@ -13,22 +13,22 @@ namespace nstd
 
 		timer(bool start = false);
 
-		bool started( ) const;
-		bool updated( ) const;
+		bool started() const;
+		bool updated() const;
 
-		void set_start( );
-		void set_end( );
+		void set_start();
+		void set_end();
 
-		time_point::duration elapsed( ) const;
+		time_point::duration elapsed() const;
 
 	private:
 		std::optional<time_point> start_, end_;
 	};
 
-	class benchmark_timer final: protected timer
+	class benchmark_timer final : protected timer
 	{
 	public:
-		benchmark_timer( ) = default;
+		benchmark_timer() = default;
 
 		template <class Fn, typename ...Args>
 		benchmark_timer(Fn&& fn, Args&&...args)

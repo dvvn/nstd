@@ -1,5 +1,6 @@
 #include "exports mgr.h"
 
+#include <nstd/runtime_assert_fwd.h>
 #include <nstd/os/module info.h>
 
 #include NSTD_OS_MODULE_INFO_DATA_CACHE_INCLUDE
@@ -7,7 +8,6 @@
 #include <Windows.h>
 
 #include <mutex>
-#include <functional>
 
 using namespace nstd::os;
 

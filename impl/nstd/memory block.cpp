@@ -1,5 +1,8 @@
 #include "memory block.h"
 
+#include "runtime_assert_fwd.h"
+#include "overload.h"
+
 #include <windows.h>
 static_assert(std::same_as<unsigned long, DWORD>);
 
@@ -156,7 +159,7 @@ static memory_block_opt _Scan_memory(const known_bytes_range& block, const known
 
 memory_block_opt memory_block::find_block_impl(const known_bytes_range_const& rng) const
 {
-	//doen't work sometimes, idk why
+	//doesn't work sometimes, idk why
 	/*try
 	{
 		if (const auto rng64 = _Rewrap_range<uint64_t>(rng); rng64.has_value( ))

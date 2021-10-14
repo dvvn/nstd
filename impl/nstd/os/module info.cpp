@@ -1,5 +1,6 @@
 #include "module info.h"
 
+#include <nstd/runtime_assert_fwd.h>
 #include <robin_hood.h>
 #include <nlohmann/json.hpp>
 
@@ -60,68 +61,6 @@ module_info::module_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos,
 
 	mtx_ = std::make_unique<mutex_type>( );
 }
-
-#if 0
-template <typename Chr, typename Traits, typename ...Next>
-std::basic_string<Chr, Traits> prefix_adder(const std::basic_string_view<Chr, Traits>& first, Next&&...other)
-{
-	using view_t = std::remove_cvref_t<decltype(first)>;
-	const auto cache = std::array/*<view_t, sizeof...(Next) + 1>*/{first, view_t(other)...};
-
-	size_t ideal_size = 1;
-	for(const view_t& text : cache)
-		ideal_size += text.size( );
-
-	std::basic_string<Chr, Traits> result;
-	result.reserve(ideal_size);
-
-	for(const view_t& text : cache)
-		result += text;
-
-	return result;
-
-	//return cheat::utl::combine_strings(_Add_prefix_impl(FWD(args))...);File_on_disc_impl_
-}
-#endif
-
-#if 0
-
-auto module_info::File_on_disc_impl_(const wstring_view& module_name, IMAGE_NT_HEADERS* nt_header, const filesystem::path& folder,
-	const wstring_view& file_extension, const wstring_view& file_name_postfix) -> filesystem::path
-{
-	const auto check_sum = nt_header->OptionalHeader.CheckSum;
-	if(check_sum == 0)
-	{
-		runtime_assert("Unable to create file path because checksum is null!");
-		return { };
-	}
-
-	auto file_name = (to_string(check_sum));
-	if(!file_extension.empty( ))
-	{
-		if(!file_extension.starts_with('.'))
-			file_name += '.';
-		file_name.append(file_extension.begin( ), file_extension.end( ));
-	}
-
-	//----------------------
-
-	std::wstring current_folder;
-	if(file_name_postfix.empty( ))
-	{
-		current_folder = fmt::format(L"_{}", module_name);
-	}
-	else
-	{
-		current_folder = fmt::format(L"_{}_{}", module_name, file_name_postfix);
-	}
-
-	//----------------------
-
-	return folder / current_folder / file_name;
-}
-
-#endif
 
 address module_info::base() const
 {

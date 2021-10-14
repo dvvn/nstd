@@ -1,12 +1,8 @@
 #include "address.h"
 
-using namespace nstd;
+#include "runtime_assert_fwd.h"
 
-void address::error_handler() const
-{
-	runtime_assert(ptr_ != nullptr, "Address is null!");
-	runtime_assert(value_ != static_cast<uintptr_t>(-1), "Address is incorrect!");
-}
+using namespace nstd;
 
 address::address()
 	: value_(0)
@@ -38,142 +34,42 @@ uintptr_t address::value() const
 	return value_;
 }
 
-address address::operator*() const
-{
-	return ref<uintptr_t>( );
-}
-
-address address::deref(size_t count) const
+address address::deref(ptrdiff_t count) const
 {
 	runtime_assert(count != 0, "Count must be not zero!");
 
-	auto result = *this;;
+	auto result = *this;
 	while (count-- > 0)
 		result = *result;
 	return result;
 }
 
-address address::deref_safe(size_t count) const
+address address::deref_safe(ptrdiff_t count) const
 {
 	return count == 0 ? *this : deref(count);
 }
 
-std::strong_ordering address::operator<=>(const address& other) const
-{
-	return value_ <=> other.value_;
-}
-
-bool address::operator==(const address& other) const
-{
-	return value_ == other.value_;
-}
-
-bool address::operator!=(const address& other) const
-{
-	return !(operator==(other));
-}
-
-address& address::operator+=(const address& offset)
-{
-	value_ += offset.value_;
-	error_handler( );
-	return *this;
-}
-
-address& address::operator-=(const address& offset)
-{
-	value_ -= offset.value_;
-	error_handler( );
-	return *this;
-}
-
-address& address::operator*=(const address& offset)
-{
-	value_ *= offset.value_;
-	error_handler( );
-	return *this;
-}
-
-address& address::operator/=(const address& offset)
-{
-	value_ /= offset.value_;
-	error_handler( );
-	return *this;
-}
-
-address address::operator+(const address& offset) const
-{
-#ifdef  _DEBUG
-	if (offset == 0u)
-		return *this;
-	auto temp = *this;
-	temp += offset;
-	return temp;
-#else
-            return value_ + offset.value_;
-#endif
-}
-
-address address::operator-(const address& offset) const
-{
-#ifdef  _DEBUG
-	if (offset == 0u)
-		return *this;
-	auto temp = *this;
-	temp -= offset;
-	return temp;
-#else
-            return value_ - offset.value_;
-#endif
-}
-
-address address::operator*(const address& offset) const
-{
-#ifdef  _DEBUG
-	if (offset == 0u)
-		return *this;
-	auto temp = *this;
-	temp *= offset;
-	return temp;
-#else
-            return value_ * offset.value_;
-#endif
-}
-
-address address::operator/(const address& offset) const
-{
-#ifdef  _DEBUG
-	if (offset == 0u)
-		return *this;
-	auto temp = *this;
-	temp /= offset;
-	return temp;
-#else
-            return value_ / offset.value_;
-#endif
-}
-
-address address::add(const address& offset) const
+address address::add(ptrdiff_t offset) const
 {
 	return *this + offset;
 }
 
-address address::remove(const address& offset) const
+address address::remove(ptrdiff_t offset) const
 {
 	return *this - offset;
 }
 
-address address::multiply(const address& value) const
+address address::multiply(ptrdiff_t value) const
 {
 	return *this * value;
 }
 
-address address::divide(const address& value) const
+address address::divide(ptrdiff_t value) const
 {
 	return *this / value;
 }
 
-address address::rel8(size_t offset) const
+address address::rel8(ptrdiff_t offset) const
 {
 	const auto out = *this + offset;
 
@@ -193,7 +89,7 @@ address address::rel8(size_t offset) const
 		return (out + 1) - static_cast<uint8_t>(~r + 1);
 }
 
-address address::rel32(size_t offset) const
+address address::rel32(ptrdiff_t offset) const
 {
 	const auto out = *this + offset;
 
@@ -229,4 +125,133 @@ address address::jmp(ptrdiff_t offset) const
 	base += displacement;
 
 	return (base);
+}
+
+//----------------
+
+bool nstd::operator==(address l, address r)
+{
+	return l.value( ) == r.value( );
+}
+
+bool nstd::operator!=(address l, address r)
+{
+	return !(l == r);
+}
+
+bool nstd::operator<(address l, address r)
+{
+	return l.value( ) < r.value( );
+}
+
+bool nstd::operator>(address l, address r)
+{
+	return l.value( ) > r.value( );
+}
+
+bool nstd::operator<=(address l, address r)
+{
+	return l.value( ) <= r.value( );
+}
+
+bool nstd::operator>=(address l, address r)
+{
+	return l.value( ) >= r.value( );
+}
+
+//-------------
+
+#define NSTD_ADDRESS_OPERATOR_CALL(...) \
+	decltype(auto) temp = __VA_ARGS__;\
+	runtime_assert(address(temp).value( ) != 0u, "Address is null!");\
+	runtime_assert(address(temp).value( ) != static_cast<uintptr_t>(-1), "Address is incorrect!");\
+	return temp;
+
+address nstd::operator+(address l, ptrdiff_t r)
+{
+	NSTD_ADDRESS_OPERATOR_CALL(l.value( ) + r);
+}
+
+address nstd::operator+(ptrdiff_t l, address r)
+{
+	return r + l;
+}
+
+address nstd::operator-(address l, ptrdiff_t r)
+{
+	NSTD_ADDRESS_OPERATOR_CALL(l.value( ) - r);
+}
+
+address nstd::operator-(ptrdiff_t l, address r)
+{
+	return r - l;
+}
+
+address& nstd::operator+=(address& l, ptrdiff_t r)
+{
+	return l = l + r;
+}
+
+address& nstd::operator+=(ptrdiff_t l, address& r)
+{
+	return r += l;
+}
+
+address& nstd::operator-=(address& l, ptrdiff_t r)
+{
+	return l = l - r;
+}
+
+address& nstd::operator-=(ptrdiff_t l, address& r)
+{
+	return r -= l;
+}
+
+//----------------
+
+address nstd::operator*(address l, ptrdiff_t r)
+{
+	NSTD_ADDRESS_OPERATOR_CALL(l.value( ) * r);
+}
+
+address nstd::operator*(ptrdiff_t l, address r)
+{
+	return r * l;
+}
+
+address nstd::operator/(address l, ptrdiff_t r)
+{
+	NSTD_ADDRESS_OPERATOR_CALL(l.value( ) / r);
+}
+
+address nstd::operator/(ptrdiff_t l, address r)
+{
+	return r / l;
+}
+
+address& nstd::operator*=(address& l, ptrdiff_t r)
+{
+	return l = l * r;
+}
+
+address& nstd::operator*=(ptrdiff_t l, address& r)
+{
+	return r *= l;
+}
+
+address& nstd::operator/=(address& l, ptrdiff_t r)
+{
+	return l = l / r;
+}
+
+address& nstd::operator/=(ptrdiff_t l, address& r)
+{
+	return r /= l;
+}
+
+//---
+
+address nstd::operator*(address a)
+{
+	return a.ref<uintptr_t>( );
 }
