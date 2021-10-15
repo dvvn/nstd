@@ -1,5 +1,5 @@
 #include <nstd/os/threads.h>
-#include <nstd/runtime assert.h>
+#include <nstd/runtime_assert_fwd.h>
 
 // ReSharper disable CppWrongIncludesOrder
 #include <Windows.h>
@@ -13,7 +13,7 @@ using namespace nstd::os;
 template <typename T>
 static void _Open_assert([[maybe_unused]] const T* ptr)
 {
-	runtime_assert(ptr->is_open( ), "Thread isn't open!");
+	runtime_assert(ptr->is_open(), "Thread isn't open!");
 }
 
 thread_entry::thread_entry(const THREADENTRY32& entry)
@@ -89,9 +89,9 @@ void threads_enumerator::operator()(DWORD process_id)
 		return Thread32Next(snapshot.get( ), std::addressof(entry));
 	};
 
-	constexpr auto min_size  = FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(decltype(THREADENTRY32::th32OwnerProcessID));
-	const auto     my_pid    = process_id;
-	const auto     my_thread = GetCurrentThreadId( );
+	constexpr auto min_size = FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(decltype(THREADENTRY32::th32OwnerProcessID));
+	const auto my_pid       = process_id;
+	const auto my_thread    = GetCurrentThreadId( );
 
 	for (auto active = thread32_first( ); active == TRUE; active = thread32_next( ))
 	{
@@ -117,7 +117,7 @@ frozen_threads_storage& frozen_threads_storage::operator=(frozen_threads_storage
 	return *this;
 }
 
-void unfreeze_thread::operator()(HANDLE h) const
+void unfreeze_thread::operator( )(HANDLE h) const
 {
 	ResumeThread(h);
 	CloseHandle(h);
@@ -129,7 +129,7 @@ frozen_thread::frozen_thread(HANDLE handle)
 	SuspendThread(handle);
 }
 
-struct frozen_threads_storage::storage_type: std::vector<frozen_thread>
+struct frozen_threads_storage::storage_type : std::vector<frozen_thread>
 {
 };
 
@@ -152,7 +152,7 @@ void frozen_threads_storage::fill( )
 
 void frozen_threads_storage::clear( )
 {
-	storage_ = { };
+	storage_ = {};
 }
 
 void frozen_threads_storage::on_valid_thread(const THREADENTRY32& entry)

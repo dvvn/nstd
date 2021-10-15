@@ -15,14 +15,14 @@ namespace nstd
 		virtual ~smooth_object_base() = default;
 
 	public:
-		enum class state:uint8_t
+		enum class state :uint8_t
 		{
 			IDLE
-		  , RESTARTED_DELAYED
-		  , RESTARTED
-		  , STARTED
-		  , RUNNING
-		  , FINISHED
+			, RESTARTED_DELAYED
+			, RESTARTED
+			, STARTED
+			, RUNNING
+			, FINISHED
 		};
 
 		virtual bool update() = 0;
@@ -36,7 +36,7 @@ namespace nstd
 			virtual ~target() = default;
 			virtual void write_value(T& obj) = 0;
 			virtual T& get_value() = 0;
-			virtual const std::type_info& type() const =0;
+			virtual bool own_value() const = 0;
 		};
 
 	public:
@@ -47,7 +47,7 @@ namespace nstd
 
 			void write_value(T& obj) override { target_val_ = std::addressof(obj); }
 			T& get_value() override { return *target_val_; }
-			const std::type_info& type() const override { return typeid(target_external); }
+			bool own_value() const override { return false; }
 
 		private:
 			T* target_val_ = nullptr;
@@ -60,7 +60,7 @@ namespace nstd
 
 			void write_value(T& obj) override { target_val_ = (obj); }
 			T& get_value() override { return target_val_; }
-			const std::type_info& type() const override { return typeid(target_internal); }
+			bool own_value() const override { return true; }
 
 		private:
 			T target_val_;
@@ -78,9 +78,9 @@ namespace nstd
 
 		~smooth_value_base() override
 		{
-			if (!target_val_ || !this->active( ))
+			if (!target_val_ || !this->active())
 				return;
-			if (target_val_->type( ) == typeid(target_external))
+			if (!target_val_->own_value())
 				target_val_->write_value(end_val_);
 		}
 
@@ -88,12 +88,12 @@ namespace nstd
 		{
 			static_assert(std::copyable<T>);
 			static_assert(std::chrono::is_clock_v<Clock>);
-			start_val_ = temp_val_ = end_val_ = T( );
+			start_val_ = temp_val_ = end_val_ = T();
 		}
 
-		smooth_value_base(const smooth_value_base& other)                = delete;
-		smooth_value_base(smooth_value_base&& other) noexcept            = default;
-		smooth_value_base& operator=(const smooth_value_base& other)     = delete;
+		smooth_value_base(const smooth_value_base& other) = delete;
+		smooth_value_base(smooth_value_base&& other) noexcept = default;
+		smooth_value_base& operator=(const smooth_value_base& other) = delete;
 		smooth_value_base& operator=(smooth_value_base&& other) noexcept = default;
 
 		//----
@@ -106,12 +106,12 @@ namespace nstd
 		template <std::derived_from<target> Q>
 		void set_target()
 		{
-			set_target(std::make_unique<Q>( ));
+			set_target(std::make_unique<Q>());
 		}
 
 		target* get_target() const
 		{
-			return target_val_.get( );
+			return target_val_.get();
 		}
 
 		//----
@@ -136,7 +136,22 @@ namespace nstd
 			return end_val_;
 		}
 
-		void update_end(const T& new_end, bool force = false)
+		void decrease_time() {
+			const auto elapsed_time = last_time_ - start_time_;
+			const auto time_remaining = duration_ - elapsed_time;
+
+			//some time has passed, now we only need to wait for this segment
+			start_time_ = last_time_ - time_remaining;
+		}
+
+		void restart_or_decrease_time(bool delayed_restart) {
+			if (!this->active())
+				restart(delayed_restart);
+			else
+				decrease_time();
+		}
+
+		void set_new_range(const T& new_end, bool update_force = false)
 		{
 			constexpr auto equal = [](const T& a, const T& b)
 			{
@@ -146,23 +161,19 @@ namespace nstd
 					return std::memcmp(std::addressof(a), std::addressof(b), sizeof(T)) == 0;
 			};
 
-			if (!force && equal(new_end, end_val_))
+			if (!update_force && equal(new_end, end_val_))
 				return;
 
-			if (!this->active( ) || !equal(start_val_, new_end))
+			if (!this->active() || !equal(start_val_, new_end))
 			{
-				start_val_    = std::move(end_val_);
-				end_val_      = new_end;
+				start_val_ = std::move(end_val_);
+				end_val_ = new_end;
 				temp_val_old_ = temp_val_;
 			}
 			else
 			{
-				const auto elapsed_time   = last_time_ - start_time_;
-				const auto time_remaining = duration_ - elapsed_time;
-
-				//some time has passed, now we only need to wait for this segment
-				start_time_ = last_time_ - time_remaining;
-				this->inverse( );
+				decrease_time();
+				inverse();
 			}
 
 			this->start(true, true);
@@ -177,7 +188,7 @@ namespace nstd
 
 		void start(bool wait_for_finish, bool delayed)
 		{
-			if (active( ) && wait_for_finish)
+			if (active() && wait_for_finish)
 				return;
 			/*if (target_val_ == nullptr)
 				set_target<target_internal>( );*/
@@ -193,11 +204,11 @@ namespace nstd
 		{
 			switch (state_)
 			{
-				case state::IDLE:
-				case state::FINISHED:
-					return false;
-				default:
-					return true;
+			case state::IDLE:
+			case state::FINISHED:
+				return false;
+			default:
+				return true;
 			}
 		}
 
@@ -210,9 +221,9 @@ namespace nstd
 			}
 
 			temp_val_ = start_val_;
-			state_    = state::RESTARTED;
-			temp_val_old_.reset( );
-			start_time_ = Clock::now( );
+			state_ = state::RESTARTED;
+			temp_val_old_.reset();
+			start_time_ = Clock::now();
 		}
 
 		void inverse()
@@ -226,26 +237,26 @@ namespace nstd
 		{
 			switch (state_)
 			{
-				case state::RESTARTED_DELAYED:
-					this->restart(false);
-					break;
-				case state::FINISHED:
-					state_ = state::IDLE;
-				case state::IDLE:
-					return false;
+			case state::RESTARTED_DELAYED:
+				this->restart(false);
+				break;
+			case state::FINISHED:
+				state_ = state::IDLE;
+			case state::IDLE:
+				return false;
 			}
 
 			duration frame_time, elapsed_time;
 
 			if (state_ == state::RESTARTED)
 			{
-				state_     = state::STARTED;
-				frame_time = elapsed_time = duration::zero( );
+				state_ = state::STARTED;
+				frame_time = elapsed_time = duration::zero();
 				last_time_ = start_time_;
-				if (target_val_->type( ) == typeid(target_external))
+				if (!target_val_->own_value())
 				{
 					//force if value externally changed
-					target_val_->get_value( ) = temp_val_old_.value_or(start_val_);
+					target_val_->get_value() = temp_val_old_.value_or(start_val_);
 				}
 				return false;
 			}
@@ -254,21 +265,21 @@ namespace nstd
 				if (state_ == state::STARTED)
 					state_ = state::RUNNING;
 
-				auto now     = Clock::now( );
-				frame_time   = now - last_time_;
+				auto now = Clock::now();
+				frame_time = now - last_time_;
 				elapsed_time = now - start_time_;
-				last_time_   = now;
+				last_time_ = now;
 			}
 
 			if (elapsed_time >= duration_)
 			{
-				state_                    = state::FINISHED;
-				target_val_->get_value( ) = end_val_;
+				state_ = state::FINISHED;
+				target_val_->get_value() = end_val_;
 			}
 			else
 			{
 				this->update_impl(temp_val_old_, start_val_, temp_val_, end_val_, frame_time, elapsed_time, duration_);
-				target_val_->get_value( ) = temp_val_;
+				target_val_->get_value() = temp_val_;
 			}
 
 			return true;
@@ -276,7 +287,7 @@ namespace nstd
 
 	protected:
 		virtual void update_impl(const unachieved_value& current_unachieved, const T& from, T& current, const T& to,
-								 duration frame_time, duration elapsed_time, duration duration) = 0;
+			duration frame_time, duration elapsed_time, duration duration) = 0;
 
 	private:
 		time_point start_time_, last_time_;
@@ -296,10 +307,10 @@ namespace nstd
 		using unachieved_value = typename base::unachieved_value;
 
 		void update_impl(const unachieved_value& current_old, const T& from, T& current, const T& to,
-						 duration frame_time, duration elapsed_time, duration duration) override
+			duration frame_time, duration elapsed_time, duration duration) override
 		{
-			const auto diff = static_cast<float>(elapsed_time.count( )) / static_cast<float>(duration.count( ));
-			current         = std::lerp(current_old.value_or(from), to, diff);
+			const auto diff = static_cast<float>(elapsed_time.count()) / static_cast<float>(duration.count());
+			current = std::lerp(current_old.value_or(from), to, diff);
 		}
 	};
 }
