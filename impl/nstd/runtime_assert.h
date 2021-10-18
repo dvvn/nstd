@@ -4,179 +4,54 @@
 #include "core.h"
 #include "one_instance.h"
 
+#include <source_location>
+
 namespace nstd
 {
-	class rt_assert_arg_t
+	struct _declspec(novtable) rt_assert_handler
+	{
+		virtual ~rt_assert_handler( ) = default;
+
+		virtual void handle(const std::source_location& location, bool expression_result, const char* expression, const char* message) _NOEXCEPT_FNPTR =0;
+		virtual void handle(const std::source_location& location, const char* message) _NOEXCEPT_FNPTR =0;
+
+		virtual size_t id( ) const = 0;
+	};
+
+	class rt_assert_handler_root final
 	{
 	public:
-		constexpr rt_assert_arg_t(decltype(nullptr))
-		{
-			ptr_   = nullptr;
-			index_ = static_cast<uint8_t>(-1);
-		}
+		~rt_assert_handler_root( );
+		rt_assert_handler_root( );
 
-		constexpr rt_assert_arg_t(const void*)
-		{
-			ptr_   = nullptr;
-			index_ = static_cast<uint8_t>(-1);
-		}
+		using handler_unique = std::unique_ptr<rt_assert_handler>;
+		using handler_shared = std::shared_ptr<rt_assert_handler>;
+		using handler_ref = std::reference_wrapper<rt_assert_handler>;
 
-		constexpr rt_assert_arg_t(const char* wchr)
-		{
-			ptr_   = wchr;
-			index_ = 0;
-		}
+		void add(handler_unique&& handler);
 
-		constexpr rt_assert_arg_t(const wchar_t* chr)
-		{
-			ptr_   = chr;
-			index_ = 1;
-		}
+		void add(const handler_shared& handler);
 
-		constexpr uint8_t index() const
-		{
-			return index_;
-		}
+		void add(const handler_ref& handler);
+		void add(rt_assert_handler* handler);
 
-		constexpr bool empty() const
-		{
-			return index_ == static_cast<uint8_t>(-1);
-		}
+		void remove(size_t id);
+		void remove(rt_assert_handler* handler);
 
-		template <size_t I>
-		constexpr auto get() const
-		{
-			if constexpr (I == 0)
-				return static_cast<const char*>(ptr_);
-			else if constexpr (I == 1)
-				return static_cast<const wchar_t*>(ptr_);
-		}
+		void handle(const std::source_location& location, bool expression_result, const char* expression, const char* message = 0) _NOEXCEPT_FNPTR;
+		void handle(const std::source_location& location, const char* message, const char* unused1 = 0, const char* unused2 = 0) _NOEXCEPT_FNPTR;
 
 	private:
-		const void* ptr_;
-		uint8_t index_;
-	};
-
-	class rt_assert_handler
-	{
-	public:
-		friend class rt_assert_handler_ex;
-
-		struct info_type
-		{
-			rt_assert_arg_t file_name;
-			rt_assert_arg_t function;
-			uint64_t line;
-		};
-
-		virtual ~rt_assert_handler() = default;
-
-		void handle(bool result,
-					rt_assert_arg_t&& expression, rt_assert_arg_t&& message,
-					rt_assert_arg_t&& file_name, rt_assert_arg_t&& function, uint64_t line) noexcept;
-
-	protected:
-		virtual void handle_impl(const rt_assert_arg_t& expression, const rt_assert_arg_t& message, const info_type& info) noexcept = 0;
-	};
-
-	class rt_assert_handler_ex final : public rt_assert_handler
-	{
-	public:
-		rt_assert_handler_ex();
-		~rt_assert_handler_ex() override;
-
-		class element_type
-		{
-		public:
-			~element_type();
-
-			element_type(element_type&& other) noexcept;
-			element_type& operator=(element_type&& other) noexcept;
-
-			element_type(element_type&)            = delete;
-			element_type& operator=(element_type&) = delete;
-
-			element_type(rt_assert_handler* handle, bool allocated);
-
-			bool operator==(const rt_assert_handler* other) const;
-
-			rt_assert_handler* operator->() const;
-
-		private:
-			rt_assert_handler* handle_;
-			bool allocated_;
-		};
-
 		struct data_type;
-
-		//rt_assert_handler_ex(rt_assert_handler_ex&& other) noexcept;
-		//rt_assert_handler_ex& operator=(rt_assert_handler_ex&& other) noexcept;
-
-		void add(rt_assert_handler* handler, bool allocated = false);
-		void remove(const rt_assert_handler* handler);
-
-	protected:
-		void handle_impl(const rt_assert_arg_t& expression, const rt_assert_arg_t& message, const info_type& info) noexcept override;
-
-	private:
 		std::unique_ptr<data_type> data_;
 	};
 
-	using rt_assert_object = one_instance<rt_assert_handler_ex>;
-
-	namespace detail
-	{
-		template <class T>
-		_INLINE_VAR constexpr bool detect_msg = std::is_bounded_array_v<std::remove_cvref_t<T>>;
-
-		template <typename T1, typename T2 = void>
-		constexpr rt_assert_arg_t expr_or_msg(T1&& msg, const T2* msg2 = nullptr)
-		{
-			return msg2 == nullptr ? rt_assert_arg_t(msg) : rt_assert_arg_t(msg2);
-		}
-	}
-
-	constexpr void rt_assert_invoker(bool result,
-									 rt_assert_arg_t&& expression,
-									 rt_assert_arg_t&& message,
-									 rt_assert_arg_t&& file_name,
-									 rt_assert_arg_t&& function,
-									 uint64_t line)
-	{
-		// ReSharper disable once CppIfCanBeReplacedByConstexprIf
-		// ReSharper disable once CppRedundantBooleanExpressionArgument
-		if (std::is_constant_evaluated( ))
-		{
-			if (!result)
-				throw;
-		}
-		else
-		{
-			// ReSharper disable once CppUnreachableCode
-			rt_assert_object::get_ptr( )->handle
-					(result,
-					 static_cast<rt_assert_arg_t&&>(expression),
-					 static_cast<rt_assert_arg_t&&>(message),
-					 static_cast<rt_assert_arg_t&&>(file_name),
-					 static_cast<rt_assert_arg_t&&>(function),
-					 line);
-		}
-	}
+	using rt_assert_object = one_instance<rt_assert_handler_root>;
 }
 
-namespace std
-{
-	template <typename E, typename Tr>
-	basic_ostream<E, Tr>& operator<<(basic_ostream<E, Tr>& s, const nstd::rt_assert_arg_t& val)
-	{
-		switch (val.index( ))
-		{
-			case 0:
-				return s << val.get<0>( );
-			case 1:
-				return s << val.get<1>( );
-			default:
-				throw;
-		}
-	}
-}
+// ReSharper disable CppInconsistentNaming
+#define runtime_assert_call(_EXPRESSION_OR_MESSAGE_,...) \
+	nstd::rt_assert_object::get_ptr()->handle(std::source_location::current( ),_EXPRESSION_OR_MESSAGE_,_STRINGIZE(_EXPRESSION_OR_MESSAGE_),##__VA_ARGS__)
+#define runtime_assert_add_handler_impl(_HANDLER_) nstd::rt_assert_object::get_ptr()->add(_HANDLER_)
+#define runtime_assert_remove_handler_impl(_HANDLER_) nstd::rt_assert_object::get_ptr()->remove(_HANDLER_)
+// ReSharper restore CppInconsistentNaming

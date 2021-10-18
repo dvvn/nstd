@@ -1,91 +1,139 @@
 #include "runtime_assert.h"
 
+#include "overload.h"
+
 #include <algorithm>
 #include <ranges>
+#include <stdexcept>
+#include <variant>
 #include <vector>
 
 using namespace nstd;
 
-void rt_assert_handler::handle(bool result, rt_assert_arg_t&& expression, rt_assert_arg_t&& message, rt_assert_arg_t&& file_name, rt_assert_arg_t&& function
-							 , uint64_t line) noexcept
-{
-	if (result == true)
-		return;
-	this->handle_impl(expression, message, {std::move(file_name), std::move(function), line});
-}
+using r = rt_assert_handler_root;
 
-struct rt_assert_handler_ex::data_type : std::vector<element_type>
+static constexpr auto _Get_handler_ptr = overload(
+		[](const r::handler_shared& h) { return h.get( ); }
+	  , [](const r::handler_unique& h) { return h.get( ); }
+	  , [](const r::handler_ref& h) { return std::addressof(h.get( )); }
+	  , [](rt_assert_handler* const h) { return h; }
+	  , [](rt_assert_handler& h) { return std::addressof(h); }
+		);
+
+struct root_handler_element
+{
+	rt_assert_handler* get( ) const
+	{
+		return std::visit(_Get_handler_ptr, data_);
+	}
+
+	rt_assert_handler* operator->( )
+	{
+		return get( );
+	}
+
+	template <typename T>
+	root_handler_element(T&& arg)
+		: data_(std::forward<T>(arg))
+	{
+	}
+
+private:
+	std::variant<r::handler_unique, r::handler_shared, r::handler_ref> data_;
+};
+
+//void log(const std::string_view message,
+//	const std::source_location location =
+//	std::source_location::current())
+//{
+//	std::cout << "file: "
+//		<< location.file_name() << "("
+//		<< location.line() << ":"
+//		<< location.column() << ") `"
+//		<< location.function_name() << "`: "
+//		<< message << '\n';
+//}
+
+struct rt_assert_handler_root::data_type : std::vector<root_handler_element>
 {
 };
 
-rt_assert_handler_ex::rt_assert_handler_ex()
+rt_assert_handler_root::rt_assert_handler_root( )
 {
 	data_ = std::make_unique<data_type>( );
 }
 
-rt_assert_handler_ex::~rt_assert_handler_ex() = default;
-
-rt_assert_handler_ex::element_type::~element_type()
+template <typename T, typename S>
+static void _Validate_id(T&& h, S&& data)
 {
-	if (allocated_)
-		delete handle_;
+	if (data.empty( ))
+		return;
+	const size_t id = _Get_handler_ptr(h)->id( );
+	for (root_handler_element& el: data)
+	{
+		if (el->id( ) == id)
+			throw std::logic_error("Handler with given id already exists!");
+	}
 }
 
-rt_assert_handler_ex::element_type::element_type(element_type&& other) noexcept
+void rt_assert_handler_root::add(handler_unique&& handler)
 {
-	handle_          = other.handle_;
-	allocated_       = other.allocated_;
-	other.allocated_ = false;
+	auto& d = *data_;
+	_Validate_id(handler, d);
+	d.push_back(std::move(handler));
 }
 
-rt_assert_handler_ex::element_type& rt_assert_handler_ex::element_type::operator=(element_type&& other) noexcept
+void rt_assert_handler_root::add(const handler_shared& handler)
 {
-	std::swap(handle_, other.handle_);
-	std::swap(allocated_, other.allocated_);
-
-	return *this;
+	auto& d = *data_;
+	_Validate_id(handler, d);
+	d.push_back(handler);
 }
 
-rt_assert_handler_ex::element_type::element_type(rt_assert_handler* handle, bool allocated)
-	: handle_(handle), allocated_(allocated)
+void rt_assert_handler_root::add(const handler_ref& handler)
 {
+	auto& d = *data_;
+	_Validate_id(handler, d);
+	d.push_back(handler);
 }
 
-bool rt_assert_handler_ex::element_type::operator==(const rt_assert_handler* other) const
+void rt_assert_handler_root::add(rt_assert_handler* handler)
 {
-	return handle_ == other;
+#if _HAS_CXX20
+	add(reinterpret_cast<handler_ref&>(handler));
+#else
+	add(std::ref(*handler));
+#endif
 }
 
-rt_assert_handler* rt_assert_handler_ex::element_type::operator->() const
+void rt_assert_handler_root::remove(size_t id)
 {
-	return handle_;
+	auto& d = *data_;
+	for (auto itr = d.begin( ); itr != d.end( ); ++itr)
+	{
+		if (id == (*itr)->id( ))
+		{
+			d.erase(itr);
+			break;
+		}
+	}
 }
 
-//rt_assert_handler_ex::rt_assert_handler_ex(rt_assert_handler_ex&& other) noexcept
-//{
-//	*this = std::move(other);
-//}
-//
-//rt_assert_handler_ex& rt_assert_handler_ex::operator=(rt_assert_handler_ex&& other) noexcept
-//{
-//	std::swap(data_, other.data_);
-//	return *this;
-//}
-
-// ReSharper disable once CppMemberFunctionMayBeConst
-void rt_assert_handler_ex::add(rt_assert_handler* handler, bool allocated)
+void rt_assert_handler_root::remove(rt_assert_handler* handler)
 {
-	data_->push_back({handler, allocated});
+	remove(handler->id( ));
 }
 
-void rt_assert_handler_ex::remove(const rt_assert_handler* handler)
+void rt_assert_handler_root::handle(const std::source_location& location, bool expression_result, const char* expression, const char* message) _NOEXCEPT_FNPTR
 {
-	auto pos = std::ranges::remove_if(*data_, [=](const element_type& el) { return el == handler; });
-	data_->erase(pos.begin( ), pos.end( ));
+	for (auto& el: *data_)
+		el->handle(location, expression_result, expression, message);
 }
 
-void rt_assert_handler_ex::handle_impl(const rt_assert_arg_t& expression, const rt_assert_arg_t& message, const info_type& info) noexcept
+void rt_assert_handler_root::handle(const std::source_location& location, const char* message, const char*, const char*) _NOEXCEPT_FNPTR
 {
-	for (const auto& elem : *data_)
-		elem->handle_impl(expression, message, info);
+	for (auto& el: *data_)
+		el->handle(location, message);
 }
+
+rt_assert_handler_root::~rt_assert_handler_root( ) = default;
