@@ -3,7 +3,6 @@
 #include "overload.h"
 
 #include <algorithm>
-#include <ranges>
 #include <stdexcept>
 #include <variant>
 #include <vector>
@@ -12,13 +11,12 @@ using namespace nstd;
 
 using r = rt_assert_handler_root;
 
-static constexpr auto _Get_handler_ptr = overload(
-		[](const r::handler_shared& h) { return h.get( ); }
-	  , [](const r::handler_unique& h) { return h.get( ); }
-	  , [](const r::handler_ref& h) { return std::addressof(h.get( )); }
-	  , [](rt_assert_handler* const h) { return h; }
-	  , [](rt_assert_handler& h) { return std::addressof(h); }
-		);
+static constexpr auto _Get_handler_ptr =
+		overload([](const r::handler_shared& h) { return h.get( ); }
+			   , [](const r::handler_unique& h) { return h.get( ); }
+			   , [](const r::handler_ref& h) { return std::addressof(h.get( )); }
+			   , [](rt_assert_handler* const h) { return h; }
+			   , [](rt_assert_handler& h) { return std::addressof(h); });
 
 struct root_handler_element
 {
@@ -27,7 +25,7 @@ struct root_handler_element
 		return std::visit(_Get_handler_ptr, data_);
 	}
 
-	rt_assert_handler* operator->( )
+	rt_assert_handler* operator->( ) const
 	{
 		return get( );
 	}
@@ -63,41 +61,43 @@ rt_assert_handler_root::rt_assert_handler_root( )
 	data_ = std::make_unique<data_type>( );
 }
 
+rt_assert_handler_root::~rt_assert_handler_root( ) = default;
+
 template <typename T, typename S>
 static void _Validate_id(T&& h, S&& data)
 {
 	if (data.empty( ))
 		return;
 	const size_t id = _Get_handler_ptr(h)->id( );
-	for (root_handler_element& el: data)
+	for (const root_handler_element& el: data)
 	{
 		if (el->id( ) == id)
 			throw std::logic_error("Handler with given id already exists!");
 	}
 }
 
-void rt_assert_handler_root::add(handler_unique&& handler)
+void rt_assert_handler_root::add(handler_unique&& handler) const
 {
 	auto& d = *data_;
 	_Validate_id(handler, d);
 	d.push_back(std::move(handler));
 }
 
-void rt_assert_handler_root::add(const handler_shared& handler)
+void rt_assert_handler_root::add(const handler_shared& handler) const
 {
 	auto& d = *data_;
 	_Validate_id(handler, d);
 	d.push_back(handler);
 }
 
-void rt_assert_handler_root::add(const handler_ref& handler)
+void rt_assert_handler_root::add(const handler_ref& handler) const
 {
 	auto& d = *data_;
 	_Validate_id(handler, d);
 	d.push_back(handler);
 }
 
-void rt_assert_handler_root::add(rt_assert_handler* handler)
+void rt_assert_handler_root::add(rt_assert_handler* handler) const
 {
 #if _HAS_CXX20
 	add(reinterpret_cast<handler_ref&>(handler));
@@ -106,7 +106,7 @@ void rt_assert_handler_root::add(rt_assert_handler* handler)
 #endif
 }
 
-void rt_assert_handler_root::remove(size_t id)
+void rt_assert_handler_root::remove(size_t id) const
 {
 	auto& d = *data_;
 	for (auto itr = d.begin( ); itr != d.end( ); ++itr)
@@ -119,21 +119,21 @@ void rt_assert_handler_root::remove(size_t id)
 	}
 }
 
-void rt_assert_handler_root::remove(rt_assert_handler* handler)
+void rt_assert_handler_root::remove(const rt_assert_handler* handler) const
 {
 	remove(handler->id( ));
 }
 
-void rt_assert_handler_root::handle(const std::source_location& location, bool expression_result, const char* expression, const char* message) _NOEXCEPT_FNPTR
+void rt_assert_handler_root::handle(bool expression_result, const char* expression, const char* message, const std::source_location& location) const noexcept
 {
-	for (auto& el: *data_)
-		el->handle(location, expression_result, expression, message);
+	for (const auto& el: *data_)
+		el->handle(expression_result, expression, message, location);
 }
 
-void rt_assert_handler_root::handle(const std::source_location& location, const char* message, const char*, const char*) _NOEXCEPT_FNPTR
+void rt_assert_handler_root::handle(const char* message,
+									[[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2
+								  , const std::source_location& location) const noexcept
 {
-	for (auto& el: *data_)
-		el->handle(location, message);
+	for (const auto& el: *data_)
+		el->handle(message, location);
 }
-
-rt_assert_handler_root::~rt_assert_handler_root( ) = default;
