@@ -6,22 +6,68 @@ namespace nstd
 {
 	//use it for as template parameter
 
-	template <std::size_t N, typename Chr>
-	struct chars_cache
+	struct chars_cache_tag
 	{
-		std::array<Chr, N> cache;
+	};
+
+	template <std::size_t Size, typename Chr>
+	struct chars_cache : chars_cache_tag
+	{
+		std::array<Chr, Size> cache;
 
 		using value_type = Chr;
 		using size_type = std::size_t;
+		using view_type = std::basic_string_view<Chr>;
 
-		template <size_type...Is>
-		constexpr chars_cache(const Chr (&arr)[N], std::index_sequence<Is...>)
-			: cache{arr[Is]...}
+		static constexpr size_type size = Size;
+
+		template <size_type...Idx>
+		constexpr chars_cache(const Chr* arr, std::index_sequence<Idx...>)
+			: cache{arr[Idx]...}
 		{
 		}
 
-		constexpr chars_cache(const Chr (&arr)[N])
-			: chars_cache(arr, std::make_index_sequence<N>( ))
+		template <size_type...Idx>
+		constexpr chars_cache(const Chr* arr)
+			: chars_cache((arr), std::make_index_sequence<Size>( ))
+		{
+		}
+
+		constexpr chars_cache(const Chr (&arr)[Size])
+			: chars_cache((arr), std::make_index_sequence<Size>( ))
+		{
+		}
+
+		template <size_type...Idx>
+		constexpr chars_cache(const view_type& view, std::index_sequence<Idx...>)
+			: cache{Idx < view.size( ) ? view[Idx] : static_cast<Chr>('\0')...}
+		{
+			if (view.size( ) >= Size)
+				throw std::_Xruntime_error("incorrect string_view size!");
+		}
+
+		constexpr chars_cache(const view_type& view)
+			: chars_cache(view, std::make_index_sequence<Size>( ))
+		{
+		}
+
+		constexpr chars_cache(const std::array<Chr, Size>& arr)
+			: chars_cache(arr._Unchecked_begin( ), std::make_index_sequence<Size>( ))
+		{
+		}
+
+		template <size_t Size2>
+			requires(Size2 < Size)
+		constexpr chars_cache(const std::array<Chr, Size2>& arr)
+			: chars_cache(arr._Unchecked_begin( ), std::make_index_sequence<Size2>( ))
+		{
+			cache[Size2] = '\0';
+		}
+
+		template <size_t Size2>
+			requires(Size2 < Size)
+		constexpr chars_cache(const chars_cache<Size2, Chr>& arr)
+			: chars_cache(arr.cache)
 		{
 		}
 
@@ -30,11 +76,9 @@ namespace nstd
 			return cache.front( ) == static_cast<Chr>('\0');
 		}
 
-		static constexpr size_type size = N;
-
-		constexpr std::basic_string_view<Chr> view( ) const
+		constexpr view_type view( ) const
 		{
-			return {cache._Unchecked_begin( ), N - 1};
+			return {cache._Unchecked_begin( ), (size - 1)};
 		}
 	};
 }

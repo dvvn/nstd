@@ -1,166 +1,158 @@
 // ReSharper disable CppRedundantInlineSpecifier
 #pragma once
 #include "chars cache.h"
+#include "type_traits.h"
 
 namespace nstd
 {
 	namespace detail
 	{
-		template <typename T, chars_cache ...Ignore>
-		constexpr std::string_view type_name_impl( )
+		template <typename Chr, typename Tr, typename Al>
+		_CONSTEXPR20_CONTAINER void std_string_erase(const std::basic_string_view<Chr, Tr>& pattern, std::basic_string<Chr, Tr, Al>& str)
 		{
-			if constexpr (sizeof...(Ignore) > 0)
+			auto pos = std::string::npos;
+			// Search for the substring in string in a loop untill nothing is found
+			while ((pos = str.find(pattern)) != std::string::npos)
 			{
-				static_assert((std::is_same_v<char, typename decltype(Ignore)::value_type> && ...));
-				constexpr auto obj_name_fixed = []
-				{
-					auto name = type_name_impl<T>( );
+				// If found then erase it from string
+				str.erase(pos, pattern.length( ));
+			}
+		}
 
-					const auto do_ignore = [&](std::string_view str)
-					{
-						if (name.starts_with(str))
-						{
-							name.remove_prefix(str.size( ));
-							if (name.starts_with("::"))
-								name.remove_prefix(2);
-						}
-					};
-					(do_ignore(Ignore.view( )), ...);
+		template <typename Chr, size_t Size>
+		constexpr auto remove_substring_start(const std::array<Chr, Size>& buffer, const std::basic_string_view<Chr>& pattern)
+		{
+			if (buffer.size( ) < pattern.size( ))
+				return buffer;
 
-					return name;
-				}( );
-				return obj_name_fixed;
-#if 0
-			constexpr auto obj_name      = type_name<T>( );
-			constexpr auto ignore_buffer = []
+			auto begin = buffer._Unchecked_begin( );
+			auto end   = buffer._Unchecked_end( );
+			auto end0  = end - pattern.size( );
+
+			auto out   = std::array<Chr, Size>{};
+			out[0]     = '\0';
+			size_t pos = 0;
+
+			for (;;)
 			{
-				auto buff     = std::array<char, ((Ignore.view( ).size( ) + 2/*::*/) + ...) + 1/*\0*/>( );
-				buff.back( )  = '\0';
-				auto   names  = std::array{Ignore.view( )...};
-				size_t offset = 0;
-				for (std::string_view& str: names)
-				{
-					for (auto c: str)
-						buff[offset++] = c;
+				auto test = std::basic_string_view<Chr>(begin, pattern.size( ));
+				if (test == pattern)
+					begin += pattern.size( );
+				else
+					out[pos++] = *begin++;
 
-					buff[offset++] = ':';
-					buff[offset++] = ':';
+				if (begin >= end0)
+				{
+					while (begin < end)
+						out[pos++] = *begin++;
+					break;
 				}
-				return buff;
-			}( );
+			}
 
-			constexpr auto left_marker2 = std::string_view(ignore_buffer._Unchecked_begin( ), ignore_buffer.size( ) - 1);
+			return out;
+		}
 
-			constexpr auto ret_val = [&]
+		template <typename Chr, size_t Size, chars_cache Name, chars_cache ...Next>
+		constexpr auto remove_substrings_start(const std::array<Chr, Size>& buffer)
+		{
+			auto temp_buff = remove_substring_start<Chr, Size>(buffer, Name.view( ));
+			if constexpr (sizeof...(Next) == 0)
+				return temp_buff;
+			else
+				return remove_substrings_start<Chr, Size, Next...>(temp_buff);
+		}
+
+		template <typename Chr, size_t Size>
+		constexpr auto remove_substring_get_real_size(const std::array<Chr, Size>& buffer)
+		{
+			size_t count = 0;
+			for (auto chr: buffer)
 			{
-				const auto left_marker_index2 = obj_name.find(left_marker2);
-				if (left_marker_index2 != std::string_view::npos)
-					return obj_name.substr(left_marker_index2 + left_marker2.size( ));
-				return obj_name;
+				if (chr == '\0')
+					break;
+				++count;
+			}
+			return count;
+			//return buffer.back( ) != '\0' ? buffer.size( ) : std::char_traits<Chr>::length(buffer.data( ));
+		}
+
+		template <size_t RealSize, typename Chr, size_t Size>
+		constexpr auto remove_substring_end(const std::array<Chr, Size>& buffer)
+		{
+			auto out    = std::array<Chr, RealSize + 1>{};
+			out.back( ) = '\0';
+			std::copy(buffer.begin( ), buffer.begin( ) + RealSize, out.begin( ));
+			return out;
+		}
+
+		template <typename T>
+		constexpr decltype(auto) type_name_impl0( ) { return __FUNCSIG__; }
+
+		template <typename T>
+		constexpr auto type_name_impl( )
+		{
+			constexpr std::string_view n0 = type_name_impl0<T>( );
+
+			constexpr auto start = n0.find('<') + 1;
+			constexpr auto end   = n0.rfind('>');
+
+			constexpr auto name_size = end - start;
+
+			constexpr auto name = n0.substr(start, name_size);
+
+			constexpr auto buff0 = [&]
+			{
+				auto tmp = std::array<char, name_size>{};
+				std::copy(name.begin( ), name.end( ), tmp.begin( ));
+				return tmp;
 			}( );
-			return ret_val;
-#endif
+
+			constexpr auto buff1 = remove_substrings_start<char, name_size, "struct ", "class ", "enum ", "union ">(buff0);
+			return remove_substring_end<remove_substring_get_real_size(buff1)>(buff1);
+		}
+
+		template <chars_cache Namespace>
+		constexpr auto fix_namespace_name( )
+		{
+			constexpr auto add_dots = []<size_t Num>(std::in_place_index_t<Num>)
+			{
+				auto buff  = chars_cache<Namespace.size + Num, char>(Namespace);
+				auto buff2 = (buff.cache.rbegin( ));
+
+				for (auto i = 1; i <= Num; ++i)
+				{
+					*std::next(buff2, i) = ':';
+				}
+
+				return buff;
+			};
+
+			constexpr auto view = Namespace.view( );
+			if constexpr (view.ends_with("::"))
+				return Namespace;
+			else if constexpr (view.ends_with(':'))
+				return add_dots(std::in_place_index<1>);
+			else
+				return add_dots(std::in_place_index<2>);
+		}
+
+		template <typename T, chars_cache ...DropNamespaces>
+		_INLINE_VAR constexpr auto type_name_holder = []
+		{
+			constexpr auto sample = type_name_impl<T>( );
+			if constexpr (sizeof...(DropNamespaces) == 0)
+			{
+				return chars_cache(sample);
 			}
 			else
 			{
-				constexpr auto full_name         = std::string_view(__FUNCSIG__);
-				constexpr auto left_marker       = std::string_view("type_name_impl<");
-				constexpr auto right_marker      = std::string_view(">(");
-				constexpr auto left_marker_index = full_name.find(left_marker);
-				//static_assert(left_marker_index != std::string_view::npos);
-				constexpr auto start_index = left_marker_index + left_marker.size( );
-				constexpr auto end_index   = full_name.find(right_marker, left_marker_index);
-				//static_assert(end_index != std::string_view::npos);
-				constexpr auto length   = end_index - start_index;
-				constexpr auto obj_name = [&]
-				{
-					auto name = full_name.substr(start_index, length);
-					if constexpr (std::_Has_class_or_enum_type<T>)
-					{
-						//type_name<class X>
-						constexpr std::string_view skip[] = {"struct", "class", "enum", "union"};
-						for (auto& s: skip)
-						{
-							if (name.starts_with(s))
-							{
-								name.remove_prefix(s.size( ));
-								//type_name<class X >
-								if (name.starts_with(' '))
-									name.remove_prefix(1);
-								break;
-							}
-						}
-					}
-					//type_name<..., >
-					while (name.ends_with(',') || name.ends_with(' '))
-						name.remove_suffix(1);
-					return name;
-				}( );
-				return obj_name;
+				constexpr auto buff    = remove_substrings_start<char, sample.size( ), fix_namespace_name<DropNamespaces>( )...>(sample);
+				constexpr auto sample2 = remove_substring_end<remove_substring_get_real_size(buff)>(buff);
+				return chars_cache(sample2);
 			}
-		}
+		}( );
 	}
 
-	template <typename T, chars_cache ...Ignore>
-	_INLINE_VAR constexpr auto type_name = detail::type_name_impl<T, Ignore...>( );
-
-	namespace detail
-	{
-		class drop_namespaces_impl
-		{
-			template <typename E, typename Tr>
-			constexpr static size_t drop_count(const std::basic_string_view<E, Tr>& str)
-			{
-				const auto template_start = str.find('<');
-				const auto str_tmp        = template_start != str.npos ? str.substr(0, template_start) : str;
-				const auto namespace_size = str_tmp.rfind(':');
-
-				return namespace_size == str_tmp.npos ? 0 : namespace_size + 1; //+1 to add second ':'
-			}
-
-		public:
-			template <typename E, typename Tr, typename A>
-			_CONSTEXPR20_CONTAINER auto operator()(std::basic_string<E, Tr, A>&& str) const
-			{
-				auto drop = drop_count(str);
-				if (drop > 0)
-					str.erase((0), drop);
-				return std::move(str);
-			}
-
-			template <typename E, typename Tr, typename A>
-			_CONSTEXPR20_CONTAINER auto operator()(const std::basic_string<E, Tr, A>& str) const
-			{
-				return std::invoke(*this, std::basic_string_view<E, Tr>(str));
-			}
-
-			template <typename E, typename Tr>
-			constexpr auto operator()(std::basic_string_view<E, Tr> str) const
-			{
-				auto drop = drop_count(str);
-				if (drop > 0)
-					str.remove_prefix(drop);
-				return str;
-			}
-		};
-	}
-
-	_INLINE_VAR constexpr auto drop_namespaces = detail::drop_namespaces_impl( );
-
-#if 0
-	template <typename E, typename Tr>
-	constexpr auto drop_namespaces(const std::basic_string_view<E, Tr>& str)
-	{
-		const auto template_start = str.find('<');
-		const auto str_tmp        = template_start != str.npos ? str.substr(0, template_start) : str;
-		const auto namespace_size = str_tmp.rfind(':');
-
-		auto copy = str;
-
-		if (namespace_size != str_tmp.npos)
-			copy.remove_prefix(namespace_size + 1); //+1 to add last ':'
-
-		return copy;
-	}
-#endif
+	template <typename T, chars_cache ...DropNamespaces>
+	_INLINE_VAR constexpr auto type_name = detail::type_name_holder<T, DropNamespaces...>.view( );
 }
