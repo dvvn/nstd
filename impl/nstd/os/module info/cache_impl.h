@@ -116,46 +116,47 @@ namespace nstd::os
 		using mutex_type = MutexType;
 
 	private:
+		using cache_type = NSTD_OS_MODULE_INFO_DATA_CACHE<key_type, mapped_type>;
+
 		template <typename T>
 		return_value at_universal(T&& entry, CreateArgs ...create_args)
 		{
 			const auto lock = lock_unlock(locker_);
 
-			auto found = detail::find_helper(cache_, entry);
+			decltype(auto) entry_find = [&]( )-> decltype(auto)
+			{
+				if constexpr (detail::have_transparent_find<cache_type, T>)
+					return std::forward<T>(entry);
+				else
+					return KeyType(std::forward<T>(entry));
+			}( );
+
+			auto found = detail::find_helper(cache_, entry_find);
 			if (found != cache_.end( ))
 				return found->second;
 
-			const auto create_helper = [&]
+			decltype(auto) entry_create = [&]( )-> decltype(auto)
 			{
-				if constexpr (std::same_as<KeyType, std::remove_cvref_t<T>>)
-					return this->create(entry, create_args...);
-				else
+				if constexpr (!detail::have_transparent_find<cache_type, T>) //already converted to KeyType
 				{
-					auto entry1            = KeyType(entry);
-					auto&& [first, second] = this->create(entry1, create_args...);
-					return std::make_tuple(std::move(first), std::move(second), std::move(entry1));
+					//rvalue for emplace
+					return std::move(entry_find);
 				}
-			};
+				else if constexpr (std::same_as<KeyType, std::remove_cvref_t<T>>) //not converted, already in correct type
+				{
+					return std::forward<T>(entry);
+				}
+				else //type is incorrect, construct KeyType
+				{
+					return KeyType(std::forward<T>(entry));
+				}
+			}( );
 
-			auto result = create_helper( );
-
-			auto created = std::get<1>(result);
+			auto [mapped,created] = this->create(entry_create, create_args...);
 			if (!created)
-				return detail::find_helper(cache_, entry)->second;
+				return detail::find_helper(cache_, entry_create)->second;
 
-			const auto do_emplace = [&]<typename Arg>(Arg&& arg)
-			{
-				return detail::emplace_hint_helper(cache_, cache_.end( ), std::forward<Arg>(arg), std::move(std::get<0>(result)));
-			};
-			const auto emplace_helper = [&]
-			{
-				if constexpr (sizeof(create_result) == sizeof(decltype(result)))
-					return do_emplace(std::forward<T>(entry));
-				else
-					return do_emplace(std::move(std::get<2>(result)));
-			};
-
-			auto itr = emplace_helper( );
+			auto itr = detail::emplace_hint_helper(cache_, cache_.end( ), std::forward<decltype(entry_create)>(entry_create), std::move(mapped));
 			return itr->second;
 		}
 
@@ -200,7 +201,7 @@ namespace nstd::os
 		}
 
 	private:
-		NSTD_OS_MODULE_INFO_DATA_CACHE<key_type, mapped_type> cache_;
+		cache_type cache_;
 		mutable mutex_type locker_;
 	};
 }
