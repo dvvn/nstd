@@ -7,18 +7,6 @@ namespace nstd
 {
 	namespace detail
 	{
-		template <typename Chr, typename Tr, typename Al>
-		_CONSTEXPR20_CONTAINER void std_string_erase(const std::basic_string_view<Chr, Tr>& pattern, std::basic_string<Chr, Tr, Al>& str)
-		{
-			auto pos = std::string::npos;
-			// Search for the substring in string in a loop untill nothing is found
-			while ((pos = str.find(pattern)) != std::string::npos)
-			{
-				// If found then erase it from string
-				str.erase(pos, pattern.length( ));
-			}
-		}
-
 		template <typename Chr, size_t Size>
 		constexpr auto remove_substring_start(const std::array<Chr, Size>& buffer, const std::basic_string_view<Chr>& pattern)
 		{
@@ -136,11 +124,23 @@ namespace nstd
 				return add_dots(std::in_place_index<2>);
 		}
 
+		template <typename T>
+		struct remove_all_pointers : std::conditional_t<
+					std::is_pointer_v<T>,
+					remove_all_pointers<std::remove_pointer_t<T>>,
+					std::type_identity<T>
+				>
+		{
+		};
+
+		template <typename T>
+		using remove_all_pointers_t = typename remove_all_pointers<T>::type;
+
 		template <typename T, chars_cache ...DropNamespaces>
 		_INLINE_VAR constexpr auto type_name_holder = []
 		{
 			constexpr auto sample = type_name_impl<T>( );
-			if constexpr (sizeof...(DropNamespaces) == 0)
+			if constexpr (sizeof...(DropNamespaces) == 0 || !std::_Has_class_or_enum_type<std::remove_cvref_t<remove_all_pointers_t<std::decay_t<T>>>>)
 			{
 				return chars_cache(sample);
 			}

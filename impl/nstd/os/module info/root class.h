@@ -24,10 +24,10 @@ namespace nstd::os
 
 namespace nstd::os::detail
 {
-	struct root_class_getter
+	struct module_info_getter
 	{
 	protected:
-		virtual ~root_class_getter( ) = default;
+		virtual ~module_info_getter( ) = default;
 
 		virtual module_info*       root_class( ) =0;
 		virtual const module_info* root_class( ) const =0;

@@ -1,38 +1,16 @@
 #include "vtables mgr.h"
 
+#include "cache_impl.h"
+
 #include <nstd/runtime_assert_fwd.h>
 #include <nstd/os/module info.h>
 
-#include NSTD_OS_MODULE_INFO_DATA_CACHE_INCLUDE
-
-#include <mutex>
-
 using namespace nstd::os;
-
-struct vtables_mgr::storage_type : NSTD_OS_MODULE_INFO_DATA_CACHE<std::string, vtable_info>
-{
-	storage_type(const storage_type&)            = delete;
-	storage_type& operator=(const storage_type&) = delete;
-
-	storage_type(storage_type&&)            = default;
-	storage_type& operator=(storage_type&&) = default;
-
-	storage_type() = default;
-};
-
-vtables_mgr::vtables_mgr()
-{
-	storage_ = std::make_unique<storage_type>( );
-}
-
-vtables_mgr::~vtables_mgr()                                 = default;
-vtables_mgr::vtables_mgr(vtables_mgr&&) noexcept            = default;
-vtables_mgr& vtables_mgr::operator=(vtables_mgr&&) noexcept = default;
 
 //todo: add x64 support
 static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdata, const section_info& dot_text, nstd::address type_descriptor)
 {
-	for (const auto& block : dot_rdata.block.find_all_blocks(type_descriptor.value( )))
+	for (const auto& block: dot_rdata.block.find_all_blocks(type_descriptor.value( )))
 	{
 		const auto xr = block.addr( );
 
@@ -71,46 +49,40 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 	return {};
 }
 
-vtable_info vtables_mgr::at(const std::string_view& class_name) const
+NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtables_mgr, vtable_info)
 {
-	const auto lock = std::scoped_lock<const root_class_getter>((*this));
+	constexpr std::string_view prefix  = ".?AV";
+	constexpr std::string_view postfix = "@@";
 
-	auto ret = storage_->find(std::string(class_name));
+	const auto& class_name = entry;
 
-	if (ret == storage_->end( ))
+	const auto real_name = [&]
 	{
-		constexpr std::string_view prefix  = ".?AV";
-		constexpr std::string_view postfix = "@@";
+		std::string tmp;
+		tmp.reserve(prefix.size( ) + postfix.size( ) + class_name.size( ));
+		tmp += prefix;
+		tmp += class_name;
+		tmp += postfix;
+		return tmp;
+	}( );
 
-		const auto real_name = [&]
-		{
-			std::string tmp;
-			tmp.reserve(prefix.size( ) + postfix.size( ) + class_name.size( ));
-			tmp += prefix;
-			tmp += class_name;
-			tmp += postfix;
-			return tmp;
-		}( );
+	const auto bytes        = module_info_ptr->mem_block( );
+	const auto target_block = bytes.find_block(real_name); //class descriptor
+	runtime_assert(target_block.has_value( ));
 
-		const auto bytes        = root_class( )->mem_block( );
-		const auto target_block = bytes.find_block(real_name); //class descriptor
-		runtime_assert(target_block.has_value( ));
+	// get rtti type descriptor
+	auto type_descriptor = target_block->addr( );
+	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
+	type_descriptor -= sizeof(uintptr_t) * 2;
 
-		// get rtti type descriptor
-		auto type_descriptor = target_block->addr( );
-		// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
-		type_descriptor -= sizeof(uintptr_t) * 2;
+	auto& sections = module_info_ptr->sections( );
 
-		auto& sections = this->root_class( )->sections( );
+	using namespace std::string_view_literals;
+	const auto& dot_rdata = sections.at(".rdata"sv);
+	const auto& dot_text  = sections.at(".text"sv);
 
-		const auto& dot_rdata = sections.at(".rdata");
-		const auto& dot_text  = sections.at(".text");
+	auto result = _Load_vtable_info(dot_rdata, dot_text, type_descriptor);
+	runtime_assert(result.has_value( ));
 
-		const auto result = _Load_vtable_info(dot_rdata, dot_text, type_descriptor);
-		runtime_assert(result.has_value( ));
-
-		ret = storage_->emplace(std::string(class_name), *result).first;
-	}
-
-	return ret->second;
+	return {*result, true};
 }

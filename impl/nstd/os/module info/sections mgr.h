@@ -1,33 +1,25 @@
 #pragma once
 
-#include "root class.h"
+//#include "root class.h"
+
+#include "cache_base.h"
 
 #include "nstd/memory block.h"
 
 #include <memory>
 
+// ReSharper disable CppInconsistentNaming
+struct _IMAGE_SECTION_HEADER;
+using IMAGE_SECTION_HEADER = _IMAGE_SECTION_HEADER;
+// ReSharper restore CppInconsistentNaming
+
 namespace nstd::os
 {
 	struct section_info
 	{
-		memory_block          block;
+		memory_block block;
 		IMAGE_SECTION_HEADER* data = nullptr;
 	};
 
-	class sections_mgr: protected virtual detail::root_class_getter
-	{
-	public:
-		sections_mgr( );
-		~sections_mgr( ) override;
-
-		sections_mgr(sections_mgr&&) noexcept;
-		sections_mgr& operator=(sections_mgr&&) noexcept;
-
-		struct storage_type;
-
-		const section_info& at(const std::string_view& name) const;
-
-	private:
-		std::unique_ptr<storage_type> storage_;
-	};
+	NSTD_OS_MODULE_INFO_CACHE_IMPL_H(sections_mgr, section_info);
 }

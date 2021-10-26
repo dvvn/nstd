@@ -1,11 +1,11 @@
 #pragma once
 
-#include "root class.h"
+#include "cache_base.h"
 
 #include "nstd/address.h"
 
 #include <memory>
-#include <string_view>
+#include <string>
 
 namespace nstd::os
 {
@@ -14,20 +14,5 @@ namespace nstd::os
 		address addr;
 	};
 
-	class vtables_mgr: protected virtual detail::root_class_getter
-	{
-	public:
-		struct storage_type;
-
-		vtables_mgr( );
-		~vtables_mgr( ) override;
-
-		vtables_mgr(vtables_mgr&&) noexcept;
-		vtables_mgr& operator=(vtables_mgr&&) noexcept;
-
-		vtable_info at(const std::string_view& class_name) const;
-
-	private:
-		std::unique_ptr<storage_type> storage_;
-	};
+	NSTD_OS_MODULE_INFO_CACHE_IMPL_H(vtables_mgr, vtable_info);
 }

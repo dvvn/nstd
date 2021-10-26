@@ -13,17 +13,11 @@ namespace nstd
 		{
 		};
 
-		template <typename Fn, typename Arg>
-		auto ret_val(const Fn& fn, Arg& arg)
-		{
-			return fn(arg);
-		}
-
 		template <typename Q, typename Curr, typename ...A>
 		auto do_invoke(Q&& obj, Curr&& fn, A&&...args)
 		{
 			//using fn_ret = std::invoke_result_t<Curr, Q>;//something wrong inside of this
-			using fn_ret = decltype(ret_val(fn, obj));
+			using fn_ret = decltype(fn(std::forward<Q>(obj)));
 			constexpr auto args_count = sizeof...(A);
 			if constexpr (std::is_void_v<fn_ret>)
 			{
@@ -54,7 +48,7 @@ namespace nstd
 		{
 			template <address_invocable Tnew, typename ...Args>
 			address_pipe_impl(address_pipe_impl<T, Args...>&& old, Tnew&& back)
-				: addr(std::move(old.addr)), line(std::tuple_cat(std::move(old.line), std::make_tuple(std::forward<Tnew>(back))))
+				: addr_(std::move(old.addr_)), pipe_(std::tuple_cat(std::move(old.pipe_), std::make_tuple(std::forward<Tnew>(back))))
 
 			{
 			}
@@ -62,37 +56,37 @@ namespace nstd
 			template <not_address_pipe A, typename ...Args>
 				requires((address_invocable<A> || std::convertible_to<A, address>) && address_invocable<Args...>)
 			address_pipe_impl(A&& a, Args&&...args)
-				: addr(std::forward<A>(a)), line(std::forward<Args>(args)...)
+				: addr_(std::forward<A>(a)), pipe_(std::forward<Args>(args)...)
 			{
 			}
 
 		private:
-			T addr;
-			std::tuple<Ts...> line;
+			T addr_;
+			std::tuple<Ts...> pipe_;
 
 #ifdef _DEBUG
-			mutable bool done = false;
+			mutable bool done_ = false;
 #endif
 		public:
-			auto get_addr() const
+			auto get_addr( ) const
 			{
 				if constexpr (!std::invocable<T>)
-					return addr;
+					return addr_;
 				else
-					return std::invoke(addr);
+					return std::invoke(addr_);
 			}
 
 			template <size_t ...I>
 			auto unpack(std::index_sequence<I...>) const
 			{
-				return do_invoke(get_addr( ), std::get<I>(line)...);
+				return do_invoke(get_addr( ), std::get<I>(pipe_)...);
 			}
 
-			auto operator()() const
+			auto operator()( ) const
 			{
 #ifdef _DEBUG
-				runtime_assert(done == false);
-				done = true;
+				runtime_assert(done_ == false);
+				done_ = true;
 #endif
 				return unpack(std::index_sequence_for<Ts...>( ));
 			}
@@ -159,10 +153,7 @@ namespace nstd
 
 		NSTD_MAKE_ADDRESS_PIPE(add);
 #ifdef _INC_STDIO
-		constexpr auto remove(ptrdiff_t offset)
-		{
-			return make_invoke_fn(&address::remove, offset);
-		}
+		constexpr auto remove(ptrdiff_t offset) { return make_invoke_fn(&address::remove, offset); }
 #else
 		NSTD_MAKE_ADDRESS_PIPE(remove);
 #endif
@@ -176,87 +167,13 @@ namespace nstd
 
 #undef NSTD_MAKE_ADDRESS_PIPE
 
-#if 0
-		template <typename T>
-		auto add(const T& value)
+		struct invoke_tag
 		{
-			return [=](address& addr)
-			{
-				addr += value;
-			};
-		}
-
-		template <typename T>
-		auto remove(const T& value)
-		{
-			return [=](address& addr)
-			{
-				addr -= value;
-			};
-		}
-
-		template <typename T>
-		auto multiply(const T& value)
-		{
-			return [=](address& addr)
-			{
-				addr *= value;
-			};
-		}
-
-		template <typename T>
-		auto divide(const T& value)
-		{
-			return [=](address& addr)
-			{
-				addr /= value;
-			};
-		}
-
-		inline auto deref(size_t count)
-		{
-			return [=](const address& addr)
-			{
-				return addr.deref(count);
-			};
-		}
-
-		_INLINE_VAR constexpr auto value = [](const address& addr)
-		{
-			return addr.value( );
 		};
 
-		template <typename T>
-		_INLINE_VAR constexpr auto cast = [](const address& addr) -> T
-		{
-			return addr.cast<T>( );
-		};
+		_INLINE_VAR constexpr auto invoke = invoke_tag( );
 
-		template <typename T>
-		_INLINE_VAR constexpr auto ref = nstd::overload([](const address& addr) -> const T&
-		{
-			return addr.ref<T>( );
-		},
-			[](address& addr) -> T&
-		{
-			return addr.ref<T>( );
-		});
-
-		template <typename T>
-		_INLINE_VAR constexpr auto ptr = [](const address& addr) -> T*
-		{
-			return addr.ptr<T>( );
-		};
-
-		inline auto jmp(ptrdiff_t offset = 0x1)
-		{
-			return [=](const address& addr)
-			{
-				return addr.jmp(offset);
-			};
-		}
-
-#endif
+		//-----------------
 
 		template <typename T, typename ...Ts>
 		address_pipe_impl(address_pipe_impl<Ts...>&& old, T&& val) -> address_pipe_impl<Ts..., std::remove_cvref_t<T>>;
@@ -264,11 +181,30 @@ namespace nstd
 		template <not_address_pipe A, typename ...B>
 		address_pipe_impl(A&& a, B&& ...b) -> address_pipe_impl<std::remove_cvref_t<A>, std::remove_cvref_t<B>...>;
 
-		template <typename A, typename B>
-			requires(std::constructible_from<address_pipe_impl<std::remove_cvref_t<A>, std::remove_cvref_t<B>>, A, B>)
+		template <std::derived_from<address_pipe_tag> A, typename B>
 		auto operator|(A&& a, B&& b)
 		{
 			return address_pipe_impl(std::forward<A>(a), std::forward<B>(b));
+		}
+
+		template <std::derived_from<address> A, typename B>
+		auto operator|(A&& a, B&& b)
+		{
+			return address_pipe_impl(std::forward<A>(a), std::forward<B>(b));
+		}
+
+		//----
+
+		template <std::invocable T>
+		auto operator |(T&& obj, invoke_tag)
+		{
+			return std::invoke(std::forward<T>(obj));
+		}
+
+		template <std::derived_from<address> T>
+		auto operator |(T&& addr, invoke_tag)
+		{
+			return addr;
 		}
 
 #if 0
@@ -286,25 +222,13 @@ namespace nstd
 
 		template <std::invocable Fn, typename T>
 		requires(!std::derived_from<Fn, address_pipe_tag>)
-			auto operator|(Fn&& addr, T&& obj)
+			auto operator|(Fn&& addr_, T&& obj)
 		{
 			return address_pipe_impl<std::remove_cvref_t<Fn>, T>
 				(
-					std::forward<Fn>(addr), std::make_tuple(std::forward<T>(obj))
+					std::forward<Fn>(addr_), std::make_tuple(std::forward<T>(obj))
 					);
 		}
 #endif
-	}
-
-	template <typename ...Ts>
-	auto apply_address_pipe(nstd::address addr, Ts&& ...args)
-	{
-		if constexpr (sizeof...(Ts) == 0)
-			return addr;
-		else
-		{
-			auto pipe = address_pipe::address_pipe_impl<address, std::remove_cvref_t<Ts>...>((addr), std::forward<Ts>(args)...);
-			return std::invoke(pipe);
-		}
 	}
 }

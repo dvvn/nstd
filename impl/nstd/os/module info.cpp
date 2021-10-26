@@ -1,8 +1,8 @@
 #include "module info.h"
 
 #include <nstd/runtime_assert_fwd.h>
+
 #include <robin_hood.h>
-#include <nlohmann/json.hpp>
 
 #include <Windows.h>
 #include <winternl.h>
@@ -18,27 +18,10 @@ struct module_info::mutex_type : std::recursive_mutex
 {
 };
 
-module_info* module_info::root_class()
-{
-	return this;
-}
+module_info* module_info::root_class( ) { return this; }
+const module_info* module_info::root_class( ) const { return this; }
 
-const module_info* module_info::root_class() const
-{
-	return this;
-}
-
-void module_info::lock() const
-{
-	mtx_->lock( );
-}
-
-void module_info::unlock() const
-{
-	mtx_->unlock( );
-}
-
-module_info::~module_info()                                 = default;
+module_info::~module_info( )                                = default;
 module_info::module_info(module_info&&) noexcept            = default;
 module_info& module_info::operator=(module_info&&) noexcept = default;
 
@@ -62,87 +45,80 @@ module_info::module_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos,
 	mtx_ = std::make_unique<mutex_type>( );
 }
 
-address module_info::base() const
+address module_info::base( ) const
 {
 	return this->ldr_entry->DllBase;
 }
 
-memory_block module_info::mem_block() const
+memory_block module_info::mem_block( ) const
 {
 	return {base( ), image_size( )};
 }
 
 // ReSharper disable CppInconsistentNaming
 
-IMAGE_DOS_HEADER* module_info::DOS() const
+IMAGE_DOS_HEADER* module_info::DOS( ) const
 {
 	return this->dos;
 }
 
-IMAGE_NT_HEADERS* module_info::NT() const
+IMAGE_NT_HEADERS* module_info::NT( ) const
 {
 	return this->nt;
 }
 
-DWORD module_info::check_sum() const
+DWORD module_info::check_sum( ) const
 {
 	return NT( )->OptionalHeader.CheckSum;
 }
 
 // ReSharper restore CppInconsistentNaming
 
-DWORD module_info::code_size() const
+DWORD module_info::code_size( ) const
 {
 	return NT( )->OptionalHeader.SizeOfCode;
 }
 
-DWORD module_info::image_size() const
+DWORD module_info::image_size( ) const
 {
 	return NT( )->OptionalHeader.SizeOfImage;
 }
 
-std::wstring_view module_info::work_dir() const
+std::wstring_view module_info::work_dir( ) const
 {
 	auto path_to = full_path( );
 	path_to.remove_suffix(raw_name( ).size( ));
 	return path_to;
 }
 
-std::wstring_view module_info::full_path() const
+std::wstring_view module_info::full_path( ) const
 {
 	return {this->ldr_entry->FullDllName.Buffer, this->ldr_entry->FullDllName.Length / sizeof(wchar_t)};
 }
 
-std::wstring_view module_info::raw_name() const
+std::wstring_view module_info::raw_name( ) const
 {
 	const auto path = full_path( );
 	return path.substr(path.find_last_of('\\') + 1);
 }
 
-const std::wstring& module_info::name() const
+const std::wstring& module_info::name( ) const
 {
 	return this->name_;
 }
 
-bool module_info::name_is_unicode() const
+bool module_info::name_is_unicode( ) const
 {
 	return this->name_is_unicode_;
 }
 
-const sections_mgr& module_info::sections() const
-{
-	return *this;
-}
+const sections_mgr& module_info::sections( ) const { return *this; }
+const exports_mgr& module_info::exports( ) const { return *this; }
+const vtables_mgr& module_info::vtables( ) const { return *this; }
 
-const exports_mgr& module_info::exports() const
-{
-	return *this;
-}
-
-const vtables_mgr& module_info::vtables() const
-{
-	return *this;
-}
+sections_mgr& module_info::sections( ) { return *this; }
+exports_mgr& module_info::exports( ) { return *this; }
+vtables_mgr& module_info::vtables( ) { return *this; }
 
 //-------------------
 
@@ -154,19 +130,19 @@ struct modules_storage::storage_type : std::list<module_info>
 	storage_type(storage_type&&)            = default;
 	storage_type& operator=(storage_type&&) = default;
 
-	storage_type() = default;
+	storage_type( ) = default;
 };
 
 modules_storage::modules_storage(modules_storage&&) noexcept = default;
 
 modules_storage& modules_storage::operator=(modules_storage&&) noexcept = default;
 
-modules_storage::modules_storage()
+modules_storage::modules_storage( )
 {
 	storage_ = std::make_unique<storage_type>( );
 }
 
-modules_storage::~modules_storage() = default;
+modules_storage::~modules_storage( ) = default;
 
 struct headers_info
 {
@@ -198,7 +174,7 @@ static std::optional<headers_info> _Get_file_headers(address base)
 	return result;
 }
 
-static auto _Get_all_modules()
+static auto _Get_all_modules( )
 {
 	// TEB->ProcessEnvironmentBlock.
 #if defined(_M_X64) || defined(__x86_64__)
@@ -253,9 +229,9 @@ static auto _Get_all_modules()
 //
 //}
 
-static volatile HMODULE _Get_current_module_handle()
+static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 {
-	auto info                  = MEMORY_BASIC_INFORMATION( );
+	MEMORY_BASIC_INFORMATION info;
 	constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
 
 	//todo: is this is dll, try to load this fuction from inside
@@ -264,7 +240,7 @@ static volatile HMODULE _Get_current_module_handle()
 	return static_cast<HMODULE>(info.AllocationBase);
 }
 
-module_info& modules_storage::current() const
+module_info& modules_storage::current( ) const
 {
 	return *current_cached_;
 }
@@ -277,7 +253,7 @@ modules_storage& modules_storage::update(bool force)
 	{
 		runtime_assert(current_cached_ == nullptr, "Cache already set");
 
-		for (auto& m : _Get_all_modules( ))
+		for (auto& m: _Get_all_modules( ))
 		{
 			auto& item = storage_->emplace_back(std::move(m));
 			if (current_cached_ == nullptr && item.base( ) == current_base)
@@ -291,7 +267,7 @@ modules_storage& modules_storage::update(bool force)
 		//erase all unused modules
 		storage_->remove_if([&](const module_info& m)-> bool
 		{
-			for (const auto& m_new : all)
+			for (const auto& m_new: all)
 			{
 				if (m.raw_name( ) == m_new.raw_name( ))
 					return false;
@@ -303,7 +279,7 @@ modules_storage& modules_storage::update(bool force)
 
 		//add all new modules, save the order
 		auto itr = storage_->begin( );
-		for (auto& m : all)
+		for (auto& m: all)
 		{
 			if (itr == storage_->end( ) || itr->full_path( ) != m.full_path( ))
 				itr = storage_->insert(itr, const_cast<module_info&&>(m));
@@ -321,7 +297,7 @@ modules_storage& modules_storage::update(bool force)
 	return *this;
 }
 
-module_info& modules_storage::owner()
+module_info& modules_storage::owner( )
 {
 	(void)this;
 	return storage_->front( );
@@ -329,7 +305,7 @@ module_info& modules_storage::owner()
 
 module_info* modules_storage::find(const find_fn& fn)
 {
-	for (auto& item : *storage_)
+	for (auto& item: *storage_)
 	{
 		if (std::invoke(fn, item))
 			return std::addressof(item);
@@ -339,7 +315,7 @@ module_info* modules_storage::find(const find_fn& fn)
 
 module_info* modules_storage::rfind(const find_fn& fn)
 {
-	for (auto& item : *storage_ | std::views::reverse)
+	for (auto& item: *storage_ | std::views::reverse)
 	{
 		if (std::invoke(fn, item))
 			return std::addressof(item);
