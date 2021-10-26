@@ -46,24 +46,38 @@ namespace nstd::os
 			}
 		}
 
-		template <typename T, typename TRaw = std::remove_cvref_t<T>, std::equality_comparable_with<typename TRaw::key_type> Key>
-		auto find_helper(T&& map, const Key& key)
+		template <typename T
+				, typename TRaw = std::remove_cvref_t<T>     //
+				, typename KeySelf = typename TRaw::key_type //
+				, std::equality_comparable_with<KeySelf> Key>
+		auto find_helper(T&& map, const Key& key, [[maybe_unused]] bool ignore_errors)
 		{
 			if constexpr (have_transparent_find<TRaw, Key>)
-				return (map.find(key));
-			else if constexpr (std::constructible_from<typename TRaw::key_type, decltype(key)>)
-				return map.find(typename TRaw::key_type(key));
+			{
+				auto found = map.find(key);
+#if _DEBUG && (!NSTD_OS_MODULE_INFO_DATA_CACHE_STD || _ITERATOR_DEBUG_LEVEL < 2)
+				if (!ignore_errors && found == map.end( ))
+					std::_Xout_of_range("invalid module_info_cache_impl<K, T> key");
+#endif
+				return found;
+			}
+			else if constexpr (std::constructible_from<KeySelf, decltype(key)> && have_transparent_find<TRaw, KeySelf>)
+			{
+				return find_helper(map, typename TRaw::key_type(key), ignore_errors);
+			}
 			else
 				static_assert(std::_Always_false<Key>, __FUNCTION__": unsupported key_type!");
 		}
 
 		template <typename T, std::equality_comparable_with<typename T::key_type> Key>
-		const typename T::mapped_type& const_access_helper(const T& map, const Key& key)
+		const typename T::mapped_type& const_access_helper(const T& map, const Key& key, bool ignore_errors)
 		{
+#if !_DEBUG || NSTD_OS_MODULE_INFO_DATA_CACHE_STD || _ITERATOR_DEBUG_LEVEL == 2
 			if constexpr (have_array_access<T, Key>)
 				return map[key];
 			else
-				return find_helper(map, key)->second;
+#endif
+			return find_helper(map, key, ignore_errors)->second;
 		}
 
 		//---
@@ -131,7 +145,7 @@ namespace nstd::os
 					return KeyType(std::forward<T>(entry));
 			}( );
 
-			auto found = detail::find_helper(cache_, entry_find);
+			auto found = detail::find_helper(cache_, entry_find, true);
 			if (found != cache_.end( ))
 				return found->second;
 
@@ -152,9 +166,12 @@ namespace nstd::os
 				}
 			}( );
 
-			auto [mapped,created] = this->create(entry_create, create_args...);
+			auto [mapped, created] = this->create(entry_create, create_args...);
 			if (!created)
-				return detail::find_helper(cache_, entry_create)->second;
+			{
+				auto found2 = detail::find_helper(cache_, entry_find, false);
+				return found2->second;
+			}
 
 			auto itr = detail::emplace_hint_helper(cache_, cache_.end( ), std::forward<decltype(entry_create)>(entry_create), std::move(mapped));
 			return itr->second;
@@ -164,14 +181,18 @@ namespace nstd::os
 		return_value access_universal(const T& entry) const
 		{
 			const auto lock = lock_unlock(locker_);
-			return detail::const_access_helper(cache_, entry);
+			return detail::const_access_helper(cache_, entry, false);
 		}
 
 		template <typename T>
 		mapped_type* find_universal(const T& entry)
 		{
 			const auto lock = lock_unlock(locker_);
-			return std::addressof(detail::find_helper(cache_, entry)->second);
+
+			auto found = detail::find_helper(cache_, entry, true);
+			if (found == cache_.end( ))
+				return nullptr;
+			return std::addressof(found->second);
 		}
 
 		template <typename T>
