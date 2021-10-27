@@ -6,8 +6,6 @@
 
 #include <Windows.h>
 
-#include <system_error>
-
 using namespace nstd;
 using namespace nstd::os;
 
@@ -93,7 +91,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(exports_mgr, export_info)
 
 				this->emplace(std::string(export_name), std::move(fwd_export_ptr));
 			}
-			catch (std::system_error)
+			catch (std::exception)
 			{
 			}
 		}

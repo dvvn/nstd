@@ -17,8 +17,11 @@ namespace std
 }
 
 // ReSharper disable CppInconsistentNaming
+#ifndef _WINTERNL_
 struct _LDR_DATA_TABLE_ENTRY;
 using LDR_DATA_TABLE_ENTRY = _LDR_DATA_TABLE_ENTRY;
+#endif
+#ifndef _WINNT_
 struct _IMAGE_DOS_HEADER;
 using IMAGE_DOS_HEADER = _IMAGE_DOS_HEADER;
 #ifdef _WIN64
@@ -28,7 +31,10 @@ using IMAGE_NT_HEADERS = _IMAGE_NT_HEADERS64;
 struct _IMAGE_NT_HEADERS;
 using IMAGE_NT_HEADERS = _IMAGE_NT_HEADERS;
 #endif
+#endif
+#ifndef _MINWINDEF_
 using DWORD = unsigned long;
+#endif
 // ReSharper restore CppInconsistentNaming
 
 namespace nstd::os

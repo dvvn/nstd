@@ -33,6 +33,11 @@ namespace nstd::os
 		{
 			map.find(key);
 		};
+		template <typename T, typename Key = typename T::key_type>
+		concept have_transparent_at = requires(const T& map, const Key& key)
+		{
+			map.at(key);
+		};
 
 		template <typename T, typename ...Args>
 		typename T::iterator emplace_hint_helper(T& map, typename T::const_iterator hint, Args&&...args)
@@ -50,14 +55,14 @@ namespace nstd::os
 				, typename TRaw = std::remove_cvref_t<T>     //
 				, typename KeySelf = typename TRaw::key_type //
 				, std::equality_comparable_with<KeySelf> Key>
-		auto find_helper(T&& map, const Key& key, [[maybe_unused]] bool ignore_errors)
+		auto find_helper(T&& map, const Key& key, bool ignore_errors)
 		{
 			if constexpr (have_transparent_find<TRaw, Key>)
 			{
 				auto found = map.find(key);
 #if _DEBUG && (!NSTD_OS_MODULE_INFO_DATA_CACHE_STD || _ITERATOR_DEBUG_LEVEL < 2)
 				if (!ignore_errors && found == map.end( ))
-					std::_Xout_of_range("invalid module_info_cache_impl<K, T> key");
+					throw std::out_of_range("invalid module_info_cache_impl<K, T> key");
 #endif
 				return found;
 			}
@@ -72,10 +77,18 @@ namespace nstd::os
 		template <typename T, std::equality_comparable_with<typename T::key_type> Key>
 		const typename T::mapped_type& const_access_helper(const T& map, const Key& key, bool ignore_errors)
 		{
-#if !_DEBUG || NSTD_OS_MODULE_INFO_DATA_CACHE_STD || _ITERATOR_DEBUG_LEVEL == 2
+#if  !NSTD_OS_MODULE_INFO_DATA_CACHE_STD
+#ifdef _DEBUG
+			if constexpr (have_transparent_at<T, Key>)
+			{
+				if (!ignore_errors)
+					return map.at(key);
+			}
+#else
 			if constexpr (have_array_access<T, Key>)
 				return map[key];
 			else
+#endif
 #endif
 			return find_helper(map, key, ignore_errors)->second;
 		}
