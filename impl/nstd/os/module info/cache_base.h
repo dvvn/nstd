@@ -2,9 +2,10 @@
 
 #include <concepts>
 #include <utility>
+// ReSharper disable CppUnusedIncludeDirective
 #include <memory>
-// ReSharper disable once CppUnusedIncludeDirective
 #include <string>
+// ReSharper restore CppUnusedIncludeDirective
 
 namespace nstd::os
 {

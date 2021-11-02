@@ -29,32 +29,36 @@ using LPVOID = void*;
 
 namespace nstd
 {
-	class memory_block;
 	class address;
+}
 
-	class memory_protect
+namespace nstd::mem
+{
+	class block;
+
+	class protect
 	{
 	public:
 		struct value_type
 		{
 			LPVOID addr;
 			SIZE_T size;
-			DWORD  flags;
+			DWORD flags;
 		};
 
-		memory_protect(const memory_protect&)            = delete;
-		memory_protect& operator=(const memory_protect&) = delete;
+		protect(const protect&)            = delete;
+		protect& operator=(const protect&) = delete;
 
-		memory_protect(memory_protect&& other) noexcept;
-		memory_protect& operator=(memory_protect&& other) noexcept;
+		protect(protect&& other) noexcept;
+		protect& operator=(protect&& other) noexcept;
 
-		memory_protect( ) = default;
+		protect( ) = default;
 
-		memory_protect(LPVOID addr, SIZE_T size, DWORD new_flags);
-		memory_protect(address addr, SIZE_T size, DWORD new_flags);
-		memory_protect(const memory_block& mem, DWORD new_flags);
+		protect(LPVOID addr, SIZE_T size, DWORD new_flags);
+		protect(address addr, SIZE_T size, DWORD new_flags);
+		protect(const block& mem, DWORD new_flags);
 
-		~memory_protect( );
+		~protect( );
 
 		bool restore( );
 		bool has_value( ) const;

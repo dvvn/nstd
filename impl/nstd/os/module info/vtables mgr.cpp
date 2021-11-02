@@ -1,5 +1,4 @@
 #include "vtables mgr.h"
-
 #include "cache_impl.h"
 
 #include <nstd/runtime_assert_fwd.h>
@@ -14,7 +13,7 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 {
 	const auto all_blocks = [&]
 	{
-		auto storage = std::vector<memory_block>( );
+		auto storage = std::vector<mem::block>( );
 		auto from    = dot_rdata.block;
 		auto block   = make_signature(type_descriptor.value( ));
 		for (;;)
@@ -22,7 +21,7 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 			auto found_block = from.find_block(block);
 			if (found_block.empty( ))
 				break;
-			from = from.shift_to_end(found_block);
+			from = from.shift_to(found_block._Unchecked_end( ));
 			storage.push_back(std::move(found_block));
 		}
 		return storage;
@@ -30,18 +29,18 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 
 	for (const auto& block: all_blocks)
 	{
-		const auto xr = block.addr( );
+		const nstd::address xr = block._Unchecked_begin( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
 		if (const auto vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref<uintptr_t>( ); vtable_offset != 0)
 			continue;
 
 		// get the object locator
-		const auto object_locator = xr - 0xC;
-		const auto vtable_address = dot_rdata.block.find_block(make_signature(object_locator)).addr( ) + 0x4;
+		const auto object_locator = xr.remove(sizeof(uintptr_t) * 4);
+		const auto vtable_address = address(dot_rdata.block.find_block(make_signature(object_locator))._Unchecked_begin( )).add(sizeof(uintptr_t));
 
 		// check is valid offset
-		if (vtable_address.value( ) <= 4U)
+		if (vtable_address.value( ) <= sizeof(uintptr_t))
 			continue;
 
 		// get a pointer to the vtable
@@ -54,7 +53,7 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 			continue;
 
 		vtable_info info;
-		info.addr = temp_result.addr( );
+		info.addr = temp_result._Unchecked_begin( );
 		return info;
 	}
 
@@ -85,7 +84,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtables_mgr, vtable_info)
 	runtime_assert(!target_block.empty( ));
 
 	// get rtti type descriptor
-	auto type_descriptor = target_block.addr( );
+	address type_descriptor = target_block._Unchecked_begin( );
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 

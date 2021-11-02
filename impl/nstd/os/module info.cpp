@@ -2,11 +2,10 @@
 
 #include <nstd/runtime_assert_fwd.h>
 
-#include <robin_hood.h>
-
 #include <Windows.h>
 #include <winternl.h>
 
+#include <functional>
 #include <filesystem>
 #include <mutex>
 #include <ranges>
@@ -51,7 +50,7 @@ address module_info::base( ) const
 	return this->ldr_entry->DllBase;
 }
 
-memory_block module_info::mem_block( ) const
+mem::block module_info::mem_block( ) const
 {
 	return {base( ), image_size( )};
 }

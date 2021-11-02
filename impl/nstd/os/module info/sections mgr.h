@@ -3,7 +3,7 @@
 //#include "root class.h"
 
 #include "cache_base.h"
-#include "nstd/memory block.h"
+#include "nstd/mem/block.h"
 
 // ReSharper disable CppInconsistentNaming
 struct _IMAGE_SECTION_HEADER;
@@ -14,7 +14,7 @@ namespace nstd::os
 {
 	struct section_info
 	{
-		memory_block block;
+		mem::block block;
 		IMAGE_SECTION_HEADER* data = nullptr;
 	};
 

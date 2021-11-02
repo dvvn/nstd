@@ -67,7 +67,7 @@ namespace nstd::os
 
 		//module handle
 		address base( ) const;
-		memory_block mem_block( ) const;
+		mem::block mem_block( ) const;
 
 		// ReSharper disable CppInconsistentNaming
 

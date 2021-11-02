@@ -2,10 +2,10 @@
 
 #include <optional>
 
-namespace nstd
+namespace nstd::mem
 {
 	template <std::copyable T>
-	class memory_backup
+	class backup
 	{
 		struct value_stored
 		{
@@ -16,31 +16,31 @@ namespace nstd
 	public:
 		using value_type = T;
 
-		memory_backup(const memory_backup& other)            = delete;
-		memory_backup& operator=(const memory_backup& other) = delete;
+		backup(const backup& other)            = delete;
+		backup& operator=(const backup& other) = delete;
 
-		memory_backup(memory_backup&& other) noexcept
+		backup(backup&& other) noexcept
 		{
 			*this = std::move(other);
 		}
 
-		memory_backup& operator=(memory_backup&& other) noexcept
+		backup& operator=(backup&& other) noexcept
 		{
 			std::swap(backup_, other.backup_);
 			return *this;
 		}
 
-		memory_backup( ) = default;
+		backup( ) = default;
 
-		memory_backup(T& from)
+		backup(T& from)
 		{
 			backup_.emplace(std::addressof(from), from);
 		}
 
 		template <typename T1>
 			requires(std::constructible_from<T, T1>)
-		memory_backup(T& from, T1&& owerride)
-			: memory_backup(from)
+		backup(T& from, T1&& owerride)
+			: backup(from)
 		{
 			from = T(std::forward<T1>(owerride));
 		}
@@ -48,12 +48,12 @@ namespace nstd
 	private:
 		void restore_impl( )
 		{
-			auto& b  = *backup_;
-			*b.owner = std::move(b.value);
+			auto& b = *backup_;
+			std::swap(*b.owner, b.value);
 		}
 
 	public:
-		~memory_backup( )
+		~backup( )
 		{
 			if (has_value( ))
 				restore_impl( );

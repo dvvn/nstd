@@ -1,25 +1,25 @@
-#include "memory protect.h"
+#include "protect.h"
+#include "block.h"
 
-#include "address.h"
-#include "memory block.h"
+#include "nstd/address.h"
 
 #include <Windows.h>
 
 #include <stdexcept>
-using namespace nstd;
+using namespace nstd::mem;
 
-memory_protect::memory_protect(memory_protect&& other) noexcept
+protect::protect(protect&& other) noexcept
 {
 	*this = std::move(other);
 }
 
-memory_protect& memory_protect::operator=(memory_protect&& other) noexcept
+protect& protect::operator=(protect&& other) noexcept
 {
 	std::swap(this->info_, other.info_);
 	return *this;
 }
 
-memory_protect::memory_protect(const LPVOID addr, SIZE_T size, DWORD new_flags)
+protect::protect(const LPVOID addr, SIZE_T size, DWORD new_flags)
 {
 	DWORD old_flags;
 	if (!VirtualProtect(addr, size, new_flags, std::addressof(old_flags)))
@@ -27,18 +27,18 @@ memory_protect::memory_protect(const LPVOID addr, SIZE_T size, DWORD new_flags)
 	info_.emplace(addr, size, old_flags);
 }
 
-memory_protect::memory_protect(address addr, SIZE_T size, DWORD new_flags)
-	: memory_protect(addr.ptr<void>( ), size, new_flags)
+protect::protect(address addr, SIZE_T size, DWORD new_flags)
+	: protect(addr.ptr<void>( ), size, new_flags)
 {
 }
 
-memory_protect::memory_protect(const memory_block& mem, DWORD new_flags)
-	: memory_protect(mem.addr( ), mem.size( ), new_flags)
+protect::protect(const block& mem, DWORD new_flags)
+	: protect((mem._Unchecked_begin( )), mem.size( ), new_flags)
 {
 }
 
 template <bool FromDestructor>
-static auto _Restore_impl(std::optional<memory_protect::value_type>& info)
+static auto _Restore_impl(std::optional<protect::value_type>& info)
 {
 	if (info.has_value( ))
 	{
@@ -56,17 +56,17 @@ static auto _Restore_impl(std::optional<memory_protect::value_type>& info)
 		return false;
 }
 
-memory_protect::~memory_protect( )
+protect::~protect( )
 {
 	_Restore_impl<true>(info_);
 }
 
-bool memory_protect::restore( )
+bool protect::restore( )
 {
 	return _Restore_impl<false>(info_);
 }
 
-bool memory_protect::has_value( ) const
+bool protect::has_value( ) const
 {
 	return info_.has_value( );
 }
