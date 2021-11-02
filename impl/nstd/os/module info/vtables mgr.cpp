@@ -1,21 +1,22 @@
 #include "vtables mgr.h"
 #include "cache_impl.h"
 
-#include <nstd/runtime_assert_fwd.h>
-#include <nstd/os/module info.h>
-#include <nstd/signature.h>
+#include "nstd/runtime_assert_fwd.h"
+#include "nstd/os/module info.h"
+#include "nstd/signature.h"
 
 using namespace nstd;
-using namespace nstd::os;
+using namespace os;
 
 //todo: add x64 support
-static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdata, const section_info& dot_text, nstd::address type_descriptor)
+static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdata, const section_info& dot_text, address type_descriptor)
 {
 	const auto all_blocks = [&]
 	{
 		auto storage = std::vector<mem::block>( );
 		auto from    = dot_rdata.block;
-		auto block   = make_signature(type_descriptor.value( ));
+
+		const auto block = make_signature(type_descriptor);
 		for (;;)
 		{
 			auto found_block = from.find_block(block);
@@ -29,15 +30,22 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 
 	for (const auto& block: all_blocks)
 	{
-		const nstd::address xr = block._Unchecked_begin( );
+		const address xr = block._Unchecked_begin( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
 		if (const auto vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref<uintptr_t>( ); vtable_offset != 0)
 			continue;
 
 		// get the object locator
-		const auto object_locator = xr.remove(sizeof(uintptr_t) * 4);
-		const auto vtable_address = address(dot_rdata.block.find_block(make_signature(object_locator))._Unchecked_begin( )).add(sizeof(uintptr_t));
+
+		const auto vtable_address = [&]
+		{
+			const auto object_locator = xr.remove(sizeof(uintptr_t) * 3);
+			const auto sig            = make_signature(object_locator);
+			const auto found          = dot_rdata.block.find_block(sig);
+			const address addr        = found._Unchecked_begin( );
+			return addr + sizeof(uintptr_t);
+		}( );
 
 		// check is valid offset
 		if (vtable_address.value( ) <= sizeof(uintptr_t))
@@ -46,15 +54,14 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 		// get a pointer to the vtable
 
 		// convert the vtable address to an ida pattern
-		const auto temp_result = dot_text.block.find_block(make_signature(vtable_address));
+		const auto temp_result = [&]
+		{
+			const auto sig = make_signature(vtable_address);
+			return dot_text.block.find_block(sig);
+		}( );
 
-		//address not found
-		if (temp_result.empty( ))
-			continue;
-
-		vtable_info info;
-		info.addr = temp_result._Unchecked_begin( );
-		return info;
+		if (!temp_result.empty( ))
+			return vtable_info{temp_result._Unchecked_begin( )};
 	}
 
 	return {};

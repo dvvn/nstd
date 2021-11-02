@@ -298,9 +298,9 @@ namespace nstd
 
 	template <class T>
 		requires(!std::ranges::range<T> && std::is_trivially_destructible_v<T>)
-	constexpr auto make_signature(const T& val)
+	constexpr auto make_signature(T&& val)
+		requires(!std::is_rvalue_reference_v<decltype(val)>)
 	{
-		static_assert(std::is_trivially_destructible_v<T>);
 		auto rng = std::span(reinterpret_cast<const uint8_t*>(std::addressof(val)), sizeof(T));
 		return make_signature(rng.begin( ), rng.end( ));
 	}
