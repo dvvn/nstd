@@ -33,7 +33,7 @@ memory_protect::memory_protect(address addr, SIZE_T size, DWORD new_flags)
 }
 
 memory_protect::memory_protect(const memory_block& mem, DWORD new_flags)
-	: memory_protect(mem.addr( ), mem.bytes_range( ).size( ), new_flags)
+	: memory_protect(mem.addr( ), mem.size( ), new_flags)
 {
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <optional>
 
 namespace nstd
@@ -6,12 +7,14 @@ namespace nstd
 	template <std::copyable T>
 	class memory_backup
 	{
-	public:
-		struct value_type
+		struct value_stored
 		{
-			std::reference_wrapper<T> owner;
+			T* owner;
 			T value;
 		};
+
+	public:
+		using value_type = T;
 
 		memory_backup(const memory_backup& other)            = delete;
 		memory_backup& operator=(const memory_backup& other) = delete;
@@ -23,15 +26,15 @@ namespace nstd
 
 		memory_backup& operator=(memory_backup&& other) noexcept
 		{
-			std::swap(this->data_, other.data_);
+			std::swap(backup_, other.backup_);
 			return *this;
 		}
 
-		memory_backup() = default;
+		memory_backup( ) = default;
 
 		memory_backup(T& from)
 		{
-			data_.emplace(std::ref(from), from);
+			backup_.emplace(std::addressof(from), from);
 		}
 
 		template <typename T1>
@@ -43,50 +46,32 @@ namespace nstd
 		}
 
 	private:
-		template <bool FromDestructor>
-		void restore_impl()
+		void restore_impl( )
 		{
-			if (data_.has_value( ))
-			{
-				auto& d        = *data_;
-				d.owner.get( ) = std::move(d.value);
-				if constexpr (!FromDestructor)
-					data_.reset( );
-			}
+			auto& b  = *backup_;
+			*b.owner = std::move(b.value);
 		}
 
 	public:
-		~memory_backup()
+		~memory_backup( )
 		{
-			this->restore_impl<true>( );
+			if (has_value( ))
+				restore_impl( );
 		}
 
-		void restore()
+		void restore( )
 		{
-			this->restore_impl<false>( );
+			if (has_value( ))
+			{
+				restore_impl( );
+				reset( );
+			}
 		}
 
-		void reset()
-		{
-			data_.reset( );
-		}
-
-		/**
-		 * \brief added to prevent create varianle-holder. create backup and call this function from fucntion paramter
-		 */
-		/*template <typename T1>
-		_NODISCARD T1 val(T1&& val)
-		{
-			(void)this;
-			return val;
-		}*/
-
-		bool has_value() const
-		{
-			return data_.has_value( );
-		}
+		void reset( ) { backup_.reset( ); }
+		bool has_value( ) const { return backup_.has_value( ); }
 
 	private:
-		std::optional<value_type> data_;
+		std::optional<value_stored> backup_;
 	};
 }

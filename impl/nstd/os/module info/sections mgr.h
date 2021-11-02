@@ -3,10 +3,7 @@
 //#include "root class.h"
 
 #include "cache_base.h"
-
 #include "nstd/memory block.h"
-
-#include <memory>
 
 // ReSharper disable CppInconsistentNaming
 struct _IMAGE_SECTION_HEADER;

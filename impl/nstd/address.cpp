@@ -124,7 +124,7 @@ address address::jmp(ptrdiff_t offset) const
 	/// Now finally do the JMP by adding the function address
 	base += displacement;
 
-	return (base);
+	return address(base);
 }
 
 //----------------
@@ -165,7 +165,7 @@ bool nstd::operator>=(address l, address r)
 	decltype(auto) temp = __VA_ARGS__;\
 	runtime_assert(address(temp).value( ) != 0u, "Address is null!");\
 	runtime_assert(address(temp).value( ) != static_cast<uintptr_t>(-1), "Address is incorrect!");\
-	return temp;
+	return address(temp);
 
 address nstd::operator+(address l, ptrdiff_t r)
 {
@@ -253,5 +253,5 @@ address& nstd::operator/=(ptrdiff_t l, address& r)
 
 address nstd::operator*(address a)
 {
-	return a.ref<uintptr_t>( );
+	return address(a.ref<uintptr_t>( ));
 }

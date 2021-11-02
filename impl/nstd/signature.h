@@ -1,421 +1,338 @@
 #pragma once
-#include "memory block.h"
-#include "type_traits.h"
-#include "overload.h"
+#include "runtime_assert_fwd.h"
+
+#include <span>
+#include <vector>
 
 namespace nstd
 {
-	enum class signature_parse_mode
+	namespace detail
 	{
-		/**
-		 * \brief store string viewable data as TEXT all others as BYTES.
-		 * while data is string viewable, even if all bytes are known, TEXT_AS_BYTES is never selected
-		 */
-		AUTO
-	   ,
-		/**
-		 * \brief text converted to bytes and stored like raw memory block. all bytes must be known
-		 */
-		TEXT_AS_BYTES
-	   ,
-		/**
-		 * \brief text converted to bytes and stored inside special container.
-		 * unknown bytes allowed. when possible prefer to TEXT_AS_BYTES if all bytes known
-		 */
-		TEXT
-	   ,
-		/**
-		 * \brief raw memory block. any type is stored like range of bytes
-		 */
-		BYTES
-	   ,
-	};
-
-	namespace signature_detail
-	{
-		constexpr unknown_byte get_byte(known_byte chr)
+		template <typename T>
+		concept have_push_back = requires(T obj)
 		{
-			struct char_and_number
-			{
-				known_byte number;
-				known_byte character;
-			};
-			// ReSharper disable once CppInconsistentNaming
-#define _C2N_(num) char_and_number(0x##num, #num[0])
-			constexpr std::array data{
-					_C2N_(0),_C2N_(1),_C2N_(2),_C2N_(3),_C2N_(4),_C2N_(5),_C2N_(6),_C2N_(7),_C2N_(8),_C2N_(9), _C2N_(a),_C2N_(b),_C2N_(c),_C2N_(d),_C2N_(e),_C2N_(f), _C2N_(A)
-				   ,_C2N_(B),_C2N_(C),_C2N_(D),_C2N_(E),_C2N_(F)
-			};
-#undef _C2N_
-			for (const auto& [number, character] : data)
-			{
-				if (character == chr)
-					return number;
-			}
-			return {};
-			//magic numbers suck
-			/*if (c >= '0' && c <= '9')
-				return c - '0';
-			if (c >= 'a' && c <= 'f')
-				return c - 87;
-			if (c >= 'A' && c <= 'F')
-				return c - 55;
-
-			return std::nullopt;*/
-		}
-
-		_INLINE_VAR constexpr auto character_are_byte = []<typename Chr>(Chr c)
-		{
-			if constexpr (sizeof(Chr) == sizeof(known_byte))
-				return true;
-			else
-				return (static_cast<size_t>(c) <= static_cast<size_t>(std::numeric_limits<known_byte>::max( )));
+			obj.push_back(std::declval<typename T::value_type>( ));
 		};
 
-		struct simulate_exceptrion final : std::exception
+		template <typename T>
+		concept have_insert = requires(T obj)
 		{
-			simulate_exceptrion(const char* const msg)
-				: std::exception(msg)
-			{
-			}
-
-			simulate_exceptrion()
-				: std::exception( )
-			{
-			}
-		};
-
-		template <typename E, typename Tr>
-		std::vector<E> make_sig_beautiful(const std::basic_string_view<E, Tr>& str)
-		{
-			auto sig = std::vector<E>( );
-			//sig.reserve(str.size( ));
-			auto add_space = false;
-			for (auto c : str)
-			{
-				if (c == static_cast<E>(' '))
-				{
-					if (add_space)
-					{
-						add_space = false;
-						sig.push_back(c);
-					}
-				}
-				else
-				{
-					add_space = true;
-					sig.push_back(c);
-				}
-			}
-			return sig;
-		}
-
-		template <typename E, typename Tr>
-		constexpr bool is_sig_beautiful(const std::basic_string_view<E, Tr>& str)
-		{
-			constexpr auto space = static_cast<E>(' ');
-			if (str.starts_with(space) || str.ends_with(space))
-				return false;
-			auto space_detected = false;
-			for (auto chr : str)
-			{
-				if (chr != space)
-					space_detected = false;
-				else if (space_detected)
-					return false;
-				else
-					space_detected = true;
-			}
-			return true;
-		}
-
-		template <typename In, typename Out>
-		class sig_one_space
-		{
-		public:
-			using in_t = std::vector<In>;
-			using out_t = std::span<Out>;
-
-			template <typename T>
-			sig_one_space(T&& str)
-			{
-				if (is_sig_beautiful(str))
-					data_.template emplace<out_t>(str);
-				else
-					data_.template emplace<in_t>(make_sig_beautiful(str));
-			}
-
-			out_t get() const
-			{
-				return std::visit(nstd::overload([](const in_t& in)-> out_t { return (in); },
-												 [](const out_t& out)-> out_t { return out; }), data_);
-			}
-
-		private:
-			std::variant<in_t, out_t> data_;
-		};
-
-		template <typename E, typename Tr>
-		sig_one_space(const std::basic_string_view<E, Tr>&) -> sig_one_space<E, const E>;
-		template <typename E, typename Tr>
-		sig_one_space(std::basic_string_view<E, Tr>&) -> sig_one_space<E, E>;
-
-#ifdef _DEBUG
-#define NSTD_SIG_SIMULATE_MSG(msg) msg
-#else
-#define NSTD_SIG_SIMULATE_MSG(...) 
-#endif
-
-#define NSTD_SIG_SIMULATE(expr, msg)\
-		if constexpr(Simulate)\
-		{if(!!(expr) == false) throw simulate_exceptrion(NSTD_SIG_SIMULATE_MSG(msg));}\
-		else\
-		{runtime_assert(expr, msg);}
-
-		//#define NSTD_SIG_SIMULATE_STATIC(expr, msg)\
-		//		if constexpr(Simulate)\
-		//		{if constexpr(!!(expr) == false) throw simulate_exceptrion(NSTD_SIG_SIMULATE_MSG(msg));}\
-		//		else\
-		//		{static_assert(expr, msg);}
-
-		template <bool Simulate>
-		struct helpers
-		{
-			template <typename E, typename Tr>
-			static constexpr unknown_byte text_to_byte(const std::basic_string_view<E, Tr>& str)
-			{
-				switch (str.size( ))
-				{
-					case 1:
-					{
-						NSTD_SIG_SIMULATE(character_are_byte(str[0]), "Incorrect signature: unsupported unicode characted detected");
-						const auto chr = static_cast<known_byte>(str[0]);
-						if (chr == '?')
-							return {};
-						const auto ret = get_byte(chr);
-						NSTD_SIG_SIMULATE(ret.has_value( ), "Incorrect signature: wrong byte");
-						return ret;
-					}
-					case 2:
-					{
-						NSTD_SIG_SIMULATE(std::ranges::all_of(str, character_are_byte), "Unable to convert unicode text to byte");
-						const auto chr1 = static_cast<known_byte>(str[0]);
-						const auto chr2 = static_cast<known_byte>(str[1]);
-						if (chr1 == '?')
-						{
-							NSTD_SIG_SIMULATE(chr2 == '?', "Incorrect signature: second char in known whle first are unknown");
-							return {};
-						}
-						NSTD_SIG_SIMULATE(chr2 != '?', "Incorrect signature: second char in unknown while first are known");
-						const auto byte1 = get_byte(chr1);
-						NSTD_SIG_SIMULATE(byte1.has_value( ), "Incorrect signature: wrong first byte")
-						const auto byte2 = get_byte(chr2);
-						NSTD_SIG_SIMULATE(byte2.has_value( ), "Incorrect signature: wrong second byte")
-						return {static_cast<size_t>(*byte1) * static_cast<size_t>(16) + static_cast<size_t>(*byte2)};
-					}
-					default:
-					{
-						NSTD_SIG_SIMULATE(false, "Incorrect signature: whrong text size");
-						return {};
-					}
-				}
-			};
-
-			template <typename E, typename Tr, typename Fn, typename Sv = std::basic_string_view<E, Tr>>
-			static constexpr void parse_text_as_bytes(const Sv& str, Fn&& store_fn)
-			{
-#if 0
-				const auto clamp_spaces = [&]
-				{
-					const auto spaces_end = str.find_first_not_of(' ');
-					if(spaces_end != str.npos)
-						str.remove_prefix(spaces_end);
-				};
-
-				clamp_spaces( );
-				runtime_assert(!str.empty( ), "Signature range is empty!");
-
-				while(!str.empty( ))
-				{
-					const auto end = str.find_first_of(' ');
-					runtime_assert(end != str.npos || str.size( ) <= 2, "End of text byte not found");
-
-					const auto part = str.substr(0, end);
-					const auto byte = text_to_byte(part);
-
-					std::invoke(store_fn, byte);
-					if(end == str.npos)
-						break;
-
-					str.remove_prefix(end);
-					clamp_spaces( );
-				}
-
-#endif
-				NSTD_SIG_SIMULATE(!str.empty( ), "Incorrect signature: whrong text size");
-				auto beautiful_sig      = sig_one_space(str);
-				auto beautiful_sig_view = beautiful_sig.get( );
-
-				for (auto part : beautiful_sig_view
-								 | std::views::split(static_cast<E>(' '))
-								 | std::views::transform([](auto&& rng) { return Sv(std::addressof(*rng.begin( )), std::ranges::distance(rng)); }))
-				{
-					const auto byte = helpers<Simulate>::text_to_byte(part);
-					std::invoke(store_fn, byte);
-				}
-			}
-		};
-
-		template <bool Simulate, signature_parse_mode M>
-		struct maker;
-
-		template <bool Simulate>
-		struct maker<Simulate, signature_parse_mode::TEXT_AS_BYTES>
-		{
-			template <typename E, typename Tr>
-			// ReSharper disable once CppRedundantInlineSpecifier
-			_CONSTEXPR20_CONTAINER known_bytes_object operator()(const std::basic_string_view<E, Tr>& str) const
-			{
-				auto vec            = known_bytes_object( );
-				const auto store_fn = [&vec](const unknown_byte& b)
-				{
-					NSTD_SIG_SIMULATE(b.has_value( ), "Incorrect signature: unknown byte detected, while all bytes must be known in TEXT_AS_BYTES mode!");
-					vec.push_back(*b);
-				};
-				helpers<Simulate>::template parse_text_as_bytes<E, Tr>(str, store_fn);
-				return vec;
-			}
-		};
-
-		template <bool Simulate>
-		struct maker<Simulate, signature_parse_mode::TEXT>
-		{
-			template <typename E, typename Tr>
-			// ReSharper disable once CppRedundantInlineSpecifier
-			_CONSTEXPR20_CONTAINER unknown_bytes_object operator()(const std::basic_string_view<E, Tr>& str) const
-			{
-				auto vec            = unknown_bytes_object( );
-				const auto store_fn = [&](const unknown_byte& b)
-				{
-					vec.push_back(b);
-				};
-				helpers<Simulate>::template parse_text_as_bytes<E, Tr>(str, store_fn);
-				return vec;
-			}
-		};
-
-		template < >
-		struct maker<false, signature_parse_mode::BYTES>
-		{
-			template <typename T>
-			constexpr auto operator()(const T& val) const
-			{
-				if constexpr (!std::is_trivially_destructible_v<T>)
-				{
-					static_assert(std::_Always_false<T>, __FUNCSIG__": T must be trivially destructible");
-#if 0
-					NSTD_SIG_SIMULATE_STATIC(ranges::range<T>, "T must be a range");
-					using rng_val = ranges::range_value_t<T>;
-					NSTD_SIG_SIMULATE_STATIC(std::is_trivially_destructible_v<rng_val>, "T must be trivially destructible");
-
-					auto vec = known_bytes_object( );
-
-					for(auto& v : val)
-					{
-						for(auto b : std::invoke(*this, val)) //get span of 1..X elements
-						{
-							NSTD_SIG_SIMULATE_STATIC(sizeof(decltype(b)) == sizeof(known_byte), "Internal type must be a \"known_byte\"");
-							vec.push_back(reinterpret_cast<known_byte>(b)); //reinterpret_cast because of std::byte
-						}
-					}
-
-					return vec;
-#endif
-				}
-				else
-				{
-					if constexpr (!std::ranges::random_access_range<T>)
-					{
-						static_assert(!std::ranges::range<T>, "T shouldn't be a range");
-						return std::as_bytes(std::span(std::addressof(val), 1));
-					}
-					else
-					{
-						using rng_val = std::ranges::range_value_t<T>;
-						static_assert(!std::is_pointer_v<rng_val>, "T shouldn't be a pointer");
-						if constexpr (sizeof(rng_val) != sizeof(known_byte))
-						{
-							return std::as_bytes(std::span(std::ranges::data(val), std::ranges::size(val)));
-						}
-						else
-						{
-							if constexpr (std::_Is_any_of_v<rng_val, char, char8_t>)
-								return std::basic_string_view<rng_val>(val);
-							else
-								return std::span(val);
-						}
-					}
-				}
-			}
-		};
-
-		template < >
-		struct maker<true, signature_parse_mode::AUTO>
-		{
-			template <typename T>
-			constexpr auto operator()(const T& obj) const
-			{
-				if constexpr (!std_string_or_view<T>)
-				{
-					if constexpr (std::is_bounded_array_v<T> && std::_Is_any_of_v<std::ranges::range_value_t<T>, char, wchar_t, char8_t, char16_t, char32_t>)
-						return std::invoke(*this, std::basic_string_view(obj));
-					else
-						return std::invoke(maker<false, signature_parse_mode::BYTES>( ), obj);
-				}
-				else
-				{
-#if 0
-					//memory block rewrap it to known_bytes_object if wanted, so no problems here
-					const auto to_unknown = []<typename T1>(const T1 & bytes)
-					{
-						static_assert(sizeof(typename T1::value_type) == sizeof(known_byte));
-						auto tmp = std::views::transform(bytes, [](auto b) { return unknown_byte(static_cast<known_byte>(b)); });
-						return unknown_bytes_object(tmp.begin( ), tmp.end( ));
-					};
-#endif
-					if (std::ranges::all_of(obj, character_are_byte))
-					{
-						try
-						{
-							known_bytes_object bytes = std::invoke(maker<true, signature_parse_mode::TEXT_AS_BYTES>( ), obj);
-							//return to_unknown(bytes);
-							return any_bytes_range(std::move(bytes));
-						}
-						catch ([[maybe_unused]]const simulate_exceptrion& e)
-						{
-						}
-						try
-						{
-							unknown_bytes_object bytes = std::invoke(maker<true, signature_parse_mode::TEXT>( ), obj);
-							return any_bytes_range(std::move(bytes));
-						}
-						catch ([[maybe_unused]] const simulate_exceptrion& e)
-						{
-						}
-					}
-					auto bytes = std::invoke(maker<false, signature_parse_mode::BYTES>( ), obj);
-					//return to_unknown(bytes);
-					const auto start = reinterpret_cast<const known_byte*>(bytes._Unchecked_begin( ));
-					const auto end   = reinterpret_cast<const known_byte*>(bytes._Unchecked_end( ));
-					return any_bytes_range(known_bytes_range_const(start, end));
-				}
-			}
+			obj.insert(obj.begin( ), std::declval<typename T::value_type>( ));
 		};
 	}
 
-	template <signature_parse_mode M = signature_parse_mode::AUTO, typename T>
-	/*_INLINE_VAR*/ constexpr auto make_signature /*= []<typename T>*/(const T& data)
+	template <class StorageType>
+	class signature_known_bytes : protected StorageType
 	{
-		return std::invoke(signature_detail::maker<M == signature_parse_mode::AUTO, M>( ), data);
+	public:
+		using StorageType::begin;
+		using StorageType::end;
+		using StorageType::size;
+
+		template <typename ...Args>
+		signature_known_bytes(Args&&...args)
+			: StorageType(std::forward<Args>(args)...)
+		{
+		}
+
+		signature_known_bytes( ) = default;
+
+		class writer
+		{
+			signature_known_bytes* storage_;
+			typename StorageType::size_type offset_ = 0;
+
+		public:
+			writer(signature_known_bytes* const storage)
+				: storage_(storage)
+			{
+			}
+
+			void operator()( ) const
+			{
+				runtime_assert("Unable to store unknown byte");
+			}
+
+			void operator()(uint8_t byte)
+			{
+				if constexpr (detail::have_push_back<StorageType>)
+					storage_->push_back(byte);
+				else
+				{
+					auto itr = std::next(storage_->begin( ), ++offset_);
+					if constexpr (detail::have_insert<StorageType>)
+						storage_->insert(itr, byte);
+					else
+						*itr = byte;
+				}
+			}
+		};
+
+		writer get_writer( )
+		{
+			return writer{this};
+		}
+
+		const StorageType& storage( ) const { return *static_cast<const StorageType*>(this); }
 	};
+
+	class signature_unknown_bytes : signature_known_bytes<std::vector<uint8_t>>
+	{
+	public:
+		using signature_known_bytes::begin;
+		using signature_known_bytes::end;
+		using signature_known_bytes::storage;
+
+		signature_unknown_bytes( ) = default;
+
+		class writer
+		{
+			signature_unknown_bytes* storage_;
+
+		public:
+			writer(signature_unknown_bytes* const storage)
+				: storage_(storage)
+			{
+			}
+
+			void operator()( ) const
+			{
+				++storage_->skip;
+			}
+
+			void operator()(uint8_t byte)
+			{
+				if (storage_->skip > 0)
+				{
+					storage_->next = std::make_unique<signature_unknown_bytes>( );
+					storage_       = storage_->next.get( );
+				}
+				storage_->push_back(byte);
+			}
+		};
+
+		writer get_writer( )
+		{
+			return writer{this};
+		}
+
+		size_t skip = 0;
+		std::unique_ptr<signature_unknown_bytes> next;
+	};
+
+	//from bytes
+	struct make_signature_tag_direct
+	{
+	};
+
+	//from string like "01 02 A1 9 ?? ?"
+	struct make_signature_tag_convert
+	{
+		constexpr make_signature_tag_convert(bool unknown_bytes = true, size_t reserved_size = 0)
+			: unknown_bytes(unknown_bytes), reserved_size(reserved_size)
+		{
+		}
+
+		bool unknown_bytes; // "01 ?? A1"
+		size_t reserved_size;
+	};
+
+	namespace detail
+	{
+		template <typename T, bool Dereferenced = false>
+		constexpr auto make_signature_tag_selector( )
+		{
+			if constexpr (!Dereferenced)
+			{
+				if constexpr (std::_Dereferenceable<T>)
+					return make_signature_tag_selector<std::remove_cvref_t<decltype(*std::declval<T>( ))>, true>( );
+			}
+			else
+			{
+				if constexpr (std::same_as<uint8_t, T>)
+					return make_signature_tag_direct( );
+				else if constexpr (std::same_as<char, T>)
+					return make_signature_tag_convert( );
+			}
+		}
+
+		template <typename Itr, typename WriterKnown, typename WriterUnknown>
+		constexpr void text_to_bytes(Itr begin, Itr end, WriterKnown wknown, WriterUnknown wunk)
+		{
+			uint8_t bytes_unknown = 0;
+			uint8_t bytes_added   = 0;
+			uint8_t last_byte;
+			const auto set_byte = [&](uint8_t byte)
+			{
+				runtime_assert(bytes_unknown == 0, "Prev byte part are unknown");
+				switch (bytes_added)
+				{
+					case 0:
+						last_byte = byte;
+						++bytes_added;
+						break;
+					case 1:
+						last_byte *= 16;
+						last_byte += byte;
+						++bytes_added;
+						break;
+					default:
+						runtime_assert("Too much bytes to add");
+						break;
+				}
+			};
+			const auto write_byte = [&]
+			{
+				switch (bytes_added)
+				{
+					case 0:
+						break;
+					case 1:
+					case 2:
+						runtime_assert(bytes_unknown == 0, "Prev byte part are unknown");
+						std::invoke(wknown, last_byte);
+						bytes_added = 0;
+						break;
+					default:
+						runtime_assert("Too much bytes to add");
+						break;
+				}
+			};
+
+			const auto write_unknown = [&]
+			{
+				runtime_assert(bytes_unknown <= 2, "Too much unknown bytes!");
+				std::invoke(wunk);
+				++bytes_unknown;
+			};
+
+			for (auto itr = begin; itr != end; ++itr)
+			{
+#define NSTD_SIG_SET_BYTE(_BYTE_) \
+	case #_BYTE_[0] :\
+		set_byte(0x##_BYTE_);\
+		break
+				switch (*itr)
+				{
+					case ' ':
+					{
+						write_byte( );
+						bytes_unknown = 0;
+						break;
+					}
+					case '?':
+					{
+						write_byte( );
+						write_unknown( );
+						break;
+					}
+					NSTD_SIG_SET_BYTE(0);
+					NSTD_SIG_SET_BYTE(1);
+					NSTD_SIG_SET_BYTE(2);
+					NSTD_SIG_SET_BYTE(3);
+					NSTD_SIG_SET_BYTE(4);
+					NSTD_SIG_SET_BYTE(5);
+					NSTD_SIG_SET_BYTE(6);
+					NSTD_SIG_SET_BYTE(7);
+					NSTD_SIG_SET_BYTE(8);
+					NSTD_SIG_SET_BYTE(9);
+						//-
+					NSTD_SIG_SET_BYTE(a);
+					NSTD_SIG_SET_BYTE(b);
+					NSTD_SIG_SET_BYTE(c);
+					NSTD_SIG_SET_BYTE(d);
+					NSTD_SIG_SET_BYTE(e);
+					NSTD_SIG_SET_BYTE(f);
+						//-
+					NSTD_SIG_SET_BYTE(A);
+					NSTD_SIG_SET_BYTE(B);
+					NSTD_SIG_SET_BYTE(C);
+					NSTD_SIG_SET_BYTE(D);
+					NSTD_SIG_SET_BYTE(E);
+					NSTD_SIG_SET_BYTE(F);
+					default:
+						runtime_assert("Unsupported character");
+				}
+
+#undef NSTD_SIG_SET_BYTE
+			}
+
+			write_byte( );
+		}
+	}
+
+	//todo: char[X] version
+	//todo chars_cache version
+	template <std::input_iterator Itr, auto Tag = detail::make_signature_tag_selector<Itr>( )>
+	constexpr auto make_signature(Itr begin, Itr end)
+	{
+		using tag_type = std::remove_const_t<decltype(Tag)>;
+
+		if constexpr (std::same_as<tag_type, make_signature_tag_direct>)
+		{
+			using storage = signature_known_bytes<std::span<const uint8_t>>;
+			return storage(begin, end);
+		}
+		else if constexpr (std::same_as<tag_type, make_signature_tag_convert>)
+		{
+			const auto make_storage = [&]<class Storage>(Storage&& storage)
+			{
+				auto writer = storage.get_writer( );
+				detail::text_to_bytes(begin, end, [&](uint8_t byte) { writer(byte); }, [&] { writer( ); });
+				return storage;
+			};
+
+			if constexpr (Tag.unknown_bytes)
+			{
+				return make_storage(signature_unknown_bytes( ));
+			}
+			else
+			{
+				if constexpr (Tag.reserved_size > 0)
+					return make_storage(signature_known_bytes<std::array<uint8_t, Tag.reserved_size>>( ));
+				else
+					return make_storage(signature_known_bytes<std::vector<uint8_t>>( ));
+			}
+		}
+	}
+
+	template <class T>
+		requires(!std::ranges::range<T> && std::is_trivially_destructible_v<T>)
+	constexpr auto make_signature(const T& val)
+	{
+		static_assert(std::is_trivially_destructible_v<T>);
+		auto rng = std::span(reinterpret_cast<const uint8_t*>(std::addressof(val)), sizeof(T));
+		return make_signature(rng.begin( ), rng.end( ));
+	}
+
+	template <auto Tag = std::false_type( ), std::ranges::range T>
+	constexpr auto make_signature(const T& val)
+	{
+		using itr = std::ranges::iterator_t<T>;
+		static_assert(sizeof(std::iter_value_t<T>) == sizeof(uint8_t));
+
+		constexpr auto tag = []
+		{
+			if constexpr (std::same_as<std::remove_const_t<decltype(Tag)>, std::false_type>)
+				return detail::make_signature_tag_selector<itr>( );
+			else
+				return Tag;
+		}( );
+
+		using tag_type = std::remove_const_t<decltype(tag)>;
+
+		if constexpr (std::same_as<tag_type, make_signature_tag_direct>)
+		{
+			static_assert(std::ranges::random_access_range<T>,"Unsupported range type");
+			auto begin = reinterpret_cast<const uint8_t*>(std::ranges::_Ubegin(val));
+			auto end   = reinterpret_cast<const uint8_t*>(std::ranges::_Uend(val));
+			return make_signature<const uint8_t*, tag>(std::move(begin), std::move(end));
+		}
+		else if constexpr (std::same_as<tag_type, make_signature_tag_convert>)
+		{
+			auto begin = std::ranges::begin(val);
+			auto end   = std::ranges::end(val);
+			return make_signature<decltype(begin), tag>(std::move(begin), std::move(end));
+		}
+	}
 }

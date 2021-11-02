@@ -2,18 +2,13 @@
 
 #include "address.h"
 
-#include <algorithm>
-#include <optional>
-#include <ranges>
 #include <span>
-#include <variant>
-#include <vector>
-//#include "signature.h"
 
-#define NSTD_MEM_BLOCK_UNWRAP_UNKNOWN_BYTES
+//#define NSTD_MEM_BLOCK_UNWRAP_UNKNOWN_BYTES
 
 namespace nstd
 {
+#if 0
 	template <typename>
 	constexpr bool is_std_optional_v = false;
 
@@ -101,37 +96,43 @@ namespace nstd
 
 	class memory_block;
 	using memory_block_opt = std::optional<memory_block>;
+#endif
 
-	class memory_block final
+	class signature_unknown_bytes;
+	template <class StorageType>
+	class signature_known_bytes;
+
+	class memory_block final : std::span<uint8_t>
 	{
 	public:
-		using element_type = known_bytes_range::element_type;
-		using value_type = known_bytes_range::value_type;
-		using size_type = known_bytes_range::size_type;
-		using difference_type = known_bytes_range::difference_type;
-		using pointer = known_bytes_range::pointer;
-		using const_pointer = known_bytes_range::const_pointer;
-		using reference = known_bytes_range::reference;
-		using const_reference = known_bytes_range::const_reference;
-		using iterator = known_bytes_range::iterator;
-		using reverse_iterator = known_bytes_range::reverse_iterator;
+		using storage_type = std::span<uint8_t>;
 
-		memory_block() = default;
+		using storage_type::begin;
+		using storage_type::end;
+		using storage_type::_Unchecked_begin;
+		using storage_type::_Unchecked_end;
+
+		using storage_type::size;
+		using storage_type::empty;
+		using storage_type::operator[];
+
+		memory_block( ) = default;
 
 		memory_block(const address& begin, size_type mem_size);
 		memory_block(const address& begin, const address& end);
 		memory_block(const address& addr);
 
-		explicit memory_block(const known_bytes_range& span);
+		explicit memory_block(const storage_type& span);
 
-	private:
-		memory_block_opt find_block_impl(const known_bytes_range_const& rng) const;
-		memory_block_opt find_block_impl(const unknown_bytes_range_const& rng) const;
-		memory_block_opt find_block_impl(const any_bytes_range& rng) const;
+		memory_block find_block(std::span<const uint8_t> rng) const;
+		memory_block find_block(const signature_unknown_bytes& rng) const;
 
-	public:
+		template <class StorageType>
+		memory_block find_block(const signature_known_bytes<StorageType>& rng) const { return find_block(rng.storage( )); }
+
+#if 0
 		template <typename T>
-		memory_block_opt find_block(const T& obj) const
+		memory_block find_block(const T& obj) const
 		{
 			if constexpr (std::same_as<T, any_bytes_range>)
 			{
@@ -179,12 +180,12 @@ namespace nstd
 			}
 			return data;
 		}
-
+#endif
 		///use find_all_blocks directly
 		//std::vector<memory_block> find_xrefs(const address& addr) const;
 
-		address addr() const;
-		address last_addr() const;
+		address addr( ) const;
+		address last_addr( ) const;
 
 		memory_block subblock(size_t offset) const;
 		memory_block shift_to(pointer ptr) const;
@@ -196,15 +197,10 @@ namespace nstd
 		bool have_flags(flags_type flags) const;
 		bool dont_have_flags(flags_type flags) const;
 
-		bool readable() const;
-		bool readable_ex() const;
-		bool writable() const;
-		bool executable() const;
-		bool code_padding() const;
-
-		const known_bytes_range& bytes_range() const;
-
-	private:
-		known_bytes_range bytes_;
+		bool readable( ) const;
+		bool readable_ex( ) const;
+		bool writable( ) const;
+		bool executable( ) const;
+		bool code_padding( ) const;
 	};
 }

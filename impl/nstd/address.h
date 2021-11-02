@@ -50,16 +50,16 @@ namespace nstd
 	class address
 	{
 	public:
-		address();
-		address(uintptr_t a);
+		address( );
+		explicit address(uintptr_t a);
 		address(std::nullptr_t);
 		address(const void* a);
 		address(void* a);
 
-		uintptr_t value() const;
+		uintptr_t value( ) const;
 
 		template <typename T>
-		T cast() const
+		T cast( ) const
 		{
 #ifdef _DEBUG
 			(*this) + 0u;
@@ -83,13 +83,13 @@ namespace nstd
 		}
 
 		template <typename T>
-		T* ptr() const
+		T* ptr( ) const
 		{
 			return cast<T*>( );
 		}
 
 		template <typename T>
-		T& ref() const
+		T& ref( ) const
 		{
 			return *ptr<T>( );
 		}

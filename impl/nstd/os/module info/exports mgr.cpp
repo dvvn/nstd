@@ -1,10 +1,11 @@
 #include "exports mgr.h"
-
 #include "cache_impl.h"
 
 #include <nstd/os/module info.h>
 
 #include <Windows.h>
+
+#include <ranges>
 
 using namespace nstd;
 using namespace nstd::os;

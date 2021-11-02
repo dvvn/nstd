@@ -9,6 +9,7 @@
 
 #include <filesystem>
 #include <mutex>
+#include <ranges>
 
 using namespace nstd;
 using namespace os;
@@ -38,11 +39,11 @@ module_info::module_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos,
 	this->nt        = nt;
 
 	const auto raw_name = this->raw_name( );
-	const auto wname    = std::ranges::views::transform(raw_name, towlower);
+	const auto wname    = std::views::transform(raw_name, towlower);
 	this->name_.append(wname.begin( ), wname.end( ));
 	this->name_is_unicode_ = IsTextUnicode(raw_name._Unchecked_begin( ), raw_name.size( ) * sizeof(wchar_t), nullptr);
 
-	mtx_ = std::make_unique<mutex_type>( );
+	this->mtx_ = std::make_unique<mutex_type>( );
 }
 
 address module_info::base( ) const

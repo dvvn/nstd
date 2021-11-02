@@ -2,6 +2,9 @@
 
 #include <concepts>
 #include <utility>
+#include <memory>
+// ReSharper disable once CppUnusedIncludeDirective
+#include <string>
 
 namespace nstd::os
 {
