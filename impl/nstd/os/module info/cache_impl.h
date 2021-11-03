@@ -4,15 +4,7 @@
 
 #include <mutex>
 
-#if __has_include(<robin_hood.h>)
-#define NSTD_OS_MODULE_INFO_DATA_CACHE robin_hood::unordered_map
-#define NSTD_OS_MODULE_INFO_DATA_CACHE_STD 0
-#include <robin_hood.h>
-#else
-#define NSTD_OS_MODULE_INFO_DATA_CACHE std::unordered_map
-#define NSTD_OS_MODULE_INFO_DATA_CACHE_STD 1
-#include <unordered_map>
-#endif
+#include NSTD_OS_MODULE_INFO_DATA_INCLUDE
 
 namespace nstd::os
 {

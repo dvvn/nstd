@@ -6,7 +6,6 @@
 #include "nstd/address.h"
 
 #include <algorithm>
-#include <optional>
 
 using namespace nstd;
 using namespace nstd::mem;
@@ -31,19 +30,19 @@ block::block(const storage_type& span)
 {
 }
 
-block block::find_block(std::span<const uint8_t> rng) const
+block block::find_block(std::span<const uint8_t> unkbytes) const
 {
-	const auto rng_size = rng.size( );
+	const auto rng_size = unkbytes.size( );
 	const auto limit    = this->size( ) - rng_size;
 
-	const auto start1 = this->_Unchecked_begin( );
-	const auto start2 = rng._Unchecked_begin( );
+	const auto start0 = this->_Unchecked_begin( );
+	const auto start2 = unkbytes._Unchecked_begin( );
 
 	for (auto offset = static_cast<size_t>(0); offset < limit; ++offset)
 	{
-		const auto start = start1 + offset;
-		if (std::memcmp(start, start2, rng_size) == 0)
-			return {start, rng_size};
+		const auto start1 = start0 + offset;
+		if (std::memcmp(start1, start2, rng_size) == 0)
+			return {start1, rng_size};
 	}
 
 	return {};
@@ -60,36 +59,34 @@ struct unknown_find_result
 	bool found;
 };
 
-static unknown_find_result _Find_unknown_bytes(const block& block, const signature_unknown_bytes& rng)
+static unknown_find_result _Find_unknown_bytes(const block& block, const signature_unknown_bytes& unkbytes)
 {
 	size_t offset  = 0;
 	size_t scanned = 0;
 
-	const auto& storage = rng.storage( );
-	if (!storage.empty( ))
+	const auto& [known0, skip0] = unkbytes[0];
+	if (!known0.empty( ))
 	{
-		const auto found = block.find_block(storage);
-		if (found.empty( ))
-			return {block.size( ) - storage.size( ), 0, false};
-		scanned = std::distance(block._Unchecked_begin( ), found._Unchecked_begin( ));
-		offset  = found.size( );
+		// ReSharper disable once CppInconsistentNaming
+		const auto _Begin = block.find_block(known0);
+		if (_Begin.empty( ))
+			return {block.size( ) - known0.size( ), 0, false};
+		scanned = std::distance(block._Unchecked_begin( ), _Begin._Unchecked_begin( ));
+		offset  = _Begin.size( );
 	}
 
-	offset += rng.skip;
-	auto rng2 = rng.next.get( );
+	offset += skip0;
 
-	while (rng2 != nullptr)
+	for (const auto& [known, skip]: std::span(std::next(unkbytes.begin( )), unkbytes.end( )))
 	{
-		const auto block2    = block.subblock(scanned + offset);
-		const auto& storage2 = rng2->storage( );
-
-		const auto start1 = block2._Unchecked_begin( );
-		const auto start2 = storage2._Unchecked_begin( );
-		if (std::memcmp(start1, start2, storage2.size( )) != 0)
+		// ReSharper disable once CppInconsistentNaming
+		const auto _Next = block.subblock(scanned + offset);
+		const auto start1 = _Next._Unchecked_begin( );
+		const auto start2 = known._Unchecked_begin( );
+		if (std::memcmp(start1, start2, known.size( )) != 0)
 			return {scanned, offset, false};
 
-		offset += storage2.size( ) + rng2->skip;
-		rng2 = rng2->next.get( );
+		offset += known.size( ) + skip;
 	}
 
 	return {scanned, offset, true};
@@ -100,10 +97,11 @@ block block::find_block(const signature_unknown_bytes& rng) const
 	const auto rng_size = [&]
 	{
 		size_t size = 0;
-		for (auto rng0 = std::addressof(rng); rng0 != nullptr; rng0 = rng0->next.get( ))
+
+		for (const auto& [known, skip]: rng)
 		{
-			size += rng0->storage( ).size( );
-			size += rng0->skip;
+			size += known.size( );
+			size += skip;
 		}
 
 		return size;
@@ -131,11 +129,8 @@ block block::subblock(size_t offset, size_t count) const
 	return block(this->subspan(offset, count));
 }
 
-
 block block::shift_to(pointer ptr) const
 {
 	const auto offset = std::distance(this->_Unchecked_begin( ), ptr);
 	return this->subblock(offset);
 }
-
-

@@ -22,7 +22,7 @@ namespace nstd
 	}
 
 	template <class StorageType>
-	class signature_known_bytes : protected StorageType
+	class signature_known_bytes final : protected StorageType
 	{
 	public:
 		using StorageType::begin;
@@ -76,38 +76,61 @@ namespace nstd
 		const StorageType& storage( ) const { return *static_cast<const StorageType*>(this); }
 	};
 
-	class signature_unknown_bytes : signature_known_bytes<std::vector<uint8_t>>
+	struct signature_unknown_bytes_data final
 	{
+		std::vector<uint8_t> known;
+		size_t skip;
+	};
+
+	class signature_unknown_bytes final : std::vector<signature_unknown_bytes_data>
+	{
+		using storage_type = std::vector<signature_unknown_bytes_data>;
 	public:
-		using signature_known_bytes::begin;
-		using signature_known_bytes::end;
-		using signature_known_bytes::storage;
+		using storage_type::begin;
+		using storage_type::end;
+		using storage_type::_Unchecked_begin;
+		using storage_type::_Unchecked_end;
+		using storage_type::empty;
+		using storage_type::size;
+		using storage_type::operator[];
 
 		signature_unknown_bytes( ) = default;
 
 		class writer
 		{
 			signature_unknown_bytes* storage_;
+			size_t index_;
+
+			signature_unknown_bytes_data& data( ) const
+			{
+				return (*storage_)[index_];
+			}
+
+			void push_back( )
+			{
+				storage_->emplace_back( );
+				++index_;
+			}
 
 		public:
 			writer(signature_unknown_bytes* const storage)
-				: storage_(storage)
+				: storage_(storage), index_(static_cast<size_t>(-1))
 			{
+				runtime_assert(storage_->empty());
+				push_back( );
 			}
 
 			void operator()( ) const
 			{
-				++storage_->skip;
+				++data( ).skip;
 			}
 
 			void operator()(uint8_t byte)
 			{
-				if (storage_->skip > 0)
-				{
-					storage_->next = std::make_unique<signature_unknown_bytes>( );
-					storage_       = storage_->next.get( );
-				}
-				storage_->push_back(byte);
+				if (data( ).skip > 0)
+					this->push_back( );
+
+				data( ).known.push_back(byte);
 			}
 		};
 
@@ -115,9 +138,6 @@ namespace nstd
 		{
 			return writer{this};
 		}
-
-		size_t skip = 0;
-		std::unique_ptr<signature_unknown_bytes> next;
 	};
 
 	//from bytes

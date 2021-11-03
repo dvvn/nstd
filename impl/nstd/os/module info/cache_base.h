@@ -7,6 +7,16 @@
 #include <string>
 // ReSharper restore CppUnusedIncludeDirective
 
+#if __has_include(<robin_hood.h>)
+#define NSTD_OS_MODULE_INFO_DATA_INCLUDE <robin_hood.h>
+#define NSTD_OS_MODULE_INFO_DATA_CACHE robin_hood::unordered_map
+#define NSTD_OS_MODULE_INFO_DATA_CACHE_STD 0
+#else
+#define NSTD_OS_MODULE_INFO_DATA_INCLUDE <unordered_map>
+#define NSTD_OS_MODULE_INFO_DATA_CACHE std::unordered_map
+#define NSTD_OS_MODULE_INFO_DATA_CACHE_STD 1
+#endif
+
 namespace nstd::os
 {
 	namespace detail

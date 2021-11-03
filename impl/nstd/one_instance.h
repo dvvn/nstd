@@ -15,20 +15,24 @@ namespace nstd
 
 		static constexpr size_t index = Index;
 
-		using value_type = T;
+		using one_instance_tag = void*;
+
+		/*using value_type = T;
 		using reference = T&;
 		using const_reference = const T&;
 		using pointer = T*;
-		using const_pointer = const T*;
+		using const_pointer = const T*;*/
 
-		static reference get( )
+		using element_type = T;
+
+		static T& get( )
 		{
 			static_assert(std::is_default_constructible_v<T>, __FUNCSIG__": element must be default constructible!");
 			static T cache = T( );
 			return cache;
 		}
 
-		static pointer get_ptr( )
+		static T* get_ptr( )
 		{
 			return std::addressof(get( ));
 		}
@@ -37,15 +41,38 @@ namespace nstd
 	template <typename T>
 	concept is_one_instance = requires
 	{
-		typename T::value_type;
+		typename T::one_instance_tag;
 		T::index;
-	} && std::derived_from<T, one_instance<typename T::value_type, T::index>>;
+		T::get;
+	} ;
+
+	namespace detail
+	{
+		template <class T>
+		void reload_one_instance_impl(T& obj)
+		{
+			if constexpr (std::swappable<T> && false)
+			{
+				auto replace = T( );
+				std::swap(obj, replace);
+			}
+			else
+			{
+				std::_Destroy_in_place(obj);
+				std::_Construct_in_place(obj);
+			}
+		}
+	}
 
 	template <is_one_instance I>
 	void reload_one_instance(I& ins)
 	{
-		auto& ref = ins.get( );
-		std::_Destroy_in_place(ref);
-		std::_Construct_in_place(ref);
+		detail::reload_one_instance_impl(ins.get( ));
+	}
+
+	template <is_one_instance I>
+	void reload_one_instance( )
+	{
+		detail::reload_one_instance_impl(I::get( ));
 	}
 }
