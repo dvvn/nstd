@@ -65,4 +65,16 @@ namespace nstd
 	concept std_string_or_view = detail::std_string_or_view_impl<std::remove_cvref_t<T>>;
 
 #pragma endregion
+
+	template <typename T>
+		struct remove_all_pointers : std::conditional_t<
+					std::is_pointer_v<T>,
+					remove_all_pointers<std::remove_pointer_t<T>>,
+					std::type_identity<T>
+				>
+		{
+		};
+
+		template <typename T>
+		using remove_all_pointers_t = typename remove_all_pointers<T>::type;
 }

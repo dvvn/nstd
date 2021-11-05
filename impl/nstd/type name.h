@@ -124,17 +124,7 @@ namespace nstd
 				return add_dots(std::in_place_index<2>);
 		}
 
-		template <typename T>
-		struct remove_all_pointers : std::conditional_t<
-					std::is_pointer_v<T>,
-					remove_all_pointers<std::remove_pointer_t<T>>,
-					std::type_identity<T>
-				>
-		{
-		};
-
-		template <typename T>
-		using remove_all_pointers_t = typename remove_all_pointers<T>::type;
+		
 
 		template <typename T, chars_cache ...DropNamespaces>
 		_INLINE_VAR constexpr auto type_name_holder = []

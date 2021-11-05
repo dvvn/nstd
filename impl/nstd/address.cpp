@@ -74,7 +74,7 @@ address address::rel8(ptrdiff_t offset) const
 	const auto out = *this + offset;
 
 	// get relative offset.
-	const auto r = out.ref<uint8_t>( );
+	const uint8_t r = out.ref( );
 	runtime_assert(r != 0, "can't get rel8 offset");
 	/*if (!r)
 		return t{ };*/
@@ -94,7 +94,7 @@ address address::rel32(ptrdiff_t offset) const
 	const auto out = *this + offset;
 
 	// get rel32 offset.
-	const auto r = out.ref<uint32_t>( );
+	const uint32_t r = out.ref( );
 	runtime_assert(r != 0, "can't get rel32 offset");
 
 	// relative to address of next instruction.
@@ -162,10 +162,10 @@ bool nstd::operator>=(address l, address r)
 //-------------
 
 #define NSTD_ADDRESS_OPERATOR_CALL(...) \
-	decltype(auto) temp = __VA_ARGS__;\
-	runtime_assert(address(temp).value( ) != 0u, "Address is null!");\
-	runtime_assert(address(temp).value( ) != static_cast<uintptr_t>(-1), "Address is incorrect!");\
-	return address(temp);
+	const auto temp = address(__VA_ARGS__);\
+	runtime_assert(temp.value( ) != 0u, "Address is null!");\
+	runtime_assert(temp.value( ) != static_cast<uintptr_t>(-1), "Address is incorrect!");\
+	return temp;
 
 address nstd::operator+(address l, ptrdiff_t r)
 {

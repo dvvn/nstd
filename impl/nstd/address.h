@@ -82,16 +82,48 @@ namespace nstd
 			}
 		}
 
-		template <typename T>
-		T* ptr( ) const
+		class ptr_auto_cast
 		{
-			return cast<T*>( );
+			uintptr_t addr_;
+		public:
+			ptr_auto_cast(uintptr_t addr)
+				: addr_(addr)
+			{
+			}
+
+			template <typename T>
+			operator T*( ) const { return reinterpret_cast<T*>(addr_); }
+		};
+
+		template <typename T = ptr_auto_cast>
+		auto ptr( ) const
+		{
+			if constexpr (std::is_same_v<T, ptr_auto_cast>)
+				return ptr_auto_cast(value_);
+			else
+				return cast<T*>( );
 		}
 
-		template <typename T>
-		T& ref( ) const
+		class ref_auto_cast
 		{
-			return *ptr<T>( );
+			uintptr_t addr_;
+		public:
+			ref_auto_cast(uintptr_t addr)
+				: addr_(addr)
+			{
+			}
+
+			template <typename T>
+			operator T&( ) const { return *reinterpret_cast<T*>(addr_); }
+		};
+
+		template <typename T = ref_auto_cast>
+		decltype(auto) ref( ) const
+		{
+			if constexpr (std::is_same_v<T, ref_auto_cast>)
+				return ref_auto_cast(value_);
+			else
+				return *ptr<T>( );
 		}
 
 		//-----

@@ -33,7 +33,7 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 		const address xr = block._Unchecked_begin( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
-		if (const auto vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref<uintptr_t>( ); vtable_offset != 0)
+		if (const uintptr_t vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref( ); vtable_offset != 0)
 			continue;
 
 		// get the object locator
