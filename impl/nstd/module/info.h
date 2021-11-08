@@ -4,9 +4,9 @@
 //#include "module info/sections_storage.h"
 //#include "module info/vtables_storage.h"
 
-#include "module info/exports mgr.h"
-#include "module info/sections mgr.h"
-#include "module info/vtables mgr.h"
+#include "exports.h"
+#include "sections.h"
+#include "vtables.h"
 
 #include "nstd/one_instance.h"
 
@@ -37,9 +37,9 @@ using DWORD = unsigned long;
 #endif
 // ReSharper restore CppInconsistentNaming
 
-namespace nstd::os
+namespace nstd::module
 {
-	class module_info final : sections_mgr, exports_mgr, vtables_mgr
+	class info final : sections, exports, vtables
 	{
 		LDR_DATA_TABLE_ENTRY* ldr_entry;
 		IMAGE_DOS_HEADER* dos;
@@ -48,22 +48,17 @@ namespace nstd::os
 		std::wstring name_;
 		bool name_is_unicode_;
 
-		struct mutex_type;
-		using mutex_type_fwd = std::unique_ptr<mutex_type>;
-
-		mutex_type_fwd mtx_;
-
 	protected:
-		module_info* root_class( ) override;
-		const module_info* root_class( ) const override;
+		info* root_class( ) override;
+		const info* root_class( ) const override;
 
 	public:
-		~module_info( ) override;
+		~info( ) override;
 
-		module_info(module_info&&) noexcept;
-		module_info& operator=(module_info&&) noexcept;
+		info(info&&) noexcept;
+		info& operator=(info&&) noexcept;
 
-		module_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
+		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
 
 		//module handle
 		address base( ) const;
@@ -87,13 +82,17 @@ namespace nstd::os
 		const std::wstring& name( ) const;
 		bool name_is_unicode( ) const;
 
-		const sections_mgr& sections( ) const;
-		const exports_mgr& exports( ) const;
-		const vtables_mgr& vtables( ) const;
+		using sections_t = sections;
+		using exports_t = exports;
+		using vtables_t = vtables;
 
-		 sections_mgr& sections( ) ;
-		 exports_mgr& exports( ) ;
-		 vtables_mgr& vtables( ) ;
+		const sections_t& sections( ) const;
+		const exports_t& exports( ) const;
+		const vtables_t& vtables( ) const;
+
+		sections_t& sections( );
+		exports_t& exports( );
+		vtables_t& vtables( );
 	};
 
 	class modules_storage
@@ -112,16 +111,16 @@ namespace nstd::os
 
 		modules_storage& update(bool force = false);
 
-		module_info& current( ) const;
-		module_info& owner( );
+		info& current( ) const;
+		info& owner( );
 
-		using find_fn = std::function<bool(const module_info&)>;
-		module_info* find(const find_fn& fn);
-		module_info* rfind(const find_fn& fn);
+		using find_fn = std::function<bool(const info&)>;
+		info* find(const find_fn& fn);
+		info* rfind(const find_fn& fn);
 
 	private:
 		std::unique_ptr<storage_type> storage_;
-		module_info* current_cached_ = nullptr;
+		info* current_cached_ = nullptr;
 	};
 
 	namespace detail

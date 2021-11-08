@@ -1,15 +1,15 @@
-#include "vtables mgr.h"
+#include "vtables.h"
 #include "cache_impl.h"
 
 #include "nstd/runtime_assert_fwd.h"
-#include "nstd/os/module info.h"
+#include "nstd/module/info.h"
 #include "nstd/signature.h"
 
 using namespace nstd;
-using namespace os;
+using namespace module;
 
 //todo: add x64 support
-static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdata, const section_info& dot_text, address type_descriptor)
+static std::optional<vtable_t> _Load_vtable(const section_t& dot_rdata, const section_t& dot_text, address type_descriptor)
 {
 	const auto all_blocks = [&]
 	{
@@ -61,13 +61,13 @@ static std::optional<vtable_info> _Load_vtable_info(const section_info& dot_rdat
 		}( );
 
 		if (!temp_result.empty( ))
-			return vtable_info{temp_result._Unchecked_begin( )};
+			return vtable_t{temp_result._Unchecked_begin( )};
 	}
 
 	return {};
 }
 
-NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtables_mgr, vtable_info)
+NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtable)
 {
 	constexpr std::string_view prefix  = ".?AV";
 	constexpr std::string_view postfix = "@@";
@@ -84,7 +84,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtables_mgr, vtable_info)
 		return tmp;
 	}( );
 
-	const auto bytes = module_info_ptr->mem_block( );
+	const auto bytes = info_ptr->mem_block( );
 
 	const auto target_block = bytes.find_block(nstd::make_signature<make_signature_tag_direct{}>(real_name));
 	//class descriptor
@@ -95,13 +95,13 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtables_mgr, vtable_info)
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 
-	auto& sections = module_info_ptr->sections( );
+	auto& sections = info_ptr->sections( );
 
 	using namespace std::string_view_literals;
 	const auto& dot_rdata = sections.at(".rdata"sv);
 	const auto& dot_text  = sections.at(".text"sv);
 
-	auto result = _Load_vtable_info(dot_rdata, dot_text, type_descriptor);
+	auto result = _Load_vtable(dot_rdata, dot_text, type_descriptor);
 	runtime_assert(result.has_value( ));
 
 	return {*result, true};

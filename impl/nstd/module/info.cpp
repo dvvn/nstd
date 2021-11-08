@@ -1,4 +1,4 @@
-#include "module info.h"
+#include "info.h"
 
 #include <nstd/runtime_assert_fwd.h>
 
@@ -7,25 +7,19 @@
 
 #include <functional>
 #include <filesystem>
-#include <mutex>
 #include <ranges>
 
 using namespace nstd;
-using namespace os;
-using namespace os::detail;
+using namespace nstd::module;
 
-struct module_info::mutex_type : std::recursive_mutex
-{
-};
+info* info::root_class( ) { return this; }
+const info* info::root_class( ) const { return this; }
 
-module_info* module_info::root_class( ) { return this; }
-const module_info* module_info::root_class( ) const { return this; }
+info::~info( )                         = default;
+info::info(info&&) noexcept            = default;
+info& info::operator=(info&&) noexcept = default;
 
-module_info::~module_info( )                                = default;
-module_info::module_info(module_info&&) noexcept            = default;
-module_info& module_info::operator=(module_info&&) noexcept = default;
-
-module_info::module_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)
+info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)
 {
 	runtime_assert(ldr_entry != nullptr);
 	runtime_assert(dos != nullptr);
@@ -41,88 +35,86 @@ module_info::module_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos,
 	const auto wname    = std::views::transform(raw_name, towlower);
 	this->name_.append(wname.begin( ), wname.end( ));
 	this->name_is_unicode_ = IsTextUnicode(raw_name._Unchecked_begin( ), raw_name.size( ) * sizeof(wchar_t), nullptr);
-
-	this->mtx_ = std::make_unique<mutex_type>( );
 }
 
-address module_info::base( ) const
+address info::base( ) const
 {
 	return this->ldr_entry->DllBase;
 }
 
-mem::block module_info::mem_block( ) const
+mem::block info::mem_block( ) const
 {
 	return {base( ), image_size( )};
 }
 
 // ReSharper disable CppInconsistentNaming
 
-IMAGE_DOS_HEADER* module_info::DOS( ) const
+IMAGE_DOS_HEADER* info::DOS( ) const
 {
 	return this->dos;
 }
 
-IMAGE_NT_HEADERS* module_info::NT( ) const
+IMAGE_NT_HEADERS* info::NT( ) const
 {
 	return this->nt;
 }
 
-DWORD module_info::check_sum( ) const
+DWORD info::check_sum( ) const
 {
 	return NT( )->OptionalHeader.CheckSum;
 }
 
 // ReSharper restore CppInconsistentNaming
 
-DWORD module_info::code_size( ) const
+DWORD info::code_size( ) const
 {
 	return NT( )->OptionalHeader.SizeOfCode;
 }
 
-DWORD module_info::image_size( ) const
+DWORD info::image_size( ) const
 {
 	return NT( )->OptionalHeader.SizeOfImage;
 }
 
-std::wstring_view module_info::work_dir( ) const
+std::wstring_view info::work_dir( ) const
 {
 	auto path_to = full_path( );
 	path_to.remove_suffix(raw_name( ).size( ));
 	return path_to;
 }
 
-std::wstring_view module_info::full_path( ) const
+std::wstring_view info::full_path( ) const
 {
 	return {this->ldr_entry->FullDllName.Buffer, this->ldr_entry->FullDllName.Length / sizeof(wchar_t)};
 }
 
-std::wstring_view module_info::raw_name( ) const
+std::wstring_view info::raw_name( ) const
 {
 	const auto path = full_path( );
 	return path.substr(path.find_last_of('\\') + 1);
 }
 
-const std::wstring& module_info::name( ) const
+const std::wstring& info::name( ) const
 {
 	return this->name_;
 }
 
-bool module_info::name_is_unicode( ) const
+bool info::name_is_unicode( ) const
 {
 	return this->name_is_unicode_;
 }
 
-const sections_mgr& module_info::sections( ) const { return *this; }
-const exports_mgr& module_info::exports( ) const { return *this; }
-const vtables_mgr& module_info::vtables( ) const { return *this; }
+auto info::sections( ) const -> const sections_t& { return *this; }
+auto info::exports( ) const -> const exports_t& { return *this; }
+auto info::vtables( ) const -> const vtables_t& { return *this; }
 
-sections_mgr& module_info::sections( ) { return *this; }
-exports_mgr& module_info::exports( ) { return *this; }
-vtables_mgr& module_info::vtables( ) { return *this; }
+auto info::sections( ) -> sections_t& { return *this; }
+auto info::exports( ) -> exports_t& { return *this; }
+auto info::vtables( ) -> vtables_t& { return *this; }
 
 //-------------------
 
-struct modules_storage::storage_type : std::list<module_info>
+struct modules_storage::storage_type : std::list<info>
 {
 	storage_type(const storage_type&)            = delete;
 	storage_type& operator=(const storage_type&) = delete;
@@ -144,13 +136,13 @@ modules_storage::modules_storage( )
 
 modules_storage::~modules_storage( ) = default;
 
-struct headers_info
+struct header
 {
 	PIMAGE_DOS_HEADER dos;
 	PIMAGE_NT_HEADERS nt;
 };
 
-static std::optional<headers_info> _Get_file_headers(address base)
+static std::optional<header> _Get_file_headers(address base)
 {
 	const auto dos = base.ptr<IMAGE_DOS_HEADER>( );
 
@@ -165,7 +157,7 @@ static std::optional<headers_info> _Get_file_headers(address base)
 	if (!nt || nt->Signature != IMAGE_NT_SIGNATURE /* 'PE\0\0' */)
 		return {};
 
-	headers_info result;
+	header result;
 
 	// set out dos and nt.
 	result.dos = dos;
@@ -191,7 +183,7 @@ static auto _Get_all_modules( )
 	const auto ldr = mem->Ldr;
 #endif
 
-	auto container = std::vector<module_info>( );
+	auto container = std::vector<info>( );
 
 	// get module linked list.
 	const auto list = &ldr->InMemoryOrderModuleList;
@@ -215,7 +207,7 @@ static auto _Get_all_modules( )
 	//all internal functions tested only on x86
 	//UPDATE: all works, except vtables finder
 
-	runtime_assert(std::ranges::adjacent_find(container, { }, &module_info::name) == container.end( ));
+	runtime_assert(std::ranges::adjacent_find(container, { }, &info::name) == container.end( ));
 	return container;
 }
 
@@ -240,7 +232,7 @@ static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 	return static_cast<HMODULE>(info.AllocationBase);
 }
 
-module_info& modules_storage::current( ) const
+info& modules_storage::current( ) const
 {
 	return *current_cached_;
 }
@@ -265,11 +257,11 @@ modules_storage& modules_storage::update(bool force)
 		auto all = _Get_all_modules( );
 
 		//erase all unused modules
-		storage_->remove_if([&](const module_info& m)-> bool
+		storage_->remove_if([&](const info& m)-> bool
 		{
 			for (const auto& m_new: all)
 			{
-				if (m.raw_name( ) == m_new.raw_name( ))
+				if (m.base( ) == m_new.base( ))
 					return false;
 			}
 			return true;
@@ -281,8 +273,8 @@ modules_storage& modules_storage::update(bool force)
 		auto itr = storage_->begin( );
 		for (auto& m: all)
 		{
-			if (itr == storage_->end( ) || itr->full_path( ) != m.full_path( ))
-				itr = storage_->insert(itr, const_cast<module_info&&>(m));
+			if (itr == storage_->end( ) || itr->base( ) != m.base( ))
+				itr = storage_->insert(itr, const_cast<info&&>(m));
 
 			if (find_current && itr->base( ) == current_base)
 			{
@@ -297,28 +289,30 @@ modules_storage& modules_storage::update(bool force)
 	return *this;
 }
 
-module_info& modules_storage::owner( )
+info& modules_storage::owner( )
 {
-	(void)this;
 	return storage_->front( );
 }
 
-module_info* modules_storage::find(const find_fn& fn)
+template <typename T, typename Pred>
+static info* _Find(T&& storage, Pred&& pred)
 {
-	for (auto& item: *storage_)
+	for (info& i: storage)
 	{
-		if (std::invoke(fn, item))
-			return std::addressof(item);
+		if (std::invoke(pred, i))
+			return std::addressof(i);
 	}
+
+
 	return nullptr;
 }
 
-module_info* modules_storage::rfind(const find_fn& fn)
+info* modules_storage::find(const find_fn& fn)
 {
-	for (auto& item: *storage_ | std::views::reverse)
-	{
-		if (std::invoke(fn, item))
-			return std::addressof(item);
-	}
-	return nullptr;
+	return _Find(*storage_, fn);
+}
+
+info* modules_storage::rfind(const find_fn& fn)
+{
+	return _Find(*storage_ | std::views::reverse, fn);
 }
