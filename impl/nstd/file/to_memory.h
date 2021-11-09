@@ -35,7 +35,7 @@ namespace nstd::file
 			const uint8_t* begin( ) const;
 			const uint8_t* end( ) const;
 
-			size_t size( ) const { return size_used_; }
+			size_t size( ) const;
 		};
 	}
 

@@ -63,6 +63,11 @@ const uint8_t* copyable_inplace_start::end( ) const
 	return std::_Const_cast(this)->end( );
 }
 
+size_t copyable_inplace_start::size( ) const
+{
+	return size_used_; 
+}
+
 allocator_fn copyable<0>::make_allocator( )
 {
 	return [&](size_t file_size)
