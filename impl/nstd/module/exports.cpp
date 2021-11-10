@@ -1,4 +1,6 @@
 #include "exports.h"
+
+#include "all_infos.h"
 #include "cache_impl.h"
 
 #include <nstd/module/info.h>
@@ -38,7 +40,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
         return {};
 #endif
 
-	const auto all_modules = all_modules::get_ptr( );
+	const auto all_modules = all_infos::get_ptr( );
 	all_modules->update(false);
 
 	// iterate names array.
@@ -56,7 +58,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
 		//if (export_ptr < dir || export_ptr >= memory_block(dir, data_dir->Size).addr( ))
 		if (const auto export_ptr = base_address + funcs[ords[i]]; export_ptr < dir || export_ptr >= address(dir) + data_dir->Size)
 		{
-			this->emplace((export_name), (export_ptr));
+			this->emplace(export_name, export_ptr);
 			//
 		}
 		else // it's a forwarded export, we must resolve it.
@@ -90,7 +92,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
 				auto& exports       = target_module->exports( );
 				auto fwd_export_ptr = exports.at(fwd_export_str);
 
-				this->emplace((export_name), (fwd_export_ptr));
+				this->emplace(export_name, fwd_export_ptr);
 			}
 			catch (std::exception)
 			{

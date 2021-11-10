@@ -2,15 +2,8 @@
 
 #include "cache_base.h"
 
-#if __has_include(<robin_hood.h>)
-#include <robin_hood.h>
-#define NSTD_OS_MODULE_INFO_DATA_CACHE robin_hood::unordered_map
-#define NSTD_OS_MODULE_INFO_DATA_CACHE_STD 0
-#else
-#include <unordered_map>
-#define NSTD_OS_MODULE_INFO_DATA_CACHE std::unordered_map
-#define NSTD_OS_MODULE_INFO_DATA_CACHE_STD 1
-#endif
+#include "nstd/custom_types.h"
+#include NSTD_UNORDERED_MAP_INCLUDE
 
 #include <mutex>
 
@@ -60,7 +53,7 @@ namespace nstd
 			if constexpr (have_transparent_find<TRaw, Key>)
 			{
 				auto found = map.find(key);
-#if _DEBUG && (!NSTD_OS_MODULE_INFO_DATA_CACHE_STD || _ITERATOR_DEBUG_LEVEL < 2)
+#if _DEBUG
 				if (!ignore_errors && found == map.end( ))
 					throw std::out_of_range("invalid cache_impl<K, T> key");
 #endif
@@ -77,7 +70,6 @@ namespace nstd
 		template <typename T, std::equality_comparable_with<typename T::key_type> Key>
 		const typename T::mapped_type& const_access_helper(const T& map, const Key& key, bool ignore_errors)
 		{
-#if  !NSTD_OS_MODULE_INFO_DATA_CACHE_STD
 #ifdef _DEBUG
 			if constexpr (have_transparent_at<T, Key>)
 			{
@@ -89,7 +81,7 @@ namespace nstd
 					return map[key];
 				else
 #endif
-#endif
+
 			return find_helper(map, key, ignore_errors)->second;
 		}
 
@@ -100,30 +92,7 @@ namespace nstd
 				, typename ...CreateArgs>
 		class cache_impl : public cache<KeyType, DataType, KeyTypeTransparent, CreateArgs...>
 		{
-#ifdef _MUTEX_
 			using lock_unlock = std::scoped_lock<MutexType>;
-#else
-				class _NODISCARD lock_unlock
-{
-	public:
-	explicit lock_unlock(MutexType& mtx)
-		: mutex_(mtx)
-	{
-		mutex_.lock();
-	}
-
-	~lock_unlock() noexcept
-	{
-		mutex_.unlock();
-	}
-
-	lock_unlock(const lock_unlock&) = delete;
-	lock_unlock& operator=(const lock_unlock&) = delete;
-
-	private:
-	MutexType& mutex_;
-};
-#endif
 
 		public:
 			using Access = cache<KeyType, DataType, KeyTypeTransparent, CreateArgs...>;
@@ -140,7 +109,7 @@ namespace nstd
 			using mutex_type = MutexType;
 
 		private:
-			using cache_type = NSTD_OS_MODULE_INFO_DATA_CACHE<key_type, mapped_type>;
+			using cache_type = NSTD_UNORDERED_MAP<key_type, mapped_type>;
 
 			template <typename T>
 			return_value at_universal(T&& entry, CreateArgs ...create_args)
