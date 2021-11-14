@@ -1,20 +1,61 @@
 #include "runtime_assert.h"
-
 #include "overload.h"
 
 #include <algorithm>
 #include <stdexcept>
 #include <variant>
 #include <vector>
+#undef NDEBUG
+#include <assert.h>
 
 using namespace nstd;
 
-using r = rt_assert_handler_root;
+static void _Assert(const char* expression, const char* message, const std::source_location& location) noexcept
+{
+	constexpr auto make_wstring = [](const char* str)
+	{
+		return std::wstring(str, str + std::char_traits<char>::length(str));
+	};
+
+	std::wstring msg;
+	if (!expression)
+	{
+		msg = make_wstring(message);
+	}
+	else if (!message)
+	{
+		msg = make_wstring(expression);
+	}
+	else
+	{
+		msg += make_wstring(message);
+		msg += L" (";
+		msg += make_wstring(expression);
+		msg += L')';
+	}
+
+	return _wassert(msg.c_str( ), make_wstring(location.file_name( )).c_str( ), location.line( ));
+}
+
+struct default_assert_handler final : rt_assert_handler
+{
+	void handle(bool expression_result, const char* expression, const char* message, const std::source_location& location) noexcept override
+	{
+		if (expression_result)
+			return;
+		_Assert(expression, message, location);
+	}
+
+	void handle(const char* message, const std::source_location& location) noexcept override
+	{
+		_Assert(nullptr, message, location);
+	}
+};
 
 static constexpr auto _Get_handler_ptr =
-		overload([](const r::handler_shared& h) { return h.get( ); }
-			   , [](const r::handler_unique& h) { return h.get( ); }
-			   , [](const r::handler_ref& h) { return std::addressof(h.get( )); }
+		overload([](const rt_assert_handler_root::handler_shared& h) { return h.get( ); }
+			   , [](const rt_assert_handler_root::handler_unique& h) { return h.get( ); }
+			   , [](const rt_assert_handler_root::handler_ref& h) { return std::addressof(h.get( )); }
 			   , [](rt_assert_handler* const h) { return h; }
 			   , [](rt_assert_handler& h) { return std::addressof(h); });
 
@@ -37,28 +78,23 @@ struct root_handler_element
 	}
 
 private:
-	std::variant<r::handler_unique, r::handler_shared, r::handler_ref> data_;
+	std::variant<rt_assert_handler_root::handler_unique, rt_assert_handler_root::handler_shared, rt_assert_handler_root::handler_ref> data_;
 };
-
-//void log(const std::string_view message,
-//	const std::source_location location =
-//	std::source_location::current())
-//{
-//	std::cout << "file: "
-//		<< location.file_name() << "("
-//		<< location.line() << ":"
-//		<< location.column() << ") `"
-//		<< location.function_name() << "`: "
-//		<< message << '\n';
-//}
 
 struct rt_assert_handler_root::data_type : std::vector<root_handler_element>
 {
 };
 
+template <typename T>
+static auto _Add_wrapper(rt_assert_handler_root* _this, T obj)
+{
+	_this->add(std::forward<T>(obj));
+}
+
 rt_assert_handler_root::rt_assert_handler_root( )
 {
 	data_ = std::make_unique<data_type>( );
+	this->add(std::make_unique<default_assert_handler>( ));
 }
 
 rt_assert_handler_root::~rt_assert_handler_root( ) = default;
@@ -79,21 +115,25 @@ static void _Validate_id(T&& h, S&& data)
 void rt_assert_handler_root::add(handler_unique&& handler) const
 {
 	auto& d = *data_;
+#ifdef _DEBUG
 	_Validate_id(handler, d);
+#endif
 	d.push_back(std::move(handler));
 }
 
-void rt_assert_handler_root::add(const handler_shared& handler) const
-{
-	auto& d = *data_;
-	_Validate_id(handler, d);
-	d.push_back(handler);
-}
+//void rt_assert_handler_root::add(const handler_shared& handler) const
+//{
+//	auto& d = *data_;
+//	_Validate_id(handler, d);
+//	d.push_back(handler);
+//}
 
 void rt_assert_handler_root::add(const handler_ref& handler) const
 {
 	auto& d = *data_;
+#ifdef _DEBUG
 	_Validate_id(handler, d);
+#endif
 	d.push_back(handler);
 }
 

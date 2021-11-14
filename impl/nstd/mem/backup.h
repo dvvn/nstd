@@ -45,6 +45,8 @@ namespace nstd::mem
 			from = T(std::forward<T1>(owerride));
 		}
 
+		const T& get( ) const { return backup_->value; }
+
 	private:
 		void restore_impl( )
 		{

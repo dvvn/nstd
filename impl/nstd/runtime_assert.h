@@ -15,7 +15,7 @@ namespace nstd
 		virtual void handle(bool expression_result, const char* expression, const char* message, const std::source_location& location) noexcept = 0;
 		virtual void handle(const char* message, const std::source_location& location) noexcept = 0;
 
-		virtual size_t id( ) const = 0;
+		virtual size_t id( ) const { return reinterpret_cast<size_t>(this); };
 	};
 
 	class rt_assert_handler_root final
@@ -30,7 +30,7 @@ namespace nstd
 
 		void add(handler_unique&& handler) const;
 
-		void add(const handler_shared& handler) const;
+		//void add(const handler_shared& handler) const;
 
 		void add(const handler_ref& handler) const;
 		void add(rt_assert_handler* handler) const;
@@ -58,6 +58,7 @@ namespace nstd
 // ReSharper disable CppInconsistentNaming
 #define runtime_assert_call(_EXPRESSION_OR_MESSAGE_,...) \
 	nstd::rt_assert_object::get_ptr()->handle(_EXPRESSION_OR_MESSAGE_,_STRINGIZE(_EXPRESSION_OR_MESSAGE_),##__VA_ARGS__)
+
 #define runtime_assert_add_handler_impl(_HANDLER_) nstd::rt_assert_object::get_ptr( )->add(_HANDLER_)
 #define runtime_assert_remove_handler_impl(_HANDLER_) nstd::rt_assert_object::get_ptr( )->remove(_HANDLER_)
 // ReSharper restore CppInconsistentNaming
