@@ -84,9 +84,8 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtable)
 		return tmp;
 	}( );
 
-	const auto bytes = info_ptr->mem_block( );
-
-	const auto target_block = bytes.find_block(nstd::make_signature<make_signature_tag_direct{}>(real_name));
+	const auto bytes        = info_ptr->mem_block( );
+	const auto target_block = bytes.find_block(make_signature(real_name.begin( ), real_name.end( ), make_signature_tag_direct{}));
 	//class descriptor
 	runtime_assert(!target_block.empty( ));
 

@@ -21,7 +21,10 @@ namespace nstd
 		if constexpr (checker(sizeof(From), sizeof(To)))
 			return static_cast<To>(val);
 		else if constexpr (sizeof...(Ts) > 0)
-			return size_cast<Fn, From, Ts...>(val);
+		{
+			auto chk=std::_Pass_fn(checker);
+			return size_cast<decltype(chk), From, Ts...>(val, chk);
+		}
 		else
 			static_assert(std::_Always_false<From>, __FUNCTION__": unknown from type!");
 	}

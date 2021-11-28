@@ -19,7 +19,7 @@ namespace std
 namespace nstd
 {
 	template <typename T>
-	concept has_array_access = requires(const T& obj)
+	concept has_array_access = requires(const T & obj)
 	{
 		obj[0u];
 	};
@@ -37,7 +37,7 @@ namespace nstd
 
 		template <typename T>
 		concept std_string_based_impl = basic_string_like<T> &&
-										std::derived_from<T, std::basic_string<typename T::value_type, typename T::traits_type, typename T::allocator_type>>;
+			std::derived_from<T, std::basic_string<typename T::value_type, typename T::traits_type, typename T::allocator_type>>;
 
 		template <typename T>
 		concept basic_string_view_like = requires
@@ -48,11 +48,11 @@ namespace nstd
 
 		template <typename T>
 		concept std_string_view_based_impl = basic_string_view_like<T> &&
-											 std::derived_from<T, std::basic_string_view<typename T::value_type, typename T::traits_type>>;
+			std::derived_from<T, std::basic_string_view<typename T::value_type, typename T::traits_type>>;
 
 		template <typename T>
 		concept std_string_or_view_impl = basic_string_view_like<T> &&
-										  std::constructible_from<std::basic_string_view<typename T::value_type, typename T::traits_type>, T>;
+			std::constructible_from<std::basic_string_view<typename T::value_type, typename T::traits_type>, T>;
 	}
 
 	template <typename T>
@@ -67,14 +67,21 @@ namespace nstd
 #pragma endregion
 
 	template <typename T>
-		struct remove_all_pointers : std::conditional_t<
-					std::is_pointer_v<T>,
-					remove_all_pointers<std::remove_pointer_t<T>>,
-					std::type_identity<T>
-				>
-		{
-		};
+	struct remove_all_pointers : std::conditional_t<
+		std::is_pointer_v<T>,
+		remove_all_pointers<std::remove_pointer_t<T>>,
+		std::type_identity<T> 				>
+	{
+	};
 
-		template <typename T>
-		using remove_all_pointers_t = typename remove_all_pointers<T>::type;
+	template <typename T>
+	using remove_all_pointers_t = typename remove_all_pointers<T>::type;
 }
+
+#if defined(_CONSTEXPR20_CONTAINTER)
+#define NSTD_CONSTEXPR_CONTAINTER _CONSTEXPR20_CONTAINTER
+#elif defined(_CONSTEXPR20)
+#define NSTD_CONSTEXPR_CONTAINTER _CONSTEXPR20
+#else
+#define NSTD_CONSTEXPR_UNISTRING 
+#endif

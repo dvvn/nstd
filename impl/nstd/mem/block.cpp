@@ -64,6 +64,7 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 	size_t offset  = 0;
 	size_t scanned = 0;
 
+
 	const auto& [known0, skip0] = unkbytes[0];
 	if (!known0.empty( ))
 	{

@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include <ww898/utf_converters.hpp>
-
 #include "type_traits.h"
+
+#include <ww898/utf_converters.hpp>
 
 template < >
 struct ww898::utf::detail::utf_selector<char8_t> final
@@ -10,11 +10,13 @@ struct ww898::utf::detail::utf_selector<char8_t> final
 	using type = utf8;
 };
 
+
+
 // ReSharper disable CppRedundantInlineSpecifier
 namespace nstd
 {
 	template <typename CharType>
-		concept unistring_support = std::destructible<ww898::utf::detail::utf_selector<CharType>>;
+	concept unistring_support = std::destructible<ww898::utf::detail::utf_selector<CharType>>;
 
 	namespace detail
 	{
@@ -27,7 +29,7 @@ namespace nstd
 		template <typename T, typename ...Ts>
 		using unistring_type_selector_t = typename std::disjunction<size_checker<T, Ts>...>::type;
 
-		
+
 
 		template <class T, typename New>
 		using rebind_helper = typename std::_Replace_first_parameter<New, T>::type;
@@ -40,8 +42,8 @@ namespace nstd
 		{
 			using namespace ww898::utf;
 			conv<utf_selector_t<typename In::value_type>, utf_selector_t<typename Out::value_type>>(
-					in._Unchecked_begin( ), in._Unchecked_end( ), std::back_inserter(out)
-					);
+				in._Unchecked_begin(), in._Unchecked_end(), std::back_inserter(out)
+				);
 		}
 
 		template <typename In, typename Out>
@@ -54,7 +56,7 @@ namespace nstd
 			auto _Size = [&]
 			{
 				if constexpr (std::is_class_v<input_type>)
-					return in.size( );
+					return in.size();
 				else
 				{
 					static_assert(std::is_bounded_array_v<input_type>, __FUNCTION__": unknown input type");
@@ -66,7 +68,7 @@ namespace nstd
 
 			if constexpr (sizeof(std::remove_cvref_t<decltype(in[0])>) != sizeof(value_type))
 			{
-				out.reserve(_Size( ));
+				out.reserve(_Size());
 				for (auto c : in)
 					out.push_back(static_cast<value_type>(c));
 			}
@@ -84,7 +86,7 @@ namespace nstd
 				// ReSharper disable once CppInconsistentNaming
 				auto _Begin = std::addressof(in[0]);
 				// ReSharper disable once CppInconsistentNaming
-				auto _End = std::next(_Begin, _Size( ));
+				auto _End = std::next(_Begin, _Size());
 				out.append(static_cast<const value_type*>(_Begin), static_cast<const value_type*>(_End));
 			}
 		}
@@ -156,7 +158,7 @@ namespace nstd
 		}
 
 		template <typename CharType, typename Chr, size_t N>
-		auto unistring_convert(const Chr (&in)[N])
+		auto unistring_convert(const Chr(&in)[N])
 		{
 			using char_type = Chr;
 
@@ -193,9 +195,9 @@ namespace nstd
 	}
 
 	template <unistring_support CharType   //--
-	  , typename Tr = std::char_traits<CharType> //--
-	  , typename Al = std::allocator<CharType>>
-	class basic_unistring : public std::basic_string<CharType, Tr, Al>
+		, typename Tr = std::char_traits<CharType> //--
+		, typename Al = std::allocator<CharType>>
+		class basic_unistring : public std::basic_string<CharType, Tr, Al>
 	{
 		template <typename Chr>
 		static constexpr bool other_char_type_v = !std::same_as<CharType, Chr> && unistring_support<Chr>;
@@ -203,16 +205,16 @@ namespace nstd
 	public:
 		using _Str_type = std::basic_string<CharType, Tr, Al>;
 
-		_CONSTEXPR20_CONTAINER basic_unistring() = default;
+		NSTD_CONSTEXPR_CONTAINTER basic_unistring() = default;
 
 		template <has_array_access T>
-		_CONSTEXPR20_CONTAINER basic_unistring(T&& obj)
+		NSTD_CONSTEXPR_CONTAINTER basic_unistring(T&& obj)
 			: _Str_type(detail::unistring_convert<CharType>(std::forward<T>(obj)))
 		{
 		}
 
 		template <has_array_access T>
-		_CONSTEXPR20_CONTAINER bool starts_with(T&& other) const
+		NSTD_CONSTEXPR_CONTAINTER bool starts_with(T&& other) const
 			requires(other_char_type_v<std::remove_cvref_t<decltype(other[0])>>)
 		{
 			const auto other2 = detail::unistring_convert<CharType>(std::forward<T>(other));
@@ -222,7 +224,7 @@ namespace nstd
 		using _Str_type::starts_with;
 
 		template <has_array_access T>
-		_CONSTEXPR20_CONTAINER basic_unistring& assign(T&& other)
+		NSTD_CONSTEXPR_CONTAINTER basic_unistring& assign(T&& other)
 			requires(other_char_type_v<std::remove_cvref_t<decltype(other[0])>>)
 		{
 			_Str_type::assign(detail::unistring_convert<CharType>(std::forward<T>(other)));
@@ -232,7 +234,7 @@ namespace nstd
 		using _Str_type::assign;
 
 		template <has_array_access T>
-		_CONSTEXPR20_CONTAINER basic_unistring& append(T&& str)
+		NSTD_CONSTEXPR_CONTAINTER basic_unistring& append(T&& str)
 			requires(other_char_type_v<std::remove_cvref_t<decltype(str[0])>>)
 		{
 			_Str_type::append(detail::unistring_convert<CharType>(std::forward<T>(str)));
@@ -241,10 +243,10 @@ namespace nstd
 
 		template <typename T>
 			requires(!has_array_access<T>)
-		_CONSTEXPR20_CONTAINER basic_unistring& append(const T& str)
+		NSTD_CONSTEXPR_CONTAINTER basic_unistring& append(T str)
 			requires(other_char_type_v<T>)
 		{
-			const T fake_string[] = {str, static_cast<T>('\0')};
+			const T fake_string[] = { str, static_cast<T>('\0') };
 			return this->append(fake_string);
 		}
 
@@ -255,14 +257,14 @@ namespace nstd
 	{
 		template <typename T>
 		concept unistring_based_impl = basic_string_like<T> &&
-									   std::derived_from<T, basic_unistring<typename T::value_type, typename T::traits_type, typename T::allocator_type>>;
+			std::derived_from<T, basic_unistring<typename T::value_type, typename T::traits_type, typename T::allocator_type>>;
 	}
 
 	template <typename T>
 	concept unistring_based = detail::unistring_based_impl<std::remove_cvref_t<T>>;
 
 	template <typename T>
-	concept unistring_covertible = !unistring_based<T> && requires(const T& obj)
+	concept unistring_covertible = !unistring_based<T> && requires(const T & obj)
 	{
 		detail::unistring_convert<wchar_t>(obj);
 	};
@@ -274,7 +276,7 @@ namespace nstd
 	using unistring = basic_unistring<unistring_select_type<T>>;
 
 	template <unistring_covertible T>
-	basic_unistring(T&& val) -> basic_unistring<unistring_select_type<std::remove_cvref_t<decltype(val[0])>>>;
+	basic_unistring(T&& val)->basic_unistring<unistring_select_type<std::remove_cvref_t<decltype(val[0])>>>;
 
 	template <unistring_covertible L, unistring_based R>
 	bool operator==(L&& l, const R& r)
