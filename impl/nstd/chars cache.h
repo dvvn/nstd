@@ -23,45 +23,46 @@ namespace nstd
 
 		template <size_type...Idx>
 		constexpr chars_cache(const Chr* arr, std::index_sequence<Idx...>)
-			: cache{arr[Idx]...}
+			: cache{ arr[Idx]... }
 		{
 		}
 
 		template <size_type...Idx>
 		constexpr chars_cache(const Chr* arr)
-			: chars_cache((arr), std::make_index_sequence<Size>( ))
+			: chars_cache((arr), std::make_index_sequence<Size>())
 		{
 		}
 
-		constexpr chars_cache(const Chr (&arr)[Size])
-			: chars_cache((arr), std::make_index_sequence<Size>( ))
+		constexpr chars_cache(const Chr(&arr)[Size])
+			: chars_cache((arr), std::make_index_sequence<Size>())
 		{
 		}
 
 		template <size_type...Idx>
 		constexpr chars_cache(const view_type& view, std::index_sequence<Idx...>)
-			: cache{Idx < view.size( ) ? view[Idx] : static_cast<Chr>('\0')...}
+			: cache{ Idx < view.size() ? view[Idx] : static_cast<Chr>('\0')... }
 		{
-			if (view.size( ) >= Size)
+			if (view.size() >= Size)
 				throw std::_Xruntime_error("incorrect string_view size!");
 		}
 
 		constexpr chars_cache(const view_type& view)
-			: chars_cache(view, std::make_index_sequence<Size>( ))
+			: chars_cache(view, std::make_index_sequence<Size>())
 		{
 		}
 
 		constexpr chars_cache(const std::array<Chr, Size>& arr)
-			: chars_cache(arr._Unchecked_begin( ), std::make_index_sequence<Size>( ))
+			: chars_cache(arr._Unchecked_begin(), std::make_index_sequence<Size>())
 		{
 		}
 
 		template <size_t Size2>
 			requires(Size2 < Size)
 		constexpr chars_cache(const std::array<Chr, Size2>& arr)
-			: chars_cache(arr._Unchecked_begin( ), std::make_index_sequence<Size2>( ))
+			: chars_cache(arr._Unchecked_begin(), std::make_index_sequence<Size2>())
 		{
-			cache[Size2] = '\0';
+			if (arr.back() != 0)
+				cache[Size2] = '\0';
 		}
 
 		template <size_t Size2>
@@ -71,14 +72,14 @@ namespace nstd
 		{
 		}
 
-		constexpr bool empty( ) const
+		constexpr bool empty() const
 		{
-			return cache.front( ) == static_cast<Chr>('\0');
+			return cache.front() == static_cast<Chr>('\0');
 		}
 
-		constexpr view_type view( ) const
+		constexpr view_type view() const
 		{
-			return {cache._Unchecked_begin( ), (size - 1)};
+			return { cache._Unchecked_begin(), (size - 1) };
 		}
 	};
 }
