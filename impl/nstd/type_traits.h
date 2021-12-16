@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <concepts>
+#include <xutility>
 
 namespace std
 {
@@ -18,12 +19,84 @@ namespace std
 
 namespace nstd
 {
+	namespace detail
+	{
+		template <typename T>
+		constexpr decltype(auto) type_name_impl0() { return __FUNCSIG__; }
+
+		template <template<class...> class T>
+		constexpr decltype(auto) type_name_impl0() { return __FUNCSIG__; }
+
+		constexpr bool template_comparer(const char* _L, const char* _R)
+		{
+			if (_L == _R)
+				return true;
+
+			//skip XXXXtype_name_impl0
+			do {
+				++_L;
+			} while (*_R++ != '<');
+
+			for (;;)
+			{
+				auto l = *_L++;
+				auto r = *_R++;
+
+				if (l != r)
+				{
+					return l == '>' || r == '>'//partial template _Class
+						|| l == '<' || r == '<';//full template _Class<XXX>;
+				}
+				if (l == '\0')
+					return false;
+				if (l == '<' || l == '>')
+					return true;
+			}
+		}
+	}
+
+	template < class T1, template<class...> class T2>
+	constexpr bool same_template()
+	{
+		using namespace nstd::detail;
+		return template_comparer(type_name_impl0<T1>(), type_name_impl0<T2>());
+	}
+
+	template <template<class...> class T1, class T2>
+	constexpr bool same_template()
+	{
+		return same_template<T2, T1>();
+	}
+
+	template <template<class...> class T1, template<class...> class T2>
+	constexpr bool same_template()
+	{
+		using namespace nstd::detail;
+		return template_comparer(type_name_impl0<T1>(), type_name_impl0<T2>());
+	}
+
+	template <class T1, class T2>
+	constexpr bool same_template()
+	{
+		using namespace nstd::detail;
+		return std::is_same_v<T1, T2> || template_comparer(type_name_impl0<T1>(), type_name_impl0<T2>());
+	}
+
 	template <typename T>
 	concept has_array_access = requires(const T & obj)
 	{
 		obj[0u];
 	};
 
+	template <class _Ty>
+	concept _Has_member_allocator_type = requires {
+		typename _Ty::allocator_type;
+	};
+
+	template <class T, typename New>
+	using rebind_helper = typename std::_Replace_first_parameter<New, T>::type;
+
+#if 0
 #pragma region STRING TOOLS
 	namespace detail
 	{
@@ -65,12 +138,14 @@ namespace nstd
 	concept std_string_or_view = detail::std_string_or_view_impl<std::remove_cvref_t<T>>;
 
 #pragma endregion
+#endif
+
 
 	template <typename T>
 	struct remove_all_pointers : std::conditional_t<
 		std::is_pointer_v<T>,
 		remove_all_pointers<std::remove_pointer_t<T>>,
-		std::type_identity<T> 				>
+		std::type_identity<T> >
 	{
 	};
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "type_traits.h"
+#include "string.h"
 
 #include <algorithm>
 #include <string>
@@ -56,8 +57,7 @@ namespace nstd
 
 	namespace detail
 	{
-		template <typename T>
-		constexpr decltype(auto) type_name_impl0() { return __FUNCSIG__; }
+		
 
 		template <typename T>
 		constexpr auto type_name_impl()
@@ -67,8 +67,7 @@ namespace nstd
 			constexpr auto start = n0.find('<') + 1;
 			constexpr auto end = n0.rfind('>');
 			constexpr auto name_size = end - start;
-			const auto name_sv = n0.substr(start, name_size);
-			auto name = std::string(name_sv);
+			auto name = std::string(n0.substr(start, name_size));
 
 			erase_substring(name, "struct ");
 			erase_substring(name, "class ");
