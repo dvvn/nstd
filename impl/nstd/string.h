@@ -1,5 +1,6 @@
 #pragma once
 
+#if 0
 #include "type_traits.h"
 #include "runtime_assert_fwd.h"
 
@@ -62,4 +63,4 @@ namespace nstd
 		}
 	};
 }
-
+#endif

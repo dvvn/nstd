@@ -1,9 +1,13 @@
 ﻿#pragma once
 
 #include "type_traits.h"
-#include "string.h"
 
 #include <ww898/utf_converters.hpp>
+
+#ifdef _DEBUG
+#include <algorithm>
+#endif
+#include <vector>
 
 template < >
 struct ww898::utf::detail::utf_selector<char8_t> final
@@ -31,41 +35,40 @@ namespace nstd
 			std::vector<out_val> buff;
 			conv<_In, _Out>(std::forward<It>(bg), std::forward<It>(ed), std::back_inserter(buff));
 
-			out.insert(out.end(), buff.begin(), buff.end());
+			out.insert(out.end( ), buff.begin( ), buff.end( ));
 		}
 
-		template<typename In, class  Out>
+		template <typename In, class Out>
 		void unistring_convert_impl(const In& in, Out& out)
 		{
 			namespace rn = std::ranges;
 			unistring_convert_impl(rn::_Ubegin(in), rn::_Uend(in), out);
 		}
 
-		template<typename In, class Out>
+		template <typename In, class Out>
 		void unistring_copy_move(In&& in, Out& out)
 		{
 			using out_t = std::ranges::range_value_t<Out>;
-			if (out.empty())
+			if (out.empty( ))
 			{
 				if constexpr (std::assignable_from<Out, In>)
 					out = std::forward<In>(in);
 				else
-					out = { in.begin(), in.end() };
+					out = Out(in.begin( ), in.end( ));
 			}
 			else
 			{
-				out.insert(out.end(), in.begin(), in.end());
+				out.insert(out.end( ), in.begin( ), in.end( ));
 			}
 		}
 
-		template<typename In, typename Out>
-		constexpr bool compatible_allocators()
+		template <typename In, typename Out>
+		constexpr bool compatible_allocators( )
 		{
 			if constexpr (!_Has_member_allocator_type<In>)
 				return false;
 			else
 				return same_template<typename In::allocator_type, typename Out::allocator_type>;
-
 		}
 
 		template <std::ranges::random_access_range In, class Out>
@@ -81,9 +84,9 @@ namespace nstd
 			}
 			else if constexpr (sizeof(in_t) <= sizeof(out_t)
 #ifdef __cpp_lib_char8_t
-				&& !std::_Is_any_of_v<char8_t, in_t, out_t>
+							   && !std::_Is_any_of_v<char8_t, in_t, out_t>
 #endif
-				)
+			)
 			{
 #ifdef _DEBUG
 				std::vector<out_t> out_debug;
@@ -92,11 +95,11 @@ namespace nstd
 #endif
 				using InRaw = std::remove_reference_t<In>;
 				if constexpr (std::is_rvalue_reference_v<decltype(in)>
-					&& sizeof(InRaw) == sizeof(Out)
-					&& same_template<InRaw, Out>()
-					&& compatible_allocators<InRaw, Out>())
+							  && sizeof(InRaw) == sizeof(Out)
+							  && same_template<InRaw, Out>( )
+							  && compatible_allocators<InRaw, Out>( ))
 				{
-					static_assert(same_template<std::allocator<out_t>, typename Out::allocator_type>(), "Only default allocator type supported");
+					static_assert(same_template<std::allocator<out_t>, typename Out::allocator_type>( ), "Only default allocator type supported");
 					runtime_assert(out.empty());
 					std::swap(reinterpret_cast<Out&>(in), out);
 				}
@@ -114,32 +117,31 @@ namespace nstd
 			}
 		}
 
-		template < typename Chr, size_t N, class Out>
-		void unistring_convert(const Chr(&in)[N], Out& out)
+		template <typename Chr, size_t N, class Out>
+		void unistring_convert(const Chr (&in)[N], Out& out)
 		{
-			using view_type = nstd::basic_string_view<Chr>;
+			using view_type = std::basic_string_view<Chr>;
 			unistring_convert<view_type>(in, out);
 		}
 	}
 
 	template <unistring_support CharType
-		, typename Tr = std::char_traits<CharType>
-		, typename Al = std::allocator<CharType>
-		, class Base = std::basic_string<CharType, Tr, Al>>
-		class basic_unistring : public Base
+	  , typename Tr = std::char_traits<CharType>, typename Al = std::allocator<CharType>, class Base = std::basic_string<CharType, Tr, Al>>
+	class basic_unistring : public Base
 	{
 	public:
 		using Base::basic_string;
 
-		template<class T>
-		NSTD_CONSTEXPR_CONTAINTER basic_unistring(T&& obj) : Base()
+		template <class T>
+		NSTD_CONSTEXPR_CONTAINTER basic_unistring(T&& obj)
+			: Base( )
 		{
 			detail::unistring_convert(std::forward<T>(obj), *this);
 		}
 
 		using Base::assign;
 
-		template<class T>
+		template <class T>
 		NSTD_CONSTEXPR_CONTAINTER basic_unistring& assign(T&& other)
 		{
 			auto tmp = basic_unistring(std::forward<T>(other));
@@ -152,7 +154,7 @@ namespace nstd
 		template <class T>
 		NSTD_CONSTEXPR_CONTAINTER basic_unistring& append(T&& str)
 		{
-			if (this->empty())
+			if (this->empty( ))
 				return assign(std::forward<T>(str));
 
 			detail::unistring_convert(str, *this);
@@ -192,8 +194,6 @@ namespace nstd
 
 		template <typename T, typename ...Ts>
 		using unistring_type_selector_t = typename std::disjunction<size_checker<T, Ts>...>::type;
-
-
 	}
 
 	/*template <typename T>
