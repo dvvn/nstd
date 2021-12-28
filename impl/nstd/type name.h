@@ -91,7 +91,7 @@ namespace nstd
 		const auto end = str.end( );
 		for (;;)
 		{
-			const auto limit = std::distance(itr, end);
+			const size_t limit = std::distance(itr, end);
 			if (limit < substr.size( ))
 			{
 				if (!already_filled)

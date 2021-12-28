@@ -1,7 +1,7 @@
 #include "vtables.h"
 #include "cache_impl.h"
 
-#include "nstd/runtime_assert_fwd.h"
+#include "nstd/runtime_assert.h"
 #include "nstd/module/info.h"
 #include "nstd/signature.h"
 

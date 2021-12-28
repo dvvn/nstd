@@ -1,6 +1,6 @@
 #include "to_memory.h"
 
-#include <nstd/runtime_assert_fwd.h>
+#include <nstd/runtime_assert.h>
 
 #include <fstream>
 #include <functional>

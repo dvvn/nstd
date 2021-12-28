@@ -1,5 +1,5 @@
 #pragma once
-#include "runtime_assert_fwd.h"
+#include "runtime_assert.h"
 
 #include <chrono>
 
