@@ -137,11 +137,9 @@ namespace nstd
 	namespace detail
 	{
 		template<typename Chr, size_t Size>
-		constexpr auto prepare_buffer(size_t limit = static_cast<size_t>(-1))
+		constexpr auto prepare_buffer( )
 		{
 			std::array<Chr, Size + 1> buffer = {};
-			/*if (buffer.size( ) >= limit)
-				throw std::length_error("Buffer too small");*/
 			*buffer.begin( ) = 0;
 			return buffer;
 		}
@@ -250,7 +248,7 @@ namespace nstd
 		}
 #endif
 
-		auto buffer = detail::prepare_buffer<char, 255>(in.size( ));
+		auto buffer = detail::prepare_buffer<char, 255>( );
 		auto bg = buffer.begin( );
 		if (drop.ends_with("::"))
 		{
@@ -258,7 +256,7 @@ namespace nstd
 		}
 		else
 		{
-			auto tmp_buffer = detail::prepare_buffer<char, 63>(drop.size( ));
+			auto tmp_buffer = detail::prepare_buffer<char, 63>( );
 			auto pos = std::copy(drop.begin( ), drop.end( ), tmp_buffer.begin( ));
 			*pos++ = ':';
 			auto tmp_buffer_size = drop.size( ) + 1;
