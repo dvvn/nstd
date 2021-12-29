@@ -1,15 +1,15 @@
-#include "info.h"
+module;
 
-#include <nstd/runtime_assert_fwd.h>
-
-#include <Windows.h>
-#include <winternl.h>
+#include "nstd/ranges.h"
+#include "nstd/runtime_assert.h"
+#include "info_includes.h"
 
 #include <functional>
-#include <ranges>
+
+module nstd.rtlib.info;
 
 using namespace nstd;
-using namespace nstd::module;
+using namespace nstd::rtlib;
 
 info* info::root_class( ) { return this; }
 const info* info::root_class( ) const { return this; }

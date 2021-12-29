@@ -1,43 +1,42 @@
-#include "exports.h"
+module;
+#include "info_includes.h"
+#include "nstd/ranges.h"
 
-#include "all_infos.h"
-#include "cache_impl.h"
-
-#include <nstd/module/info.h>
-
-#include <Windows.h>
-
-#include <ranges>
+module nstd.rtlib.exports;
+import nstd.rtlib.all_infos;
+//#include "all_infos.h"
+//
+//#include <nstd/module/info.h>
 
 using namespace nstd;
-using namespace nstd::module;
+using namespace nstd::rtlib;
 
-NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
+auto exports::create(const key_type& entry) -> create_result
 {
 	//fill whole cache
 
-	const auto nt = info_ptr->NT( );
+	const auto nt = root_class()->NT( );
 
 	// get export data directory.
 	const auto data_dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
 	if (!data_dir->VirtualAddress)
-		throw std::runtime_error("Current module doesnt have virtual address!");
+		throw std::runtime_error("Current module doesn't have virtual address!");
 
-	const auto base_address = info_ptr->base( );
+	const auto base_address = root_class( )->base( );
 
 	// get export dir.
 	const auto dir = base_address.add(data_dir->VirtualAddress).ptr<IMAGE_EXPORT_DIRECTORY>( );
 #ifdef NDEBUG
-    if (!dir)
+	if (!dir)
 		return {};
 #endif
 	// names / funcs / ordinals ( all of these are RVAs ).
 	const auto names = base_address.add(dir->AddressOfNames).ptr<uint32_t>( );
 	const auto funcs = base_address.add(dir->AddressOfFunctions).ptr<uint32_t>( );
-	const auto ords  = base_address.add(dir->AddressOfNameOrdinals).ptr<uint16_t>( );
+	const auto ords = base_address.add(dir->AddressOfNameOrdinals).ptr<uint16_t>( );
 #ifdef NDEBUG
-    if (!names || !funcs || !ords)
-        return {};
+	if (!names || !funcs || !ords)
+		return {};
 #endif
 
 	const auto all_modules = all_infos::get_ptr( );
@@ -55,7 +54,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
 			&& export_addr.cast<uintptr_t>() < reinterpret_cast<uintptr_t>(export_directory) + data_directory->Size)
 		 */
 
-		//if (export_ptr < dir || export_ptr >= memory_block(dir, data_dir->Size).addr( ))
+		 //if (export_ptr < dir || export_ptr >= memory_block(dir, data_dir->Size).addr( ))
 		if (const auto export_ptr = base_address + funcs[ords[i]]; export_ptr < dir || export_ptr >= address(dir) + data_dir->Size)
 		{
 			this->emplace(export_name, export_ptr);
@@ -74,11 +73,11 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
 			const auto fwd_module_str = [&]
 			{
 				// get forwarder mod name.
-				const auto fwd_module_name       = fwd_str.substr(0, delim);
+				const auto fwd_module_name = fwd_str.substr(0, delim);
 				const auto fwd_module_name_lower = std::views::transform(fwd_module_name, [](const char c) { return static_cast<wchar_t>(std::tolower(c)); });
 
 				return std::wstring(fwd_module_name_lower.begin( ), fwd_module_name_lower.end( )).append(L".dll");
-			}( );
+			}();
 
 			// get forwarder export name.
 			const auto fwd_export_str = fwd_str.substr(delim + 1);
@@ -89,7 +88,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(export)
 				continue;
 			try
 			{
-				auto& exports       = target_module->exports( );
+				auto& exports = target_module->exports( );
 				auto fwd_export_ptr = exports.at(fwd_export_str);
 
 				this->emplace(export_name, fwd_export_ptr);

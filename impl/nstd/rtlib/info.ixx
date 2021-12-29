@@ -1,41 +1,13 @@
-#pragma once
+module;
 
-//#include "module info/exports_storage.h"
-//#include "module info/sections_storage.h"
-//#include "module info/vtables_storage.h"
+#include "info_includes.h"
 
-#include "exports.h"
-#include "sections.h"
-#include "vtables.h"
+export module nstd.rtlib.info;
+export import :exports;
+export import :sections;
+export import :vtables;
 
-namespace std
-{
-	template <class _Fty>
-	class function;
-}
-
-// ReSharper disable CppInconsistentNaming
-#ifndef _WINTERNL_
-struct _LDR_DATA_TABLE_ENTRY;
-using LDR_DATA_TABLE_ENTRY = _LDR_DATA_TABLE_ENTRY;
-#endif
-#ifndef _WINNT_
-struct _IMAGE_DOS_HEADER;
-using IMAGE_DOS_HEADER = _IMAGE_DOS_HEADER;
-#ifdef _WIN64
-struct _IMAGE_NT_HEADERS64;
-using IMAGE_NT_HEADERS = _IMAGE_NT_HEADERS64;
-#else
-struct _IMAGE_NT_HEADERS;
-using IMAGE_NT_HEADERS = _IMAGE_NT_HEADERS;
-#endif
-#endif
-#ifndef _MINWINDEF_
-using DWORD = unsigned long;
-#endif
-// ReSharper restore CppInconsistentNaming
-
-namespace nstd::module
+export namespace nstd::rtlib
 {
 	class info final : sections, exports, vtables
 	{
@@ -80,9 +52,9 @@ namespace nstd::module
 		const std::wstring& name( ) const;
 		bool name_is_unicode( ) const;
 
-		using sections_t = sections;
-		using exports_t = exports;
-		using vtables_t = vtables;
+		using sections_t = rtlib::sections;
+		using exports_t = rtlib::exports;
+		using vtables_t = rtlib::vtables;
 
 		const sections_t& sections( ) const;
 		const exports_t& exports( ) const;

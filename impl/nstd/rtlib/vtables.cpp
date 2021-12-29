@@ -1,20 +1,25 @@
-#include "vtables.h"
-#include "cache_impl.h"
+module;
+
+#include "info_includes.h"
 
 #include "nstd/runtime_assert.h"
-#include "nstd/module/info.h"
 #include "nstd/signature.h"
 
+#include <optional>
+
+module nstd.rtlib:vtables;
+import nstd.rtlib.info;
+
 using namespace nstd;
-using namespace module;
+using namespace rtlib;
 
 //todo: add x64 support
-static std::optional<vtable_t> _Load_vtable(const section_t& dot_rdata, const section_t& dot_text, address type_descriptor)
+static std::optional<vtables_data> _Load_vtable(const section_t& dot_rdata, const section_t& dot_text, address type_descriptor)
 {
 	const auto all_blocks = [&]
 	{
 		auto storage = std::vector<mem::block>( );
-		auto from    = dot_rdata.block;
+		auto from = dot_rdata.block;
 
 		const auto block = make_signature(type_descriptor);
 		for (;;)
@@ -26,9 +31,9 @@ static std::optional<vtable_t> _Load_vtable(const section_t& dot_rdata, const se
 			storage.push_back(std::move(found_block));
 		}
 		return storage;
-	}( );
+	}();
 
-	for (const auto& block: all_blocks)
+	for (const auto& block : all_blocks)
 	{
 		const address xr = block._Unchecked_begin( );
 
@@ -36,16 +41,16 @@ static std::optional<vtable_t> _Load_vtable(const section_t& dot_rdata, const se
 		if (const uintptr_t vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref( ); vtable_offset != 0)
 			continue;
 
-		// get the object locator
+		// get the object locater
 
 		const auto vtable_address = [&]
 		{
 			const auto object_locator = xr.remove(sizeof(uintptr_t) * 3);
-			const auto sig            = make_signature(object_locator);
-			const auto found          = dot_rdata.block.find_block(sig);
-			const address addr        = found._Unchecked_begin( );
+			const auto sig = make_signature(object_locator);
+			const auto found = dot_rdata.block.find_block(sig);
+			const address addr = found._Unchecked_begin( );
 			return addr + sizeof(uintptr_t);
-		}( );
+		}();
 
 		// check is valid offset
 		if (vtable_address.value( ) <= sizeof(uintptr_t))
@@ -58,7 +63,7 @@ static std::optional<vtable_t> _Load_vtable(const section_t& dot_rdata, const se
 		{
 			const auto sig = make_signature(vtable_address);
 			return dot_text.block.find_block(sig);
-		}( );
+		}();
 
 		if (!temp_result.empty( ))
 			return vtable_t{temp_result._Unchecked_begin( )};
@@ -69,7 +74,7 @@ static std::optional<vtable_t> _Load_vtable(const section_t& dot_rdata, const se
 
 NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtable)
 {
-	constexpr std::string_view prefix  = ".?AV";
+	constexpr std::string_view prefix = ".?AV";
 	constexpr std::string_view postfix = "@@";
 
 	const auto& class_name = entry;
@@ -82,9 +87,9 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtable)
 		tmp += class_name;
 		tmp += postfix;
 		return tmp;
-	}( );
+	}();
 
-	const auto bytes        = info_ptr->mem_block( );
+	const auto bytes = info_ptr->mem_block( );
 	const auto target_block = bytes.find_block(make_signature(real_name.begin( ), real_name.end( ), make_signature_tag_direct{}));
 	//class descriptor
 	runtime_assert(!target_block.empty( ));
@@ -98,7 +103,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtable)
 
 	using namespace std::string_view_literals;
 	const auto& dot_rdata = sections.at(".rdata"sv);
-	const auto& dot_text  = sections.at(".text"sv);
+	const auto& dot_text = sections.at(".text"sv);
 
 	auto result = _Load_vtable(dot_rdata, dot_text, type_descriptor);
 	runtime_assert(result.has_value( ));

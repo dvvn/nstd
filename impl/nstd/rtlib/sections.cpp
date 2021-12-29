@@ -1,23 +1,25 @@
-#include "sections.h"
-#include "cache_impl.h"
+module;
 
-#include "nstd/module/info.h"
+#include "info_includes.h"
+
+#include "nstd/ranges.h"
+#include "nstd/file/to_memory.h"
 
 #include <Windows.h>
 
-using namespace nstd::module;
+export module nstd.rtlib:sections;
 
-#include <nstd/file/to_memory.h>
+using namespace nstd::rtlib;
 
-NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(section)
+auto sections::create(const key_type& entry) -> create_result
 {
-	const auto nt           = info_ptr->NT( );
-	const auto base_address = info_ptr->base( );
+	const auto nt = root_class( )->NT( );
+	const auto base_address = root_class( )->base( );
 
 	const auto number_of_sections = nt->FileHeader.NumberOfSections;
 	this->reserve(number_of_sections);
 
-	const auto section_header      = IMAGE_FIRST_SECTION(nt);
+	const auto section_header = IMAGE_FIRST_SECTION(nt);
 	const auto last_section_header = section_header + number_of_sections;
 
 	for (auto header = section_header; header != last_section_header; ++header)
@@ -27,7 +29,7 @@ NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(section)
 
 		mapped_type info;
 		info.block = {base_address + header->VirtualAddress, header->SizeOfRawData};
-		info.data  = header;
+		info.data = header;
 
 		this->emplace(std::move(info_name), std::move(info));
 	}

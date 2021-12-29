@@ -1,8 +1,10 @@
-#pragma once
+module;
 
 #include <span>
 
-namespace nstd
+export module nstd.mem.block;
+
+export namespace nstd
 {
 	class address;
 	class signature_unknown_bytes;
@@ -10,7 +12,7 @@ namespace nstd
 	class signature_known_bytes;
 }
 
-namespace nstd::mem
+export namespace nstd::mem
 {
 	class block final : std::span<uint8_t>
 	{

@@ -1,6 +1,6 @@
-#include "all_infos.h"
-
-#include <nstd/runtime_assert_fwd.h>
+module;
+#include "nstd/runtime_assert.h"
+#include "nstd/ranges.h"
 
 #include <Windows.h>
 #include <winternl.h>
@@ -9,33 +9,13 @@
 #include <optional>
 #include <vector>
 #include <algorithm>
-#include <ranges>
 #include <functional>
 
+module nstd.rtlib.all_infos;
+import nstd.address;
+
 using namespace nstd;
-using namespace nstd::module;
-
-struct modules_storage::storage_type : std::list<info>
-{
-	storage_type(const storage_type&)            = delete;
-	storage_type& operator=(const storage_type&) = delete;
-
-	storage_type(storage_type&&)            = default;
-	storage_type& operator=(storage_type&&) = default;
-
-	storage_type( ) = default;
-};
-
-modules_storage::modules_storage(modules_storage&&) noexcept = default;
-
-modules_storage& modules_storage::operator=(modules_storage&&) noexcept = default;
-
-modules_storage::modules_storage( )
-{
-	storage_ = std::make_unique<storage_type>( );
-}
-
-modules_storage::~modules_storage( ) = default;
+using namespace nstd::rtlib;
 
 struct header
 {
@@ -62,7 +42,7 @@ static std::optional<header> _Get_file_headers(address base)
 
 	// set out dos and nt.
 	result.dos = dos;
-	result.nt  = nt;
+	result.nt = nt;
 
 	return result;
 }
@@ -127,7 +107,7 @@ static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 	MEMORY_BASIC_INFORMATION info;
 	constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
 
-	//todo: is this is dll, try to load this fuction from inside
+	//todo: is this is dll, try to load this function from inside
 	const auto len = VirtualQueryEx(GetCurrentProcess( ), _Get_current_module_handle, &info, info_size);
 	runtime_assert(len == info_size, "Wrong size");
 	return static_cast<HMODULE>(info.AllocationBase);
@@ -142,13 +122,13 @@ modules_storage& modules_storage::update(bool force)
 {
 	static const address current_base = _Get_current_module_handle( );
 
-	if (storage_->empty( ))
+	if (this->empty( ))
 	{
 		runtime_assert(current_cached_ == nullptr, "Cache already set");
-
-		for (auto& m: _Get_all_modules( ))
+		
+		for (auto& m : _Get_all_modules( ))
 		{
-			auto& item = storage_->emplace_back(std::move(m));
+			auto& item = this->emplace_back(std::move(m));
 			if (current_cached_ == nullptr && item.base( ) == current_base)
 				current_cached_ = std::addressof(item);
 		}
@@ -158,29 +138,29 @@ modules_storage& modules_storage::update(bool force)
 		auto all = _Get_all_modules( );
 
 		//erase all unused modules
-		storage_->remove_if([&](const info& m)-> bool
-		{
-			for (const auto& m_new: all)
-			{
-				if (m.base( ) == m_new.base( ))
-					return false;
-			}
-			return true;
-		});
+		this-remove_if([&](const info& m)-> bool
+							{
+								for (const auto& m_new : all)
+								{
+									if (m.base( ) == m_new.base( ))
+										return false;
+								}
+								return true;
+							});
 
 		auto find_current = current_cached_ != nullptr;
 
 		//add all new modules, save the order
-		auto itr = storage_->begin( );
-		for (auto& m: all)
+		auto itr = this->begin( );
+		for (auto& m : all)
 		{
-			if (itr == storage_->end( ) || itr->base( ) != m.base( ))
-				itr = storage_->insert(itr, const_cast<info&&>(m));
+			if (itr == this->end( ) || itr->base( ) != m.base( ))
+				itr = this->insert(itr, const_cast<info&&>(m));
 
 			if (find_current && itr->base( ) == current_base)
 			{
 				current_cached_ = std::addressof(*itr);
-				find_current    = false;
+				find_current = false;
 			}
 
 			++itr;
@@ -192,13 +172,13 @@ modules_storage& modules_storage::update(bool force)
 
 info& modules_storage::owner( )
 {
-	return storage_->front( );
+	return this->front( );
 }
 
 template <typename T, typename Pred>
 static info* _Find(T&& storage, Pred&& pred)
 {
-	for (info& i: storage)
+	for (info& i : storage)
 	{
 		if (std::invoke(pred, i))
 			return std::addressof(i);
@@ -209,10 +189,10 @@ static info* _Find(T&& storage, Pred&& pred)
 
 info* modules_storage::find(const find_fn& fn)
 {
-	return _Find(*storage_, fn);
+	return _Find(*this, fn);
 }
 
 info* modules_storage::rfind(const find_fn& fn)
 {
-	return _Find(*storage_ | std::views::reverse, fn);
+	return _Find(*this | std::views::reverse, fn);
 }

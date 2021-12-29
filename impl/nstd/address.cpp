@@ -1,10 +1,12 @@
-#include "address.h"
+module;
 
-#include "runtime_assert_fwd.h"
+#include "address_includes.h"
+
+module nstd.address;
 
 using namespace nstd;
 
-address::address()
+address::address( )
 	: value_(0)
 {
 }
@@ -29,7 +31,7 @@ address::address(void* a)
 {
 }
 
-uintptr_t address::value() const
+uintptr_t address::value( ) const
 {
 	return value_;
 }
@@ -79,10 +81,10 @@ address address::rel8(ptrdiff_t offset) const
 	/*if (!r)
 		return t{ };*/
 
-	// relative to address of next instruction.
-	// short jumps can go std::forward and backward depending on the size of the second byte.
-	// if the second byte is below 128, the jmp goes forwards.
-	// if the second byte is above 128, the jmp goes backwards ( subtract two's complement of the relative offset from the address of the next instruction ).
+		// relative to address of next instruction.
+		// short jumps can go std::forward and backward depending on the size of the second byte.
+		// if the second byte is below 128, the jmp goes forwards.
+		// if the second byte is above 128, the jmp goes backwards ( subtract two's complement of the relative offset from the address of the next instruction ).
 	if (r < 128)
 		return (out + 1) + r;
 	else
