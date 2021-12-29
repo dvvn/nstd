@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "type_traits.h"
+#include "runtime_assert.h"
 
 #include <ww898/utf_converters.hpp>
 
