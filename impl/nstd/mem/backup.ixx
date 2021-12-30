@@ -1,8 +1,10 @@
-#pragma once
+module;
 
 #include <optional>
 
-namespace nstd::mem
+export module nstd.mem.backup;
+
+export namespace nstd::mem
 {
 	template <std::copyable T>
 	class backup

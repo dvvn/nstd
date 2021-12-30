@@ -1,32 +1,26 @@
 module;
 
-#include <span>
+#include "block_includes.h"
 
 export module nstd.mem.block;
-
-export namespace nstd
-{
-	class address;
-	class signature_unknown_bytes;
-	template <class StorageType>
-	class signature_known_bytes;
-}
+export import nstd.address;
+export import nstd.signature;
 
 export namespace nstd::mem
 {
-	class block final : std::span<uint8_t>
+	using block_base = std::span<uint8_t>;
+	class block final : block_base
 	{
 	public:
-		using storage_type = std::span<uint8_t>;
 
-		using storage_type::begin;
-		using storage_type::end;
-		using storage_type::_Unchecked_begin;
-		using storage_type::_Unchecked_end;
+		using block_base::begin;
+		using block_base::end;
+		using block_base::_Unchecked_begin;
+		using block_base::_Unchecked_end;
 
-		using storage_type::size;
-		using storage_type::empty;
-		using storage_type::operator[];
+		using block_base::size;
+		using block_base::empty;
+		using block_base::operator[];
 
 		block( ) = default;
 
@@ -34,7 +28,7 @@ export namespace nstd::mem
 		block(const address& begin, const address& end);
 		block(const address& addr);
 
-		explicit block(const storage_type& span);
+		explicit block(const block_base& span);
 
 		block find_block(std::span<const uint8_t> rng) const;
 		block find_block(const signature_unknown_bytes& rng) const;

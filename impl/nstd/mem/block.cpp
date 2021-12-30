@@ -1,22 +1,21 @@
-#include "block.h"
-#include "protect.h"
+module;
 
-#include "nstd/runtime_assert_fwd.h"
-#include "nstd/signature.h"
-#include "nstd/address.h"
-
+#include "block_includes.h"
 #include <algorithm>
+
+module nstd.mem.block;
+import nstd.mem.protect;
 
 using namespace nstd;
 using namespace nstd::mem;
 
 block::block(const address& begin, size_type mem_size)
-	: storage_type(begin.ptr<uint8_t>( ), mem_size)
+	: block_base(begin.ptr<uint8_t>( ), mem_size)
 {
 }
 
 block::block(const address& begin, const address& end)
-	: storage_type(begin.ptr<uint8_t>( ), end.ptr<uint8_t>( ))
+	: block_base(begin.ptr<uint8_t>( ), end.ptr<uint8_t>( ))
 {
 }
 
@@ -25,15 +24,15 @@ block::block(const address& addr)
 {
 }
 
-block::block(const storage_type& span)
-	: storage_type(span)
+block::block(const block_base& span)
+	: block_base(span)
 {
 }
 
 block block::find_block(std::span<const uint8_t> unkbytes) const
 {
 	const auto rng_size = unkbytes.size( );
-	const auto limit    = this->size( ) - rng_size;
+	const auto limit = this->size( ) - rng_size;
 
 	const auto start0 = this->_Unchecked_begin( );
 	const auto start2 = unkbytes._Unchecked_begin( );
@@ -61,7 +60,7 @@ struct unknown_find_result
 
 static unknown_find_result _Find_unknown_bytes(const block& block, const signature_unknown_bytes& unkbytes)
 {
-	size_t offset  = 0;
+	size_t offset = 0;
 	size_t scanned = 0;
 
 
@@ -73,12 +72,12 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 		if (_Begin.empty( ))
 			return {block.size( ) - known0.size( ), 0, false};
 		scanned = std::distance(block._Unchecked_begin( ), _Begin._Unchecked_begin( ));
-		offset  = _Begin.size( );
+		offset = _Begin.size( );
 	}
 
 	offset += skip0;
 
-	for (const auto& [known, skip]: std::span(std::next(unkbytes.begin( )), unkbytes.end( )))
+	for (const auto& [known, skip] : std::span(std::next(unkbytes.begin( )), unkbytes.end( )))
 	{
 		// ReSharper disable once CppInconsistentNaming
 		const auto _Next = block.subblock(scanned + offset);
@@ -99,14 +98,14 @@ block block::find_block(const signature_unknown_bytes& rng) const
 	{
 		size_t size = 0;
 
-		for (const auto& [known, skip]: rng)
+		for (const auto& [known, skip] : rng)
 		{
 			size += known.size( );
 			size += skip;
 		}
 
 		return size;
-	}( );
+	}();
 
 	auto block = *this;
 

@@ -23,10 +23,8 @@ export namespace nstd::rtlib
 		const info* root_class( ) const override;
 
 	public:
-		~info( ) override;
-
-		info(info&&) noexcept;
-		info& operator=(info&&) noexcept;
+		info(info&& other) noexcept;
+		info& operator=(info&& other) noexcept;
 
 		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
 

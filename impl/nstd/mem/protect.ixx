@@ -1,41 +1,13 @@
-#pragma once
+module;
+
+#include <windows.h>
 #include <optional>
 
-//using UINT_PTR =
-//#ifdef _W64
-//_W64
-//#endif
-//unsigned
-//#if defined(_WIN64)
-//__int64
-//#else
-//int;
-//#endif
+export module nstd.mem.protect;
+export import nstd.mem.block;
 
-using ULONG_PTR =
-#ifdef _W64
-_W64
-#endif
-unsigned
-#if defined(_WIN64)
-__int64
-#else
-long;
-#endif
-
-using SIZE_T = ULONG_PTR;
-using DWORD = unsigned long;
-using LPVOID = void*;
-
-namespace nstd
+export namespace nstd::mem
 {
-	class address;
-}
-
-namespace nstd::mem
-{
-	class block;
-
 	class protect
 	{
 	public:
@@ -46,7 +18,7 @@ namespace nstd::mem
 			DWORD flags;
 		};
 
-		protect(const protect&)            = delete;
+		protect(const protect&) = delete;
 		protect& operator=(const protect&) = delete;
 
 		protect(protect&& other) noexcept;

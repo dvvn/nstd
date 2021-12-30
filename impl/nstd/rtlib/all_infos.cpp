@@ -137,8 +137,10 @@ modules_storage& modules_storage::update(bool force)
 	{
 		auto all = _Get_all_modules( );
 
+#if 0
+
 		//erase all unused modules
-		this-remove_if([&](const info& m)-> bool
+		this->remove_if([&](const info& m)-> bool
 							{
 								for (const auto& m_new : all)
 								{
@@ -147,6 +149,8 @@ modules_storage& modules_storage::update(bool force)
 								}
 								return true;
 							});
+#endif
+
 
 		auto find_current = current_cached_ != nullptr;
 
@@ -175,24 +179,24 @@ info& modules_storage::owner( )
 	return this->front( );
 }
 
-template <typename T, typename Pred>
-static info* _Find(T&& storage, Pred&& pred)
-{
-	for (info& i : storage)
-	{
-		if (std::invoke(pred, i))
-			return std::addressof(i);
-	}
-
-	return nullptr;
-}
-
-info* modules_storage::find(const find_fn& fn)
-{
-	return _Find(*this, fn);
-}
-
-info* modules_storage::rfind(const find_fn& fn)
-{
-	return _Find(*this | std::views::reverse, fn);
-}
+//template <typename T, typename Pred>
+//static info* _Find(T&& storage, Pred&& pred)
+//{
+//	for (info& i : storage)
+//	{
+//		if (std::invoke(pred, i))
+//			return std::addressof(i);
+//	}
+//
+//	return nullptr;
+//}
+//
+//info* modules_storage::find(const find_fn& fn)
+//{
+//	return _Find(*this, fn);
+//}
+//
+//info* modules_storage::rfind(const find_fn& fn)
+//{
+//	return _Find(*this | std::views::reverse, fn);
+//}

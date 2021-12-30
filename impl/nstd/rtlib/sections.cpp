@@ -7,7 +7,7 @@ module;
 
 #include <Windows.h>
 
-export module nstd.rtlib:sections;
+module nstd.rtlib.info:sections;
 
 using namespace nstd::rtlib;
 

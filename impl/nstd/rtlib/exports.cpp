@@ -2,11 +2,8 @@ module;
 #include "info_includes.h"
 #include "nstd/ranges.h"
 
-module nstd.rtlib.exports;
+module nstd.rtlib.info:exports;
 import nstd.rtlib.all_infos;
-//#include "all_infos.h"
-//
-//#include <nstd/module/info.h>
 
 using namespace nstd;
 using namespace nstd::rtlib;
@@ -15,7 +12,7 @@ auto exports::create(const key_type& entry) -> create_result
 {
 	//fill whole cache
 
-	const auto nt = root_class()->NT( );
+	const auto nt = root_class( )->NT( );
 
 	// get export data directory.
 	const auto data_dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];

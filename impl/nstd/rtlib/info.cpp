@@ -14,9 +14,23 @@ using namespace nstd::rtlib;
 info* info::root_class( ) { return this; }
 const info* info::root_class( ) const { return this; }
 
-info::~info( )                         = default;
-info::info(info&&) noexcept            = default;
-info& info::operator=(info&&) noexcept = default;
+info::info(info&& other) noexcept
+{
+	*this = std::move(other);
+}
+info& info::operator=(info&& other) noexcept
+{
+	*static_cast<sections_t*>this = static_cast<sections_t&&>(other);
+	*static_cast<exports_t*>this = static_cast<exports_t&&>(other);
+	*static_cast<vtables_t*>this = static_cast<vtables_t&&>(other);
+
+	ldr_entry = other.ldr_entry;
+	dos = other.dos;
+	nt = other.nt;
+
+	name_ = std::move(other.name_);
+	name_is_unicode_ = other.name_is_unicode_;
+}
 
 info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)
 {
@@ -27,11 +41,11 @@ info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEAD
 	//manual_handle_ = winapi::module_handle(handle);
 
 	this->ldr_entry = ldr_entry;
-	this->dos       = dos;
-	this->nt        = nt;
+	this->dos = dos;
+	this->nt = nt;
 
 	const auto raw_name = this->raw_name( );
-	const auto wname    = std::views::transform(raw_name, towlower);
+	const auto wname = std::views::transform(raw_name, towlower);
 	this->name_.append(wname.begin( ), wname.end( ));
 	this->name_is_unicode_ = IsTextUnicode(raw_name._Unchecked_begin( ), raw_name.size( ) * sizeof(wchar_t), nullptr);
 }

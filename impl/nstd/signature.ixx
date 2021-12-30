@@ -1,11 +1,15 @@
-#pragma once
-#include "runtime_assert_fwd.h"
+
+module;
+
+#include "runtime_assert.h"
 
 #include <span>
 #include <vector>
 #include <string>
 
-namespace nstd
+export module nstd.signature;
+
+export namespace nstd
 {
 	namespace detail
 	{
@@ -127,7 +131,7 @@ namespace nstd
 			writer(signature_unknown_bytes_impl* const storage)
 				: storage_(storage), index_(static_cast<size_t>(-1))
 			{
-				runtime_assert(storage_->empty());
+				runtime_assert(storage_->empty( ));
 				_Add_part(true);
 			}
 
@@ -195,7 +199,7 @@ namespace nstd
 		constexpr void text_to_bytes(Itr begin, Itr end, WriterKnown&& wknown, WriterUnknown&& wunk)
 		{
 			uint8_t bytes_unknown = 0;
-			uint8_t bytes_added   = 0;
+			uint8_t bytes_added = 0;
 			uint8_t last_byte;
 
 			const auto set_byte = [&](uint8_t byte)
@@ -203,35 +207,35 @@ namespace nstd
 				runtime_assert(bytes_unknown == 0, "Prev byte part are unknown");
 				switch (bytes_added)
 				{
-					case 0:
-						last_byte = byte;
-						++bytes_added;
-						break;
-					case 1:
-						last_byte *= 16;
-						last_byte += byte;
-						++bytes_added;
-						break;
-					default:
-						runtime_assert("Too much bytes to add");
-						break;
+				case 0:
+					last_byte = byte;
+					++bytes_added;
+					break;
+				case 1:
+					last_byte *= 16;
+					last_byte += byte;
+					++bytes_added;
+					break;
+				default:
+					runtime_assert("Too much bytes to add");
+					break;
 				}
 			};
 			const auto write_byte = [&]
 			{
 				switch (bytes_added)
 				{
-					case 0:
-						break;
-					case 1:
-					case 2:
-						runtime_assert(bytes_unknown == 0, "Prev byte part are unknown");
-						std::invoke(wknown, last_byte);
-						bytes_added = 0;
-						break;
-					default:
-						runtime_assert("Too much bytes to add");
-						break;
+				case 0:
+					break;
+				case 1:
+				case 2:
+					runtime_assert(bytes_unknown == 0, "Prev byte part are unknown");
+					std::invoke(wknown, last_byte);
+					bytes_added = 0;
+					break;
+				default:
+					runtime_assert("Too much bytes to add");
+					break;
 				}
 			};
 			const auto write_unknown = [&]
@@ -245,70 +249,70 @@ namespace nstd
 			{
 				switch (*itr)
 				{
-					case ' ':
-						write_byte( );
-						bytes_unknown = 0;
-						break;
-					case '?':
-						write_byte( );
-						write_unknown( );
-						break;
-					case '0':
-						set_byte(0x0);
-						break;
-					case '1':
-						set_byte(0x1);
-						break;
-					case '2':
-						set_byte(0x2);
-						break;
-					case '3':
-						set_byte(0x3);
-						break;
-					case '4':
-						set_byte(0x4);
-						break;
-					case '5':
-						set_byte(0x5);
-						break;
-					case '6':
-						set_byte(0x6);
-						break;
-					case '7':
-						set_byte(0x7);
-						break;
-					case '8':
-						set_byte(0x8);
-						break;
-					case '9':
-						set_byte(0x9);
-						break;
-					case 'a':
-					case 'A':
-						set_byte(0xA);
-						break;
-					case 'b':
-					case 'B':
-						set_byte(0xB);
-						break;
-					case 'c':
-					case 'C':
-						set_byte(0xC);
-						break;
-					case 'd':
-					case 'D':
-						set_byte(0xD);
-						break;
-					case 'e':
-					case 'E':
-						set_byte(0xE);
-						break;
-					case 'f':
-					case 'F':
-						set_byte(0xF);
-						break;
-					default:
-						runtime_assert("Unsupported character");
+				case ' ':
+					write_byte( );
+					bytes_unknown = 0;
+					break;
+				case '?':
+					write_byte( );
+					write_unknown( );
+					break;
+				case '0':
+					set_byte(0x0);
+					break;
+				case '1':
+					set_byte(0x1);
+					break;
+				case '2':
+					set_byte(0x2);
+					break;
+				case '3':
+					set_byte(0x3);
+					break;
+				case '4':
+					set_byte(0x4);
+					break;
+				case '5':
+					set_byte(0x5);
+					break;
+				case '6':
+					set_byte(0x6);
+					break;
+				case '7':
+					set_byte(0x7);
+					break;
+				case '8':
+					set_byte(0x8);
+					break;
+				case '9':
+					set_byte(0x9);
+					break;
+				case 'a':
+				case 'A':
+					set_byte(0xA);
+					break;
+				case 'b':
+				case 'B':
+					set_byte(0xB);
+					break;
+				case 'c':
+				case 'C':
+					set_byte(0xC);
+					break;
+				case 'd':
+				case 'D':
+					set_byte(0xD);
+					break;
+				case 'e':
+				case 'E':
+					set_byte(0xE);
+					break;
+				case 'f':
+				case 'F':
+					set_byte(0xF);
+					break;
+				default:
+					runtime_assert("Unsupported character");
 				}
 			}
 
@@ -330,7 +334,7 @@ namespace nstd
 		}
 		else if constexpr (std::same_as<tag_type, make_signature_tag_convert>)
 		{
-			const auto make_storage = [&]<class Storage>(Storage&& storage)
+			const auto make_storage = [&]<class Storage>(Storage && storage)
 			{
 				auto writer = storage.get_writer( );
 				detail::text_to_bytes(begin, end, [&](uint8_t byte) { writer(byte); }, [&] { writer( ); });
@@ -390,7 +394,7 @@ namespace nstd
 		bytes_view(T&& object)
 			: bytes_view_impl<T>(std::move(object))
 		{
-			static_assert(std::is_trivially_move_constructible_v<T>,"Unable to construct bytes_view from rvalue");
+			static_assert(std::is_trivially_move_constructible_v<T>, "Unable to construct bytes_view from rvalue");
 		}
 	};
 
@@ -432,7 +436,7 @@ namespace nstd
 		auto unwrap_and_cast(Itr b, Itr e)
 		{
 			static_assert(std::random_access_iterator<Itr>, "Iterator must have random access array");
-			static_assert(std::_Unwrappable_v<Itr>,"Unable to unwrap the iterator");
+			static_assert(std::_Unwrappable_v<Itr>, "Unable to unwrap the iterator");
 
 			//.[u]nwrapped
 			//.[b]yte
@@ -455,14 +459,14 @@ namespace nstd
 				return detail::make_signature_tag_selector<Itr>( );
 			else
 				return Tag;
-		}( );
+		}();
 
 		using tag_type = std::remove_const_t<decltype(tag)>;
 
 		if constexpr (std::same_as<tag_type, make_signature_tag_direct>)
 		{
 			static_assert(sizeof(std::iter_value_t<Itr>) == sizeof(uint8_t));
-			auto [begin1,end1] = detail::unwrap_and_cast(begin, end);
+			auto [begin1, end1] = detail::unwrap_and_cast(begin, end);
 			return make_signature_impl<const uint8_t*, tag>(begin1, end1);
 		}
 		else if constexpr (std::same_as<tag_type, make_signature_tag_convert>)
@@ -472,7 +476,7 @@ namespace nstd
 		else
 		{
 			//try convert it to bytes array
-			auto [begin1,end1] = detail::unwrap_and_cast(begin, end);
+			auto [begin1, end1] = detail::unwrap_and_cast(begin, end);
 			return make_signature_impl(begin1, end1);
 		}
 	}
