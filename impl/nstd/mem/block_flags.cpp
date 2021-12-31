@@ -1,7 +1,11 @@
-#include "block.h"
+module;
+
+#include "block_includes.h"
 
 #include <stdexcept>
 #include <windows.h>
+
+module nstd.mem.block;
 
 using namespace nstd::mem;
 
@@ -41,7 +45,7 @@ static bool _Flags_checker(block mblock, Fn checker = {})
 	{
 		for (;;)
 		{
-			const auto info = MEMORY_BASIC_INFORMATION_UPDATER(mblock._Unchecked_begin( ));
+			const MEMORY_BASIC_INFORMATION_UPDATER info = mblock._Unchecked_begin( );
 
 			//memory isn't commit!
 			if (info.state( ) != MEM_COMMIT)
@@ -100,6 +104,7 @@ bool block::executable( ) const
 
 bool block::code_padding( ) const
 {
+	//todo: move outside
 	const auto first = this->front( );
 	if (first != 0x00 && first != 0x90 && first != 0xCC)
 		return false;

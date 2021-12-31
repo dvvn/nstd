@@ -1,15 +1,9 @@
 module;
 
-#include "info_includes.h"
+#include "includes.h"
 
-#include "nstd/one_instance.h"
-
-#include <functional>
-#include <list>
-#include <vector>
-
-export module nstd.rtlib.all_infos;
-export import nstd.rtlib.info;
+export module nstd.rtlib:all_infos;
+export import :info;
 
 export namespace nstd::rtlib
 {

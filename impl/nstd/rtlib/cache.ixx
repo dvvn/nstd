@@ -2,7 +2,7 @@ module;
 
 #include "cache_includes.h"
 
-export module nstd.rtlib.info:cache;
+export module nstd.rtlib:cache;
 
 export namespace nstd::rtlib
 {
@@ -60,12 +60,38 @@ export namespace nstd::rtlib
 #endif
 			return found;
 		}
-		else if constexpr (std::constructible_from<KeySelf, decltype(key)> && have_transparent_find<TRaw, KeySelf>)
+		else if constexpr (std::constructible_from<KeySelf, key> && std::is_trivially_constructible_v<KeySelf, Key>)
 		{
 			return find_helper(map, typename TRaw::key_type(key), ignore_errors);
 		}
 		else
-			static_assert(std::_Always_false<Key>, __FUNCTION__": unsupported key_type!");
+		{
+			auto begin = map.begin( );
+			auto end = map.end( );
+			auto ubegin = std::_Get_unwrapped(begin);
+			auto uend = std::_Get_unwrapped(end);
+
+			constexpr bool same = std::same_as<decltype(begin), decltype(ubegin)>;
+			constexpr bool random = std::random_access_iterator<decltype(begin)>;
+
+			for (auto itr = ubegin; itr != uend; ++itr)
+			{
+				if (*itr != key)
+					continue;
+
+				if constexpr (same)
+					return itr;
+				else if constexpr (random)
+					return begin + (std::distance(ubegin, itr));
+				else
+					static_assert("Non-random iterator detected");
+			}
+#if _DEBUG
+			if (!ignore_errors)
+				throw std::out_of_range("invalid basic_cache<K, T> key");
+#endif
+			return end;
+		}
 	}
 
 	template <typename T, std::equality_comparable_with<typename T::key_type> Key>
@@ -132,7 +158,7 @@ export namespace nstd::rtlib
 		};
 #endif
 
-		using cache_type = NSTD_UNORDERED_MAP<key_type, mapped_type>;
+		using cache_type = nstd::unordered_map<key_type, mapped_type>;
 
 		template <typename T>
 		return_value at_universal(T&& entry/*, CreateArgs ...create_args*/)

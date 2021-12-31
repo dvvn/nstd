@@ -2,7 +2,7 @@ module;
 
 #include "info_includes.h"
 
-export module nstd.rtlib.info;
+export module nstd.rtlib:info;
 export import :exports;
 export import :sections;
 export import :vtables;
@@ -62,4 +62,5 @@ export namespace nstd::rtlib
 		exports_t& exports( );
 		vtables_t& vtables( );
 	};
+
 }

@@ -8,7 +8,7 @@ module;
 #include <optional>
 
 module nstd.rtlib:vtables;
-import nstd.rtlib.info;
+import :info;
 
 using namespace nstd;
 using namespace rtlib;
@@ -72,7 +72,7 @@ static std::optional<vtables_data> _Load_vtable(const section_t& dot_rdata, cons
 	return {};
 }
 
-NSTD_OS_MODULE_INFO_CACHE_IMPL_CPP(vtable)
+auto vtables::create(const key_type& entry) -> create_result
 {
 	constexpr std::string_view prefix = ".?AV";
 	constexpr std::string_view postfix = "@@";

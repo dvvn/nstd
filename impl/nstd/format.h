@@ -4,8 +4,11 @@
 
 #if defined(__cpp_lib_format)
 #include <format>
+//todo :formatter for ranges
 #elif __has_include(<fmt/format.h>)
 #include <fmt/format.h>
+#include <fmt/xchar.h>
+#include <fmt/ranges.h>
 namespace std
 {
 	using namespace fmt;

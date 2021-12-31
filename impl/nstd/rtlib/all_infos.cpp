@@ -11,7 +11,7 @@ module;
 #include <algorithm>
 #include <functional>
 
-module nstd.rtlib.all_infos;
+module nstd.rtlib:all_infos;
 import nstd.address;
 
 using namespace nstd;

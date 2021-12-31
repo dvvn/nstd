@@ -3,7 +3,7 @@ module;
 #include "nstd/address_includes.h"
 #include "cache_includes.h"
 
-export module nstd.rtlib.info:vtables;
+export module nstd.rtlib:vtables;
 export import :cache;
 export import nstd.address;
 

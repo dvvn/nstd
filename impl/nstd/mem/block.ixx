@@ -9,18 +9,21 @@ export import nstd.signature;
 export namespace nstd::mem
 {
 	using block_base = std::span<uint8_t>;
-	class block final : block_base
+	class block final :public block_base
 	{
 	public:
 
-		using block_base::begin;
+		/*using block_base::begin;
 		using block_base::end;
 		using block_base::_Unchecked_begin;
 		using block_base::_Unchecked_end;
 
+		using block_base::iterator;
+		using block_base::value_type;
+
 		using block_base::size;
 		using block_base::empty;
-		using block_base::operator[];
+		using block_base::operator[];*/
 
 		block( ) = default;
 

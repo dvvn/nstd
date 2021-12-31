@@ -6,7 +6,7 @@ module;
 
 #include <functional>
 
-module nstd.rtlib.info;
+module nstd.rtlib:info;
 
 using namespace nstd;
 using namespace nstd::rtlib;

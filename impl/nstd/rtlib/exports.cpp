@@ -2,8 +2,8 @@ module;
 #include "info_includes.h"
 #include "nstd/ranges.h"
 
-module nstd.rtlib.info:exports;
-import nstd.rtlib.all_infos;
+module nstd.rtlib:exports;
+import :all_infos;
 
 using namespace nstd;
 using namespace nstd::rtlib;

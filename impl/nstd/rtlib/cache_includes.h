@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "nstd/custom_types.h"
-#include NSTD_UNORDERED_MAP_INCLUDE
+#include "nstd/unordered_map.h"
+#include "nstd/ranges.h"
 
 #include <mutex>
 #include <string>
