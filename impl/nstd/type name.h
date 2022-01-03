@@ -144,6 +144,7 @@ namespace nstd
 			return buffer;
 		}
 
+
 		template <typename T>
 		constexpr auto type_name_impl( )
 		{
@@ -207,6 +208,38 @@ namespace nstd
 				return tmp.make_ideal<tmp.str_size>( );
 		}();
 
+		template <template<class...>class T>
+		constexpr auto type_name_impl( )
+		{
+			constexpr std::string_view n0 = type_name_impl0<T>( );
+
+			constexpr auto start = n0.find('<') + 1;
+			constexpr auto end = n0.rfind('>');
+			constexpr auto name_size = end - start;
+
+			constexpr auto name = n0.substr(start, name_size);
+			auto buffer = prepare_buffer<char, name_size>( );
+			auto bg = buffer.begin( );
+
+			filter_substring(bg, name, "struct ");
+			filter_substring(bg, name, "class ");
+			filter_substring(bg, name, "enum ");
+			filter_substring(bg, name, "union ");
+
+			return buffered_string(buffer);
+		}
+
+		template <template<class...>class T>
+		_INLINE_VAR constexpr auto type_name_holder_partial = []
+		{
+			constexpr auto tmp = type_name_impl<T>( );
+			if constexpr (tmp.ideal( ))
+				return tmp;
+			else
+				return tmp.make_ideal<tmp.str_size>( );
+		}();
+
+#if 0
 		constexpr auto drop_namespace_impl(std::string& str, const std::string_view& drop)
 		{
 			std::string drop_str;
@@ -227,13 +260,21 @@ namespace nstd
 			}
 			erase_substring(str, drop_sv);
 		}
+#endif
 	}
 
-
 	template <typename T>
-	_INLINE_VAR constexpr auto type_name = detail::type_name_holder<T>.view( );
+	constexpr auto type_name( ) { return detail::type_name_holder<T>.view( ); }
 
-	static_assert(type_name<int> == "int");
+	template <template<typename...>class T>
+	constexpr auto type_name( ) { return detail::type_name_holder_partial<T>.view( ); }
+
+	template <template<typename, size_t> class T>
+		requires(std::same_as<T<int, 0>, std::array<int, 0>>)
+	constexpr std::string_view type_name( ) { return "std::array"; }
+
+	static_assert(type_name<int>( ) == "int");
+	static_assert(type_name<std::array>( ) == "std::array");
 
 #if 1
 	constexpr auto drop_namespace(const std::string_view& in, const std::string_view& drop)
