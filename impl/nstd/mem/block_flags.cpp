@@ -1,15 +1,12 @@
 module;
 
 #include "block_includes.h"
-
-#include <stdexcept>
 #include <windows.h>
+#include <stdexcept>
 
-module nstd.mem.block;
+module nstd.mem:block;
 
 using namespace nstd::mem;
-
-using flags_type = block::flags_type;
 
 // ReSharper disable once CppInconsistentNaming
 class MEMORY_BASIC_INFORMATION_UPDATER : protected MEMORY_BASIC_INFORMATION
@@ -17,7 +14,7 @@ class MEMORY_BASIC_INFORMATION_UPDATER : protected MEMORY_BASIC_INFORMATION
 	static constexpr SIZE_T class_size = sizeof(MEMORY_BASIC_INFORMATION);
 
 public:
-	flags_type flags( ) const { return reinterpret_cast<const flags_type&>(Protect); }
+	DWORD flags( ) const { return reinterpret_cast<const DWORD&>(Protect); }
 	SIZE_T size( ) const { return this->RegionSize; }
 	DWORD state( ) const { return this->State; }
 
@@ -34,9 +31,9 @@ public:
 	}
 };
 
-static constexpr flags_type _Page_read_flags    = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE;
-static constexpr flags_type _Page_write_flags   = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | PAGE_WRITECOMBINE;
-static constexpr flags_type _Page_execute_flags = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+static constexpr DWORD _Page_read_flags = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE;
+static constexpr DWORD _Page_write_flags = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | PAGE_WRITECOMBINE;
+static constexpr DWORD _Page_execute_flags = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
 
 template <typename Fn>
 static bool _Flags_checker(block mblock, Fn checker = {})
@@ -45,7 +42,7 @@ static bool _Flags_checker(block mblock, Fn checker = {})
 	{
 		for (;;)
 		{
-			const MEMORY_BASIC_INFORMATION_UPDATER info = mblock._Unchecked_begin( );
+			const MEMORY_BASIC_INFORMATION_UPDATER info = mblock.data( );
 
 			//memory isn't commit!
 			if (info.state( ) != MEM_COMMIT)
@@ -66,40 +63,53 @@ static bool _Flags_checker(block mblock, Fn checker = {})
 	}
 }
 
-bool block::have_flags(flags_type flags) const
+static bool _Have_flags(const block* mblock, DWORD flags)
 {
-	return _Flags_checker(*this, [flags](flags_type mem_flags)
-	{
-		return (mem_flags & flags);
-	});
+	return _Flags_checker(*mblock, [flags](DWORD mem_flags)
+						  {
+							  return !!(mem_flags & flags);
+						  });
 }
 
-bool block::dont_have_flags(flags_type flags) const
+static bool _Dont_have_flags(const block* mblock, DWORD flags)
 {
-	return _Flags_checker(*this, [flags](flags_type mem_flags)
-	{
-		return !(mem_flags & flags);
-	});
+	return _Flags_checker(*mblock, [flags](DWORD mem_flags)
+						  {
+							  return !(mem_flags & flags);
+						  });
 }
+
+
+#ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
+bool block::have_flags(DWORD flags) const
+{
+	return _Have_flags(this, flags);
+}
+
+bool block::dont_have_flags(DWORD flags) const
+{
+	return _Dont_have_flags(this, flags);
+}
+#endif
 
 bool block::readable( ) const
 {
-	return this->dont_have_flags(PAGE_NOACCESS);
+	return _Dont_have_flags(this, PAGE_NOACCESS);
 }
 
 bool block::readable_ex( ) const
 {
-	return this->have_flags(_Page_read_flags);
+	return _Have_flags(*this, _Page_read_flags);
 }
 
 bool block::writable( ) const
 {
-	return this->have_flags(_Page_write_flags);
+	return _Have_flags(this, _Page_write_flags);
 }
 
 bool block::executable( ) const
 {
-	return this->have_flags(_Page_execute_flags);
+	return _Have_flags(this, _Page_execute_flags);
 }
 
 bool block::code_padding( ) const
@@ -108,7 +118,7 @@ bool block::code_padding( ) const
 	const auto first = this->front( );
 	if (first != 0x00 && first != 0x90 && first != 0xCC)
 		return false;
-	for (const auto val: this->subblock(1))
+	for (const auto val : this->subblock(1))
 	{
 		if (val != first)
 			return false;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "nstd/rtlib/cache_includes.h"
-#include "nstd/address_includes.h"
+#include "nstd/mem/address_includes.h"
 
 #include "nstd/one_instance.h"
 

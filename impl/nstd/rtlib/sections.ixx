@@ -5,7 +5,7 @@ module;
 
 export module nstd.rtlib:sections;
 export import :cache;
-export import nstd.mem.block;
+export import nstd.mem;
 
 export namespace nstd::rtlib
 {

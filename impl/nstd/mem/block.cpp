@@ -3,8 +3,8 @@ module;
 #include "block_includes.h"
 #include <algorithm>
 
-module nstd.mem.block;
-import nstd.mem.protect;
+module nstd.mem:block;
+import :protect;
 
 using namespace nstd;
 using namespace nstd::mem;
@@ -34,8 +34,8 @@ block block::find_block(std::span<const uint8_t> unkbytes) const
 	const auto rng_size = unkbytes.size( );
 	const auto limit = this->size( ) - rng_size;
 
-	const auto start0 = this->_Unchecked_begin( );
-	const auto start2 = unkbytes._Unchecked_begin( );
+	const auto start0 = this->data( );
+	const auto start2 = unkbytes.data( );
 
 	for (auto offset = static_cast<size_t>(0); offset < limit; ++offset)
 	{
@@ -63,7 +63,6 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 	size_t offset = 0;
 	size_t scanned = 0;
 
-
 	const auto& [known0, skip0] = unkbytes[0];
 	if (!known0.empty( ))
 	{
@@ -71,7 +70,7 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 		const auto _Begin = block.find_block(known0);
 		if (_Begin.empty( ))
 			return {block.size( ) - known0.size( ), 0, false};
-		scanned = std::distance(block._Unchecked_begin( ), _Begin._Unchecked_begin( ));
+		scanned = std::distance(block.data( ), _Begin.data( ));
 		offset = _Begin.size( );
 	}
 
@@ -81,8 +80,8 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 	{
 		// ReSharper disable once CppInconsistentNaming
 		const auto _Next = block.subblock(scanned + offset);
-		const auto start1 = _Next._Unchecked_begin( );
-		const auto start2 = known._Unchecked_begin( );
+		const auto start1 = _Next.data( );
+		const auto start2 = known.data( );
 		if (std::memcmp(start1, start2, known.size( )) != 0)
 			return {scanned, offset, false};
 
@@ -131,6 +130,6 @@ block block::subblock(size_t offset, size_t count) const
 
 block block::shift_to(pointer ptr) const
 {
-	const auto offset = std::distance(this->_Unchecked_begin( ), ptr);
+	const auto offset = std::distance(this->data( ), ptr);
 	return this->subblock(offset);
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "runtime_assert.h"
-#include "ranges.h"
+#include "nstd/runtime_assert.h"
+#include "nstd/ranges.h"
 
 #include <span>
 #include <vector>

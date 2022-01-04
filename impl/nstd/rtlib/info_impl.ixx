@@ -29,7 +29,7 @@ export namespace nstd::rtlib
 		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
 
 		//module handle
-		address base( ) const;
+		mem::address base( ) const;
 		mem::block mem_block( ) const;
 
 		// ReSharper disable CppInconsistentNaming

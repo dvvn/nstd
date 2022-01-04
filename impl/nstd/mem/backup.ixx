@@ -2,7 +2,7 @@ module;
 
 #include <optional>
 
-export module nstd.mem.backup;
+export module nstd.mem:backup;
 
 export namespace nstd::mem
 {

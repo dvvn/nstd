@@ -2,9 +2,9 @@ module;
 
 #include "block_includes.h"
 
-export module nstd.mem.block;
-export import nstd.address;
-export import nstd.signature;
+export module nstd.mem:block;
+export import :address;
+export import :signature;
 
 export namespace nstd::mem
 {
@@ -29,6 +29,7 @@ export namespace nstd::mem
 
 		block(const address& begin, size_type mem_size);
 		block(const address& begin, const address& end);
+		[[deprecated]]
 		block(const address& addr);
 
 		explicit block(const block_base& span);
@@ -42,11 +43,10 @@ export namespace nstd::mem
 		block shift_to(pointer ptr) const;
 		block subblock(size_t offset, size_t count = std::dynamic_extent) const;
 
-		using flags_type = unsigned long;
-
-		bool have_flags(flags_type flags) const;
-		bool dont_have_flags(flags_type flags) const;
-
+#ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
+		bool have_flags(DWORD flags) const;
+		bool dont_have_flags(DWORD flags) const;
+#endif 
 		bool readable( ) const;
 		bool readable_ex( ) const;
 		bool writable( ) const;

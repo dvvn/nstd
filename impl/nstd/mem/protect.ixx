@@ -3,8 +3,8 @@ module;
 #include <windows.h>
 #include <optional>
 
-export module nstd.mem.protect;
-export import nstd.mem.block;
+export module nstd.mem:protect;
+export import :block;
 
 export namespace nstd::mem
 {
