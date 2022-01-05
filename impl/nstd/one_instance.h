@@ -7,10 +7,10 @@ namespace nstd
 	class one_instance
 	{
 	public:
-		constexpr one_instance( )                                        = default;
-		constexpr one_instance(const one_instance& other)                = delete;
-		constexpr one_instance(one_instance&& other) noexcept            = default;
-		constexpr one_instance& operator=(const one_instance& other)     = delete;
+		constexpr one_instance( ) = default;
+		constexpr one_instance(const one_instance& other) = delete;
+		constexpr one_instance(one_instance&& other) noexcept = default;
+		constexpr one_instance& operator=(const one_instance& other) = delete;
 		constexpr one_instance& operator=(one_instance&& other) noexcept = default;
 
 		static constexpr size_t index = Index;
@@ -28,7 +28,7 @@ namespace nstd
 		static T& get( )
 		{
 			static_assert(std::is_default_constructible_v<T>, __FUNCSIG__": element must be default constructible!");
-			static T cache = T( );
+			static T cache = {};
 			return cache;
 		}
 
@@ -44,7 +44,7 @@ namespace nstd
 		typename T::one_instance_tag;
 		T::index;
 		T::get;
-	} ;
+	};
 
 	namespace detail
 	{
@@ -53,7 +53,7 @@ namespace nstd
 		{
 			if constexpr (std::swappable<T> && false)
 			{
-				auto replace = T( );
+				T replace = {};
 				std::swap(obj, replace);
 			}
 			else
