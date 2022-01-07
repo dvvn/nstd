@@ -99,7 +99,7 @@ bool block::readable( ) const
 
 bool block::readable_ex( ) const
 {
-	return _Have_flags(*this, _Page_read_flags);
+	return _Have_flags(this, _Page_read_flags);
 }
 
 bool block::writable( ) const

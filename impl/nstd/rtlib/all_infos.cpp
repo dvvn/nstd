@@ -1,21 +1,25 @@
 module;
-#include "nstd/runtime_assert.h"
-#include "nstd/ranges.h"
+//#include "nstd/runtime_assert.h"
+//#include "nstd/ranges.h"
+//
+//#include <Windows.h>
+//#include <winternl.h>
+//
+//#include <list>
+//#include <optional>
+//#include <vector>
+//#include <algorithm>
+//#include <functional>
 
-#include <Windows.h>
-#include <winternl.h>
-
-#include <list>
-#include <optional>
-#include <vector>
-#include <algorithm>
-#include <functional>
+#include "includes.h"
 
 module nstd.rtlib:all_infos;
-import nstd.address;
+import :info;
+import nstd.mem;
 
 using namespace nstd;
-using namespace nstd::rtlib;
+using namespace mem;
+using namespace rtlib;
 
 struct header
 {
@@ -126,7 +130,7 @@ modules_storage& modules_storage::update(bool force)
 	{
 		runtime_assert(current_cached_ == nullptr, "Cache already set");
 		
-		for (auto& m : _Get_all_modules( ))
+		for (info& m : _Get_all_modules( ))
 		{
 			auto& item = this->emplace_back(std::move(m));
 			if (current_cached_ == nullptr && item.base( ) == current_base)

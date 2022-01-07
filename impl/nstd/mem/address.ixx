@@ -43,19 +43,58 @@ export namespace nstd::mem
 		template <typename T>
 		operator T& () const { return *reinterpret_cast<T*>(addr_); }
 	};
+}
 
-	struct address_value_construct
-	{
-	};
+#define NSTD_ADDRESS_VALIDATE(_SOURCE_) \
+runtime_assert(_SOURCE_ != static_cast<uintptr_t>(0), "Address is null!");\
+runtime_assert(_SOURCE_ != static_cast<uintptr_t>(-1), "Address is incorrect!");
 
+enum class addr_op :uint8_t
+{
+	add, remove, multiply, divide
+};
+
+template<addr_op Op, std::integral R, std::integral L>
+constexpr void _Addr_op(R& addr_val, L other)
+{
+	NSTD_ADDRESS_VALIDATE(addr_val);
+	NSTD_ADDRESS_VALIDATE(other);
+
+	auto& r = addr_val;
+	auto l = other;
+
+	if constexpr (Op == addr_op::add)
+		r += l;
+	else if constexpr (Op == addr_op::remove)
+		r -= l;
+	else if constexpr (Op == addr_op::multiply)
+		r *= l;
+	else if constexpr (Op == addr_op::divide)
+		r /= l;
+}
+
+template<addr_op Op, std::integral R, std::integral L>
+constexpr R _Addr_op_clone(R addr_val, L other)
+{
+	_Addr_op<Op>(addr_val, other);
+	return addr_val;
+}
+
+export namespace nstd::mem
+{
 	// class size is only 4 bytes on x86-32 and 8 bytes on x86-64.
 	class address
 	{
+		union
+		{
+			uintptr_t value_;
+			const void* ptr_;
+		};
+
 	public:
 		constexpr address( ) :value_(0) { }
-		constexpr explicit address(uintptr_t val) :value_(val) { }
-		constexpr address(uintptr_t val, address_value_construct) : value_(val) { }
-		constexpr address(std::nullptr_t) : ptr_(0) { }
+		constexpr address(uintptr_t val) : value_(val) { }
+		constexpr address(std::nullptr_t) : ptr_(nullptr) { }
 		constexpr address(const void* ptr) : ptr_(ptr) { }
 		constexpr address(void* ptr) : ptr_(ptr) { }
 
@@ -112,12 +151,6 @@ export namespace nstd::mem
 		[[deprecated]]
 		address deref_safe(ptrdiff_t count) const;
 
-		address add(ptrdiff_t offset) const;
-		address& add_self(ptrdiff_t offset);
-		address remove(ptrdiff_t offset) const;
-		address multiply(ptrdiff_t value) const;
-		address divide(ptrdiff_t value) const;
-
 #if 0
 		//deprecated
 		// follow relative8 and relative16/32 offsets.
@@ -125,31 +158,66 @@ export namespace nstd::mem
 		address rel32(ptrdiff_t offset) const;
 #endif
 		address jmp(ptrdiff_t offset = 0x1) const;
-
-		//----
-
-#define NSTD_ADDRESS_OPERATOR(_OP_)\
-		address operator##_OP_##(address other)const;\
-		address& operator##_OP_##=(address other);
-
-		std::strong_ordering operator<=>(address other)const;
-		NSTD_ADDRESS_OPERATOR(+);
-		NSTD_ADDRESS_OPERATOR(-);
-		NSTD_ADDRESS_OPERATOR(*);
-		NSTD_ADDRESS_OPERATOR(/ );
 		address operator*( );
 
-	private:
-		union
+#define NSTD_ADDRESS_OPERATOR(_NAME_,_OP_)\
+		constexpr address operator##_OP_##(address other) const &{ return _Addr_op_clone<addr_op::_NAME_>(value_, other.value_); }\
+		constexpr address&& operator##_OP_##(address other) &&  { _Addr_op<addr_op::_NAME_>(value_, other.value_); return std::move(*this); }\
+		constexpr address& operator##_OP_##=(address other) { _Addr_op<addr_op::_NAME_>(value_, other.value_); return *this; }\
+		constexpr address _NAME_(address other) const & {  return *this _OP_ other; }\
+		constexpr address&& _NAME_(address other) && { return std::move(*this) _OP_ other; }\
+		constexpr address& _NAME_##_self(address other) {  return *this _OP_##= other; }
+
+		NSTD_ADDRESS_OPERATOR(add, +);
+		NSTD_ADDRESS_OPERATOR(remove, -);
+		NSTD_ADDRESS_OPERATOR(multiply, *);
+		NSTD_ADDRESS_OPERATOR(divide, / );
+		constexpr auto operator<=>(address other)const { return this->value_ <=> other.value_; }
+		constexpr bool operator==(address other)const { return this->value_ == other.value_; }
+		constexpr bool operator!=(address other)const { return this->value_ != other.value_; }
+
+		template<typename T>
+		constexpr auto _Unwrap( )const
 		{
-			uintptr_t value_;
-			const void* ptr_;
-		};
+			if constexpr (std::is_integral_v<T>)
+				return static_cast<T>(value_);
+			else if constexpr (std::is_pointer_v<T>)
+				return static_cast<T>(ptr_);
+		}
 	};
 
 	static_assert(sizeof(address) == sizeof(uintptr_t));
 
+#if 0
+
+	template<typename T>
+	concept address_value = std::constructible_from<address, T> && !std::derived_from<T, address>;
+
+#define NSTD_ADDRESS_OPERATOR_OUT(_OP_) \
+template<address_value T>\
+constexpr T operator##_OP_##(T value, address addr)\
+{\
+	return (address(value) _OP_ addr)._Unwrap<T>( );\
+}\
+
+	NSTD_ADDRESS_OPERATOR_OUT(+);
+	NSTD_ADDRESS_OPERATOR_OUT(-);
+	NSTD_ADDRESS_OPERATOR_OUT(*);
+	NSTD_ADDRESS_OPERATOR_OUT(/ );
+
+	template<address_value T>
+	constexpr auto operator<=>(T value, address addr)
+	{
+		return address(value) <=> addr;
+	}
+
+#endif
+
 	//------------
+
+#if 0
+
+	//must be rewritten
 
 	namespace address_pipe
 	{
@@ -382,4 +450,6 @@ export namespace nstd::mem
 		}
 #endif
 	}
+
+#endif
 }

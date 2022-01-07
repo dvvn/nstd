@@ -6,11 +6,6 @@ module nstd.mem:address;
 
 using namespace nstd::mem;
 
-uintptr_t address::value( ) const
-{
-	return value_;
-}
-
 address address::deref(ptrdiff_t count) const
 {
 	runtime_assert(count != 0, "Count must be not zero!");
@@ -24,31 +19,6 @@ address address::deref(ptrdiff_t count) const
 address address::deref_safe(ptrdiff_t count) const
 {
 	return count == 0 ? *this : deref(count);
-}
-
-address address::add(ptrdiff_t offset) const
-{
-	return *this + address(offset);
-}
-
-address& address::add_self(ptrdiff_t offset)
-{
-	return *this += address(offset);
-}
-
-address address::remove(ptrdiff_t offset) const
-{
-	return *this - address(offset);
-}
-
-address address::multiply(ptrdiff_t value) const
-{
-	return *this * address(offset);
-}
-
-address address::divide(ptrdiff_t value) const
-{
-	return *this / address(offset);
 }
 
 #if 0
@@ -111,38 +81,6 @@ address address::jmp(ptrdiff_t offset) const
 
 	return base;
 }
-
-//----------------
-
-std::strong_ordering address::operator<=>(address other)const
-{
-	return this->value_ <=> other.value_;
-}
-
-#define NSTD_ADDRESS_VALIDATE_IMPL(_SOURCE_)\
-runtime_assert(_SOURCE_ != static_cast<uintptr_t>(0), "Address is null!");\
-runtime_assert(_SOURCE_ != static_cast<uintptr_t>(-1), "Address is incorrect!");
-#define NSTD_ADDRESS_VALIDATE\
-NSTD_ADDRESS_VALIDATE_IMPL(this->value_);\
-NSTD_ADDRESS_VALIDATE_IMPL(other.value_);
-
-#define NSTD_ADDRESS_OPERATOR(_OP_)\
-address address::operator##_OP_##(address other)const\
-{\
-	NSTD_ADDRESS_VALIDATE;\
-	return {this->value_ _OP_ other.value_, address_value_construct( )};\
-}\
-address& address::operator##_OP_##= (address other)\
-{\
-	NSTD_ADDRESS_VALIDATE;\
-	this->value_ _OP_##= other.value_;\
-	return *this;\
-}
-
-NSTD_ADDRESS_OPERATOR(+);
-NSTD_ADDRESS_OPERATOR(-);
-NSTD_ADDRESS_OPERATOR(*);
-NSTD_ADDRESS_OPERATOR(/ );
 
 address address::operator*( )
 {

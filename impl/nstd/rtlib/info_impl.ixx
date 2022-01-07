@@ -7,9 +7,11 @@ export import :exports;
 export import :sections;
 export import :vtables;
 
-export namespace nstd::rtlib
+namespace nstd::rtlib
 {
-	class info final : sections, exports, vtables
+	using namespace mem;
+
+	export class info final : sections, exports, vtables
 	{
 		LDR_DATA_TABLE_ENTRY* ldr_entry;
 		IMAGE_DOS_HEADER* dos;
@@ -29,8 +31,8 @@ export namespace nstd::rtlib
 		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
 
 		//module handle
-		mem::address base( ) const;
-		mem::block mem_block( ) const;
+		address base( ) const;
+		block mem_block( ) const;
 
 		// ReSharper disable CppInconsistentNaming
 

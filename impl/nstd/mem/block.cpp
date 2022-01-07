@@ -19,11 +19,6 @@ block::block(const address& begin, const address& end)
 {
 }
 
-block::block(const address& addr)
-	: block(addr, sizeof(address))
-{
-}
-
 block::block(const block_base& span)
 	: block_base(span)
 {

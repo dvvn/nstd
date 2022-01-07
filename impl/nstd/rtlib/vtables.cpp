@@ -3,24 +3,25 @@ module;
 #include "info_includes.h"
 
 #include "nstd/runtime_assert.h"
-#include "nstd/signature.h"
+#include "nstd/mem/block_includes.h"
 
 #include <optional>
 
 module nstd.rtlib:vtables;
 import :info;
+import nstd.mem;
 
 using namespace nstd;
+using namespace mem;
 using namespace rtlib;
 
 //todo: add x64 support
-static std::optional<vtables_data> _Load_vtable(const section_t& dot_rdata, const section_t& dot_text, address type_descriptor)
+static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, const section_data& dot_text, address type_descriptor)
 {
 	const auto all_blocks = [&]
 	{
-		auto storage = std::vector<mem::block>( );
+		std::vector<block> storage;
 		auto from = dot_rdata.block;
-
 		const auto block = make_signature(type_descriptor);
 		for (;;)
 		{
@@ -35,7 +36,7 @@ static std::optional<vtables_data> _Load_vtable(const section_t& dot_rdata, cons
 
 	for (const auto& block : all_blocks)
 	{
-		const address xr = block._Unchecked_begin( );
+		const address xr = block.data( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
 		if (const uintptr_t vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref( ); vtable_offset != 0)
@@ -48,12 +49,12 @@ static std::optional<vtables_data> _Load_vtable(const section_t& dot_rdata, cons
 			const auto object_locator = xr.remove(sizeof(uintptr_t) * 3);
 			const auto sig = make_signature(object_locator);
 			const auto found = dot_rdata.block.find_block(sig);
-			const address addr = found._Unchecked_begin( );
+			const address addr = found.data( );
 			return addr + sizeof(uintptr_t);
 		}();
 
 		// check is valid offset
-		if (vtable_address.value( ) <= sizeof(uintptr_t))
+		if (vtable_address <= sizeof(uintptr_t))
 			continue;
 
 		// get a pointer to the vtable
@@ -66,7 +67,7 @@ static std::optional<vtables_data> _Load_vtable(const section_t& dot_rdata, cons
 		}();
 
 		if (!temp_result.empty( ))
-			return vtable_t{temp_result._Unchecked_begin( )};
+			return vtable_data(temp_result.data( ));
 	}
 
 	return {};
@@ -89,13 +90,15 @@ auto vtables::create(const key_type& entry) -> create_result
 		return tmp;
 	}();
 
+	auto info_ptr = this->root_class( );
+
 	const auto bytes = info_ptr->mem_block( );
-	const auto target_block = bytes.find_block(make_signature(real_name.begin( ), real_name.end( ), make_signature_tag_direct{}));
+	const auto target_block = bytes.find_block(make_signature(real_name.begin( ), real_name.end( ), signature_direct( )));
 	//class descriptor
 	runtime_assert(!target_block.empty( ));
 
 	// get rtti type descriptor
-	address type_descriptor = target_block._Unchecked_begin( );
+	address type_descriptor = target_block.data( );
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 

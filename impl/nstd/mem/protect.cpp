@@ -1,11 +1,11 @@
-#include "protect.h"
-#include "block.h"
-
-#include "nstd/address.h"
+module;
 
 #include <Windows.h>
 
 #include <stdexcept>
+
+module nstd.mem:protect;
+
 using namespace nstd::mem;
 
 protect::protect(protect&& other) noexcept

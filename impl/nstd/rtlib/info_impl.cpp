@@ -9,7 +9,8 @@ module;
 module nstd.rtlib:info;
 
 using namespace nstd;
-using namespace nstd::rtlib;
+using namespace mem;
+using namespace rtlib;
 
 info* info::root_class( ) { return this; }
 const info* info::root_class( ) const { return this; }
@@ -20,9 +21,9 @@ info::info(info&& other) noexcept
 }
 info& info::operator=(info&& other) noexcept
 {
-	*static_cast<sections_t*>this = static_cast<sections_t&&>(other);
-	*static_cast<exports_t*>this = static_cast<exports_t&&>(other);
-	*static_cast<vtables_t*>this = static_cast<vtables_t&&>(other);
+	*static_cast<sections_t*>(this) = static_cast<sections_t&&>(other);
+	*static_cast<exports_t*>(this) = static_cast<exports_t&&>(other);
+	*static_cast<vtables_t*>(this) = static_cast<vtables_t&&>(other);
 
 	ldr_entry = other.ldr_entry;
 	dos = other.dos;
@@ -30,6 +31,7 @@ info& info::operator=(info&& other) noexcept
 
 	name_ = std::move(other.name_);
 	name_is_unicode_ = other.name_is_unicode_;
+	return *this;
 }
 
 info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)
@@ -47,7 +49,7 @@ info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEAD
 	const auto raw_name = this->raw_name( );
 	const auto wname = std::views::transform(raw_name, towlower);
 	this->name_.append(wname.begin( ), wname.end( ));
-	this->name_is_unicode_ = IsTextUnicode(raw_name._Unchecked_begin( ), raw_name.size( ) * sizeof(wchar_t), nullptr);
+	this->name_is_unicode_ = IsTextUnicode(raw_name.data( ), raw_name.size( ) * sizeof(wchar_t), nullptr);
 }
 
 address info::base( ) const
@@ -55,7 +57,7 @@ address info::base( ) const
 	return this->ldr_entry->DllBase;
 }
 
-mem::block info::mem_block( ) const
+block info::mem_block( ) const
 {
 	return {base( ), image_size( )};
 }

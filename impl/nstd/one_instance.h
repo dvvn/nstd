@@ -13,7 +13,7 @@ namespace nstd
 		constexpr one_instance& operator=(const one_instance& other) = delete;
 		constexpr one_instance& operator=(one_instance&& other) noexcept = default;
 
-		static constexpr size_t index = Index;
+		static constexpr size_t instance_index = Index;
 
 		using one_instance_tag = void*;
 
@@ -42,7 +42,7 @@ namespace nstd
 	concept is_one_instance = requires
 	{
 		typename T::one_instance_tag;
-		T::index;
+		T::instance_index;
 		T::get;
 	};
 

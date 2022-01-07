@@ -134,29 +134,7 @@ export namespace nstd::rtlib
 		virtual create_result create(const key_type& entry/*, CreateArgs ...args*/) = 0;
 
 	private:
-#ifdef  _MUTEX_
-		using lock_unlock = std::scoped_lock<MutexType>;
-#else
-		class lock_unlock
-		{
-		public:
-
-			explicit lock_unlock(mutex_type& ref) :mtx_(ref)
-			{
-				ref.lock( );
-			}
-			~lock_unlock( )
-			{
-				mtx_.unlock( );
-			}
-
-			lock_unlock(const lock_unlock&) = delete;
-			lock_unlock& operator=(const lock_unlock&) = delete;
-
-		private:
-			mutex_type& mtx_;
-		};
-#endif
+		using lock_unlock = std::scoped_lock<mutex_type>;
 
 		using cache_type = nstd::unordered_map<key_type, mapped_type>;
 
@@ -266,6 +244,19 @@ export namespace nstd::rtlib
 		mapped_type& emplace(K&& key, D&& data)
 		{
 			return emplace_impl(std::forward<K>(key), std::forward<D>(data));
+		}
+
+	public:
+
+		basic_cache( ) = default;
+		basic_cache(basic_cache&& other) noexcept
+			:cache_(std::move(other.cache_))
+		{
+		}
+		basic_cache& operator=(basic_cache&& other)noexcept
+		{
+			cache_ = std::move(other.cache_);
+			return *this;
 		}
 
 	private:

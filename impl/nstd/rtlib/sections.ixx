@@ -9,13 +9,13 @@ export import nstd.mem;
 
 export namespace nstd::rtlib
 {
-	struct sections_data
+	struct section_data
 	{
 		mem::block block;
 		IMAGE_SECTION_HEADER* data = nullptr;
 	};
 
-	struct sections :cache<sections_data>
+	struct sections :cache<section_data>
 	{
 	protected:
 		create_result create(const key_type& entry) override;

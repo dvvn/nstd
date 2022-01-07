@@ -232,11 +232,11 @@ export namespace nstd::mem
 
 	template <class T>
 		requires(std::is_trivially_destructible_v<T> && (std::is_bounded_array_v<std::remove_cvref_t<T>> || !std::ranges::range<T>))
-	constexpr auto make_signature(T&& val)
+	constexpr bytes_view<T&&> make_signature(T&& val)
 	{
 		//auto rng = std::span(reinterpret_cast<const uint8_t*>(std::addressof(val)), sizeof(T));
 		//return make_signature(rng.begin( ), rng.end( ));
-		return bytes_view(std::forward<T>(val));
+		return std::forward<T>(val);
 	}
 
 	namespace detail

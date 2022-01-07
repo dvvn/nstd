@@ -27,10 +27,8 @@ export namespace nstd::mem
 
 		block( ) = default;
 
-		block(const address& begin, size_type mem_size);
+		block(const address& begin, size_type mem_size = sizeof(address));
 		block(const address& begin, const address& end);
-		[[deprecated]]
-		block(const address& addr);
 
 		explicit block(const block_base& span);
 

@@ -9,12 +9,12 @@ export import nstd.mem;
 
 export namespace nstd::rtlib
 {
-	struct vtables_data 
+	struct vtable_data 
 	{
 		mem::address addr;
 	};
 
-	struct vtables :cache<vtables_data>
+	struct vtables :cache<vtable_data>
 	{
 	protected:
 		create_result create(const key_type& entry) override;

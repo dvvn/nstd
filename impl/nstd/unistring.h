@@ -69,7 +69,7 @@ namespace nstd
 			if constexpr (!_Has_member_allocator_type<In>)
 				return false;
 			else
-				return same_template<typename In::allocator_type, typename Out::allocator_type>;
+				return same_template<typename In::allocator_type, typename Out::allocator_type>();
 		}
 
 		template <std::ranges::random_access_range In, class Out>

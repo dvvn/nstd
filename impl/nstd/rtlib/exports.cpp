@@ -6,7 +6,8 @@ module nstd.rtlib:exports;
 import :all_infos;
 
 using namespace nstd;
-using namespace nstd::rtlib;
+using namespace mem;
+using namespace rtlib;
 
 auto exports::create(const key_type& entry) -> create_result
 {
