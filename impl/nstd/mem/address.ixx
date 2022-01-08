@@ -104,11 +104,7 @@ export namespace nstd::mem
 		template <typename T>
 		T cast( ) const
 		{
-#ifdef _DEBUG
-			//validate address
-			(*this) + nullptr;
-#endif
-
+			NSTD_ADDRESS_VALIDATE(value_);
 			if constexpr (reinterpret_convertible_to<uintptr_t, T>)
 			{
 				return reinterpret_cast<T>(value_);

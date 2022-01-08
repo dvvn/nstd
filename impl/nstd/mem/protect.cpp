@@ -1,8 +1,9 @@
 module;
 
-#include <Windows.h>
-
+#include "address_includes.h"
+#include <optional>
 #include <stdexcept>
+#include <Windows.h>
 
 module nstd.mem:protect;
 
