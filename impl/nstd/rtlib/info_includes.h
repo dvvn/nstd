@@ -1,8 +1,5 @@
 #pragma once
 
 #include "cache_includes.h"
-#include "nstd/mem/address_includes.h"
-
-#include <windows.h>
-#include <winternl.h>
-#include <string>
+#include "basic_info_includes.h"
+#include "nstd/hashed_string.h"

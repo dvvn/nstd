@@ -73,22 +73,22 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 	return {};
 }
 
-auto vtables::create(const key_type& entry) -> create_result
+static std::string _Make_class_name(const std::string_view& class_name)
 {
 	constexpr std::string_view prefix = ".?AV";
 	constexpr std::string_view postfix = "@@";
 
-	const auto& class_name = entry;
+	std::string tmp;
+	tmp.reserve(prefix.size( ) + class_name.size( ) + postfix.size( ));
+	tmp += prefix;
+	tmp += class_name;
+	tmp += postfix;
+	return tmp;
+}
 
-	const auto real_name = [&]
-	{
-		std::string tmp;
-		tmp.reserve(prefix.size( ) + postfix.size( ) + class_name.size( ));
-		tmp += prefix;
-		tmp += class_name;
-		tmp += postfix;
-		return tmp;
-	}();
+auto vtables_storage::create(const key_type& entry) -> create_result
+{
+	const auto real_name = _Make_class_name(entry);
 
 	auto info_ptr = this->root_class( );
 

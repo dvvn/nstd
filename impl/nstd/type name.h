@@ -53,10 +53,10 @@ namespace nstd
 				throw std::logic_error("Incorrect array null character");
 #endif
 		}
-		constexpr buffered_string(const array_type& arr) : str(arr), str_size(traits_type::length(arr._Unchecked_begin( ))) { }
+		constexpr buffered_string(const array_type& arr) : str(arr), str_size(traits_type::length(arr.data( ))) { }
 
 		constexpr bool ideal( ) const { return str.size( ) - 1 == str_size; }
-		constexpr auto view( ) const { return _View(str._Unchecked_begin( ), str_size); }
+		constexpr auto view( ) const { return _View(str.data( ), str_size); }
 
 		template<size_t StrSize>
 		constexpr buffered_string<Chr, StrSize + 1> make_ideal( )const
@@ -83,11 +83,13 @@ namespace nstd
 		return l.view( ) == r;
 	}
 
-	template<typename It>
-	constexpr void filter_substring(It writer, const std::string_view& str, const std::string_view& substr)
+	template<typename T>
+	constexpr std::string_view filter_substring(T* buffer_pos, const std::string_view& str, const std::string_view& substr)
 	{
-		bool already_filled = *writer != 0;
+		auto buffer_start = buffer_pos;
+		bool already_filled = *buffer_pos != 0;
 		auto itr = str.begin( );
+
 		const auto end = str.end( );
 		for (;;)
 		{
@@ -95,7 +97,10 @@ namespace nstd
 			if (limit < substr.size( ))
 			{
 				if (!already_filled)
-					*std::copy(itr, end, writer) = 0;
+				{
+					buffer_pos = std::copy(itr, end, buffer_pos);
+					*buffer_pos = 0;
+				}
 
 				break;
 			}
@@ -105,8 +110,11 @@ namespace nstd
 			if (std::equal(substr.begin( ), substr.end( ), itr))
 				itr += substr.size( );
 			else
-				*writer++ = *itr++;
+				*buffer_pos++ = *itr++;
 		}
+
+		auto size = already_filled ? std::char_traits<T>::length(buffer_start) : std::distance(buffer_start, buffer_pos);
+		return {buffer_start, size};
 
 #if 0
 		size_t pos = 0;
@@ -134,6 +142,17 @@ namespace nstd
 #endif
 	}
 
+	template<typename T, typename ...Strings>
+	constexpr std::string_view filter_substring_multi(T* buffer_pos, std::string_view str, const Strings& ...substrs)
+	{
+		const auto process = [&](const std::string_view& substr)
+		{
+			str = filter_substring(buffer_pos, str, substr);
+		};
+		(process(substrs), ...);
+		return str;
+	}
+
 	namespace detail
 	{
 		template<typename Chr, size_t Size>
@@ -143,7 +162,6 @@ namespace nstd
 			*buffer.begin( ) = 0;
 			return buffer;
 		}
-
 
 		template <typename T>
 		constexpr auto type_name_impl( )
@@ -157,33 +175,10 @@ namespace nstd
 #if 1
 			constexpr auto name = n0.substr(start, name_size);
 			auto buffer = prepare_buffer<char, name_size>( );
-			auto bg = buffer.begin( );
+			auto bg = buffer.data( );
 
-			constexpr bool _Class = std::is_class_v<T>;
-			constexpr bool _Enum = std::is_enum_v<T>;
-			constexpr bool _Union = std::is_union_v<T>;
-
-			if constexpr (!_Class && !_Enum && !_Union)
-			{
-				std::ranges::copy(name, bg);
-				buffer.back( ) = 0;
-			}
-			else
-			{
-				if constexpr (_Class)
-				{
-					filter_substring(bg, name, "struct ");
-					filter_substring(bg, name, "class ");
-				}
-				//class checked because of inner templates
-				if constexpr (_Class || _Enum)
-					filter_substring(bg, name, "enum ");
-				if constexpr (_Class || _Union)
-					filter_substring(bg, name, "union ");
-			}
-
+			filter_substring_multi(bg, name, "struct ", "class ", "enum ", "union ");
 			return buffered_string(buffer);
-
 #else
 
 			auto name = std::string(n0.substr(start, name_size));
@@ -219,13 +214,9 @@ namespace nstd
 
 			constexpr auto name = n0.substr(start, name_size);
 			auto buffer = prepare_buffer<char, name_size>( );
-			auto bg = buffer.begin( );
+			auto bg = buffer.data( );
 
-			filter_substring(bg, name, "struct ");
-			filter_substring(bg, name, "class ");
-			filter_substring(bg, name, "enum ");
-			filter_substring(bg, name, "union ");
-
+			filter_substring_multi(bg, name, "struct ", "class ", "enum ", "union ");
 			return buffered_string(buffer);
 		}
 
@@ -275,6 +266,7 @@ namespace nstd
 
 	static_assert(type_name<int>( ) == "int");
 	static_assert(type_name<std::array>( ) == "std::array");
+	static_assert(type_name<std::exception>( ) == "std::exception");
 
 #if 1
 	constexpr auto drop_namespace(const std::string_view& in, const std::string_view& drop)
@@ -290,7 +282,7 @@ namespace nstd
 #endif
 
 		auto buffer = detail::prepare_buffer<char, 255>( );
-		auto bg = buffer.begin( );
+		auto bg = buffer.data( );
 		if (drop.ends_with("::"))
 		{
 			filter_substring(bg, in, drop);
@@ -307,7 +299,7 @@ namespace nstd
 				++tmp_buffer_size;
 			}
 			*pos = 0;//maybe unwanted
-			filter_substring(bg, in, {tmp_buffer._Unchecked_begin( ),tmp_buffer_size});
+			filter_substring(bg, in, {tmp_buffer.data( ),tmp_buffer_size});
 		}
 
 		return buffered_string(buffer);

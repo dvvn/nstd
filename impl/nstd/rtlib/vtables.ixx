@@ -9,14 +9,22 @@ export import nstd.mem;
 
 export namespace nstd::rtlib
 {
-	struct vtable_data 
+	struct vtable_data
 	{
 		mem::address addr;
 	};
 
-	struct vtables :cache<vtable_data>
+	class vtables_storage :protected cache<vtable_data>
 	{
-	protected:
 		create_result create(const key_type& entry) override;
+
+	public:
+		cache& vtables( ) { return *this; }
+		const cache& vtables( )const { return *this; }
 	};
+
+	void swap(vtables_storage& l, vtables_storage& r)
+	{
+		l.vtables( ).swap(r.vtables( ));
+	}
 }

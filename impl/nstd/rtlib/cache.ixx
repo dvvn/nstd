@@ -259,12 +259,24 @@ export namespace nstd::rtlib
 			return *this;
 		}
 
+		void swap(basic_cache& r)
+		{
+			using nstd::swap;
+			swap(this->cache_, r.cache_);
+		}
+
 	private:
 		cache_type cache_;
 		mutable mutex_type locker_;
 	};
 
-	class info;
+	template<typename ...Args>
+	void swap(basic_cache<Args...>& l, basic_cache<Args...>& r)
+	{
+		l.swap(r);
+	}
+
+	struct info;
 	struct root_getter
 	{
 		virtual ~root_getter( ) = default;

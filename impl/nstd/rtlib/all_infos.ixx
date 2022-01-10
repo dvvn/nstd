@@ -7,7 +7,7 @@ export import :info;
 
 export namespace nstd::rtlib
 {
-	using modules_storage_data = std::list<info>;
+	using modules_storage_data = std::/*list*/vector<info>;
 	class modules_storage : modules_storage_data
 	{
 	public:
@@ -20,37 +20,13 @@ export namespace nstd::rtlib
 
 		modules_storage& update(bool force = false);
 
-		info& current( ) const;
+		const info& current( ) const;
+		info& current( );
+		const info& owner( )const;
 		info& owner( );
 
-		template<typename Pred>
-		info* find(Pred&& pred)
-		{
-			for (info& i : *this)
-			{
-				if (std::invoke(pred, i))
-					return std::addressof(i);
-			}
-
-			return nullptr;
-		}
-
-		template<typename Pred>
-		info* rfind(Pred&& pred)
-		{
-			const auto end = this->rend( );
-			for (auto it = this->rbegin( ); it != end; ++it)
-			{
-				auto& i = *it;
-				if (std::invoke(pred, i))
-					return std::addressof(i);
-			}
-
-			return nullptr;
-		}
-
 	private:
-		info* current_cached_ = 0;
+		size_t current_index_ = static_cast<size_t>(-1);
 	};
 
 	namespace detail

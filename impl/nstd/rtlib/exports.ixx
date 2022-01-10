@@ -14,9 +14,17 @@ export namespace nstd::rtlib
 		mem::address addr;
 	};
 
-	struct exports :rtlib::cache<export_data>
+	class exports_storage :protected cache<export_data>
 	{
-	protected:
 		create_result create(const key_type& entry) override;
+
+	public:
+		cache& exports( ) { return *this; }
+		const cache& exports( )const { return *this; }
 	};
+
+	void swap(exports_storage& l, exports_storage& r)
+	{
+		l.exports( ).swap(r.exports( ));
+	}
 }

@@ -1,15 +1,4 @@
 module;
-//#include "nstd/runtime_assert.h"
-//#include "nstd/ranges.h"
-//
-//#include <Windows.h>
-//#include <winternl.h>
-//
-//#include <list>
-//#include <optional>
-//#include <vector>
-//#include <algorithm>
-//#include <functional>
 
 #include "includes.h"
 
@@ -63,12 +52,13 @@ static auto _Get_all_modules( )
 #endif
 
 #if defined(_M_X64) || defined(__x86_64__)
-	const auto ldr = mem->ProcessEnvironmentBlock->Ldr;
+	auto
+		const auto ldr = mem->ProcessEnvironmentBlock->Ldr;
 #else
 	const auto ldr = mem->Ldr;
-#endif
+#endif	
 
-	auto container = std::vector<info>( );
+	std::vector<basic_info> container;
 
 	// get module linked list.
 	const auto list = &ldr->InMemoryOrderModuleList;
@@ -92,7 +82,7 @@ static auto _Get_all_modules( )
 	//all internal functions tested only on x86
 	//UPDATE: all works, except vtables finder
 
-	runtime_assert(std::ranges::adjacent_find(container, {}, &info::name) == container.end( ));
+	//runtime_assert(std::ranges::adjacent_find(container, {}, &info::name) == container.end( ));
 	return container;
 }
 
@@ -110,97 +100,70 @@ static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 {
 	MEMORY_BASIC_INFORMATION info;
 	constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
-
+	 
 	//todo: is this is dll, try to load this function from inside
-	const auto len = VirtualQueryEx(GetCurrentProcess( ), _Get_current_module_handle, &info, info_size);
+	const auto len = VirtualQueryEx(GetCurrentProcess( ), _Get_current_module_handle, std::addressof(info), info_size);
 	runtime_assert(len == info_size, "Wrong size");
 	return static_cast<HMODULE>(info.AllocationBase);
 }
 
-info& modules_storage::current( ) const
+template<typename Rng>
+static size_t _Get_current_index(const Rng& rng)
 {
-	return *current_cached_;
+	static const address current_base = _Get_current_module_handle( );
+	return std::distance(rng.begin( ), std::ranges::find(rng, current_base, &basic_info::base));
 }
 
 modules_storage& modules_storage::update(bool force)
 {
-	static const address current_base = _Get_current_module_handle( );
-
 	if (this->empty( ))
 	{
-		runtime_assert(current_cached_ == nullptr, "Cache already set");
-		
-		for (info& m : _Get_all_modules( ))
-		{
-			auto& item = this->emplace_back(std::move(m));
-			if (current_cached_ == nullptr && item.base( ) == current_base)
-				current_cached_ = std::addressof(item);
-		}
+		const auto all = _Get_all_modules( );
+		this->reserve(all.size( ));
+		for (auto& i : all)
+			this->push_back(i);
+		current_index_ = _Get_current_index(all);
 	}
 	else if (force)
 	{
-		auto all = _Get_all_modules( );
+		const auto all = _Get_all_modules( );
+		if (std::ranges::equal(*this, all, [](const info& i, const basic_info& bi) {return i.base( ) == bi.base( ); }))
+			return *this;
 
-#if 0
-
-		//erase all unused modules
-		this->remove_if([&](const info& m)-> bool
-							{
-								for (const auto& m_new : all)
-								{
-									if (m.base( ) == m_new.base( ))
-										return false;
-								}
-								return true;
-							});
-#endif
-
-
-		auto find_current = current_cached_ != nullptr;
-
-		//add all new modules, save the order
-		auto itr = this->begin( );
-		for (auto& m : all)
+		modules_storage_data storage;
+		storage.reserve(all.size( ));
+		const auto ed = this->end( );
+		for (auto& i : all)
 		{
-			if (itr == this->end( ) || itr->base( ) != m.base( ))
-				itr = this->insert(itr, const_cast<info&&>(m));
-
-			if (find_current && itr->base( ) == current_base)
-			{
-				current_cached_ = std::addressof(*itr);
-				find_current = false;
-			}
-
-			++itr;
+			auto itr = std::ranges::find(*this, i.base( ), &basic_info::base);
+			if (itr != ed)
+				storage.push_back(std::move(*itr));
+			else
+				storage.push_back(i);
 		}
+		*static_cast<modules_storage_data*>(this) = std::move(storage);
+		current_index_ = _Get_current_index(all);
 	}
 
 	return *this;
+}
+
+const info& modules_storage::current( ) const
+{
+	return (*this)[current_index_];
+}
+
+info& modules_storage::current( )
+{
+	return (*this)[current_index_];
+}
+
+const info& modules_storage::owner( )const
+{
+	return this->front( );
 }
 
 info& modules_storage::owner( )
 {
 	return this->front( );
 }
-
-//template <typename T, typename Pred>
-//static info* _Find(T&& storage, Pred&& pred)
-//{
-//	for (info& i : storage)
-//	{
-//		if (std::invoke(pred, i))
-//			return std::addressof(i);
-//	}
-//
-//	return nullptr;
-//}
-//
-//info* modules_storage::find(const find_fn& fn)
-//{
-//	return _Find(*this, fn);
-//}
-//
-//info* modules_storage::rfind(const find_fn& fn)
-//{
-//	return _Find(*this | std::views::reverse, fn);
-//}

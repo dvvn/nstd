@@ -9,7 +9,7 @@ using namespace nstd;
 using namespace mem;
 using namespace rtlib;
 
-auto exports::create(const key_type& entry) -> create_result
+auto exports_storage::create(const key_type& entry) -> create_result
 {
 	//fill whole cache
 
@@ -68,21 +68,28 @@ auto exports::create(const key_type& entry) -> create_result
 			if (delim == fwd_str.npos)
 				continue;
 
-			const auto fwd_module_str = [&]
+			const auto fwd_module_str = [&]( )->hashed_wstring
 			{
 				// get forwarder mod name.
 				const auto fwd_module_name = fwd_str.substr(0, delim);
-				const auto fwd_module_name_lower = std::views::transform(fwd_module_name, [](const char c) { return static_cast<wchar_t>(std::tolower(c)); });
+				const auto fwd_module_name_lower = fwd_module_name | std::views::transform([](const char c) { return static_cast<wchar_t>(std::tolower(c)); });
 
-				return std::wstring(fwd_module_name_lower.begin( ), fwd_module_name_lower.end( )).append(L".dll");
+				constexpr std::wstring_view dot_dll = L".dll";
+
+				std::wstring out;
+				out.reserve(fwd_module_name.size( ) + dot_dll.size( ));
+				out.append(fwd_module_name_lower.begin( ), fwd_module_name_lower.end( ));
+				out.append(dot_dll);
+
+				return out;
 			}();
 
 			// get forwarder export name.
 			const auto fwd_export_str = fwd_str.substr(delim + 1);
 
 			// get real export ptr ( recursively ).
-			const auto target_module = all_modules->find([&](const auto& info) { return info.name( ) == fwd_module_str; });
-			if (!target_module)
+			const auto target_module = std::ranges::find_if(*all_modules, [&](const info& i) { return i.name( ).fixed == fwd_module_str; });
+			if (target_module == all_modules->end( ))
 				continue;
 			try
 			{

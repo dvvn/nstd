@@ -15,9 +15,17 @@ export namespace nstd::rtlib
 		IMAGE_SECTION_HEADER* data = nullptr;
 	};
 
-	struct sections :cache<section_data>
+	class sections_storage :protected cache<section_data>
 	{
-	protected:
 		create_result create(const key_type& entry) override;
+
+	public:
+		cache& sections( ) { return *this; }
+		const cache& sections( )const { return *this; }
 	};
+
+	void swap(sections_storage& l, sections_storage& r)
+	{
+		l.sections( ).swap(r.sections( ));
+	}
 }
