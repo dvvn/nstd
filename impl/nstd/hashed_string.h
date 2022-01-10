@@ -1,23 +1,21 @@
 #pragma once
+#include "type_traits.h"
+#include "runtime_assert.h"
 
-#ifdef _DEBUG
-#include "mem/address_includes.h"
-#endif
-#include "nstd/type_traits.h"
 #include <string>
 #include <functional>
 
 namespace nstd
 {
-	template<class Base, class Hasher = std::hash<Base>>
+	template<class Base, template<typename> class Hasher = std::hash>
 	struct hashed_string_wrapper : Base
 	{
 		using hash_type = /*decltype(std::invoke(std::declval<Hasher>( ), std::declval<Base>( )))*/size_t;
-		using hash_func_type = Hasher;
+		using hash_func_type = Hasher<Base>;
 
 	private:
 		hash_type hash_ = static_cast<hash_type>(-1);
-		[[no_unique_address]] Hasher hasher_;
+		[[no_unique_address]] hash_func_type hasher_;
 
 		constexpr void _Validate_hash(const Base& str, hash_type hash)const
 		{
@@ -43,25 +41,25 @@ namespace nstd
 			hash_ = hash;
 		}
 
-		template<class Base2, class Hasher2>
+		template<class Base2, template<typename> class Hasher2>
 		constexpr void _Write_hash(const hashed_string_wrapper<Base2, Hasher2>& holder)
 		{
 			hash_ = holder.hash_;
 		}
 
 	public:
-		static_assert(std::is_empty_v<Hasher>, "Hasher class must be empty");
+		static_assert(std::is_empty_v<hash_func_type>, "Hasher class must be empty");
 
 		constexpr hashed_string_wrapper( ) = default;
 
-		template<class Base2, class Hasher2>
+		template<class Base2, template<typename> class Hasher2>
 			requires(std::constructible_from<Base, Base2>&& same_template<Hasher, Hasher2>( ))
 		constexpr hashed_string_wrapper(const hashed_string_wrapper<Base2, Hasher2>& other) :Base(static_cast<const Base2&>(other))
 		{
 			_Write_hash(other);
 		}
 
-		template<class Base2, class Hasher2>
+		template<class Base2, template<typename> class Hasher2>
 			requires(std::constructible_from<Base, Base2>&& same_template<Hasher, Hasher2>( ))
 		constexpr hashed_string_wrapper(hashed_string_wrapper<Base2, Hasher2>&& other) :Base(static_cast<Base2&&>(other))
 		{
@@ -100,7 +98,8 @@ namespace nstd
 		constexpr hash_type hash( )const { return hash_; }
 	};
 
-	template<class Base, class Hasher, class Base2, class Hasher2 >
+	template<class Base, template<typename> class Hasher
+		, class Base2, template<typename> class Hasher2 >
 		requires(std::equality_comparable_with<Base, Base2>&& nstd::same_template<Hasher, Hasher2>( ))
 	constexpr bool operator ==(const hashed_string_wrapper<Base, Hasher>& l, const hashed_string_wrapper<Base2, Hasher2>& r)
 	{
@@ -108,26 +107,18 @@ namespace nstd
 	}
 
 	template<typename Chr
-		, class Traits = std::char_traits<Chr>
-		, class Hasher = std::hash<std::basic_string_view<Chr, Traits>>
-		, class Base = hashed_string_wrapper<std::basic_string_view<Chr, Traits>, Hasher>>
-		struct basic_hashed_string_view : Base
-	{
-		using Base::Base;
-	};
+		, template<typename> class Hasher = std::hash
+		, class Traits = std::char_traits<Chr>>
+		using basic_hashed_string_view = hashed_string_wrapper<std::basic_string_view<Chr, Traits>, Hasher >;
 
 	using hashed_string_view = basic_hashed_string_view<char>;
 	using hashed_wstring_view = basic_hashed_string_view<wchar_t>;
 
 	template<typename Chr
+		, template<typename> class Hasher = std::hash
 		, class Traits = std::char_traits<Chr>
-		, class Allocator = std::allocator<Chr>
-		, class Hasher = std::hash<std::basic_string<Chr, Traits, Allocator>>
-		, class Base = hashed_string_wrapper<std::basic_string<Chr, Traits, Allocator>, Hasher>>
-		struct basic_hashed_string : Base
-	{
-		using Base::Base;
-	};
+		, class Allocator = std::allocator<Chr>>
+		using basic_hashed_string = hashed_string_wrapper<std::basic_string<Chr, Traits, Allocator>, Hasher >;
 
 	using hashed_string = basic_hashed_string<char>;
 	using hashed_wstring = basic_hashed_string<wchar_t>;
