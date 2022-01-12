@@ -44,7 +44,17 @@ namespace nstd
 		template<class Base2, template<typename> class Hasher2>
 		constexpr void _Write_hash(const hashed_string_wrapper<Base2, Hasher2>& holder)
 		{
-			hash_ = holder.hash_;
+			if constexpr (same_template<Hasher, Hasher2>( ))
+			{
+				if constexpr (std::same_as<Base, Base2>)
+					hash_ = holder.hash();
+				else
+					_Write_hash(holder.hash());
+			}
+			else
+			{
+				_Calc_hash( );
+			}
 		}
 
 	public:
@@ -53,14 +63,14 @@ namespace nstd
 		constexpr hashed_string_wrapper( ) = default;
 
 		template<class Base2, template<typename> class Hasher2>
-			requires(std::constructible_from<Base, Base2>&& same_template<Hasher, Hasher2>( ))
+			requires(std::constructible_from<Base, Base2>)
 		constexpr hashed_string_wrapper(const hashed_string_wrapper<Base2, Hasher2>& other) :Base(static_cast<const Base2&>(other))
 		{
 			_Write_hash(other);
 		}
 
 		template<class Base2, template<typename> class Hasher2>
-			requires(std::constructible_from<Base, Base2>&& same_template<Hasher, Hasher2>( ))
+			requires(std::constructible_from<Base, Base2>)
 		constexpr hashed_string_wrapper(hashed_string_wrapper<Base2, Hasher2>&& other) :Base(static_cast<Base2&&>(other))
 		{
 			_Write_hash(other);

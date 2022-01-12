@@ -31,6 +31,7 @@ export namespace nstd::rtlib
 	public:
 
 		info(const basic_info& basic);
+		info(basic_info&& basic)noexcept;
 		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
 		info(info&& other) noexcept;
 		info& operator=(info&& other) noexcept;

@@ -20,6 +20,20 @@ basic_info::basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, I
 	nt_ = nt;
 }
 
+basic_info::basic_info(basic_info&& other)noexcept
+{
+	*this=std::move(other);
+}
+
+basic_info& basic_info::operator=(basic_info&& other)noexcept
+{
+	using std::swap;
+	swap(ldr_entry_, other.ldr_entry_);
+	swap(dos_, other.dos_);
+	swap(nt_, other.nt_);
+	return *this;
+}
+
 mem::address basic_info::base( ) const
 {
 	return ldr_entry_->DllBase;

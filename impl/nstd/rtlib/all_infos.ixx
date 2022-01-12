@@ -18,7 +18,7 @@ export namespace nstd::rtlib
 		using modules_storage_data::end;
 		using modules_storage_data::size;
 
-		modules_storage& update(bool force = false);
+		bool update(bool force = false);
 
 		const info& current( ) const;
 		info& current( );
@@ -28,17 +28,6 @@ export namespace nstd::rtlib
 	private:
 		size_t current_index_ = static_cast<size_t>(-1);
 	};
-
-	namespace detail
-	{
-		struct all_infos_impl : modules_storage
-		{
-			all_infos_impl( )
-			{
-				this->update( );
-			}
-		};
-	}
-
-	using all_infos = one_instance<detail::all_infos_impl>;
+		
+	using all_infos = one_instance<modules_storage>;
 }

@@ -29,7 +29,7 @@ info_string::info_string(const std::wstring_view& raw_string)
 info* info::root_class( ) { return this; }
 const info* info::root_class( ) const { return this; }
 
-info::info(const basic_info& basic) :basic_info(basic)
+info::info(basic_info&& basic) :basic_info(std::move(basic))
 {
 	const std::wstring_view path = {ENTRY( )->FullDllName.Buffer, ENTRY( )->FullDllName.Length / sizeof(wchar_t)};
 
@@ -37,6 +37,15 @@ info::info(const basic_info& basic) :basic_info(basic)
 	const auto name_bg = path.find_last_of('\\');
 	name_ = path.substr(name_bg + 1);
 	work_dir_ = path.substr(0, name_bg);
+}
+
+static basic_info _Copy_info(const basic_info& basic)
+{
+	return basic;
+}
+
+info::info(const basic_info& basic) :info(_Copy_info(basic))
+{
 }
 
 info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)

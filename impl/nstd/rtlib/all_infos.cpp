@@ -100,7 +100,7 @@ static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 {
 	MEMORY_BASIC_INFORMATION info;
 	constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
-	 
+
 	//todo: is this is dll, try to load this function from inside
 	const auto len = VirtualQueryEx(GetCurrentProcess( ), _Get_current_module_handle, std::addressof(info), info_size);
 	runtime_assert(len == info_size, "Wrong size");
@@ -114,7 +114,7 @@ static size_t _Get_current_index(const Rng& rng)
 	return std::distance(rng.begin( ), std::ranges::find(rng, current_base, &basic_info::base));
 }
 
-modules_storage& modules_storage::update(bool force)
+bool modules_storage::update(bool force)
 {
 	if (this->empty( ))
 	{
@@ -123,29 +123,49 @@ modules_storage& modules_storage::update(bool force)
 		for (auto& i : all)
 			this->push_back(i);
 		current_index_ = _Get_current_index(all);
+		return true;
 	}
 	else if (force)
 	{
 		const auto all = _Get_all_modules( );
 		if (std::ranges::equal(*this, all, [](const info& i, const basic_info& bi) {return i.base( ) == bi.base( ); }))
-			return *this;
+			return false;
 
 		modules_storage_data storage;
 		storage.reserve(all.size( ));
-		const auto ed = this->end( );
-		for (auto& i : all)
+
+		if (this->empty( ))
 		{
-			auto itr = std::ranges::find(*this, i.base( ), &basic_info::base);
-			if (itr != ed)
-				storage.push_back(std::move(*itr));
-			else
+			for (const auto& i : all)
 				storage.push_back(i);
 		}
+		else
+		{
+			for (auto& i : *this)
+			{
+				const auto itr = std::ranges::find(all, i.base( ), &basic_info::base);
+				if (itr != all.end( ))
+					storage[std::distance(itr, all.end( ))] = std::move(i);
+			}
+
+			for (size_t idx = 0; idx < all.size( ); ++idx)
+			{
+				static const basic_info def_val = {};
+				auto& to = storage[idx];
+				//already filled
+				if (std::memcmp(static_cast<basic_info*>(std::addressof(to)), std::addressof(def_val), sizeof(basic_info)) != 0)
+					continue;
+
+				to = all[idx];
+			}
+		}
+
 		*static_cast<modules_storage_data*>(this) = std::move(storage);
 		current_index_ = _Get_current_index(all);
+		return true;
 	}
 
-	return *this;
+	return false;
 }
 
 const info& modules_storage::current( ) const
