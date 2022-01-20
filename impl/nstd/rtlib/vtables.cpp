@@ -18,7 +18,7 @@ using namespace rtlib;
 //todo: add x64 support
 static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, const section_data& dot_text, address type_descriptor)
 {
-	const auto all_blocks = [&]
+	/*const auto all_blocks = [&]
 	{
 		std::vector<block> storage;
 		auto from = dot_rdata.block;
@@ -32,14 +32,23 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 			storage.push_back(std::move(found_block));
 		}
 		return storage;
-	}();
+	};*/
 
-	for (const auto& block : all_blocks)
+	auto from = dot_rdata.block;
+	auto search = make_signature(type_descriptor);
+
+	for (;;)
 	{
+		auto block = from.find_block(search);
+		if (block.empty( ))
+			break;
+		from = from.shift_to(block._Unchecked_end( ));
+
 		const address xr = block.data( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
-		if (const uintptr_t vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref( ); vtable_offset != 0)
+		const uintptr_t vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref( );
+		if (vtable_offset != 0)
 			continue;
 
 		// get the object locater

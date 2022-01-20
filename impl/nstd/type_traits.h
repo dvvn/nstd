@@ -152,6 +152,12 @@ namespace nstd
 
 	template <typename T>
 	using remove_all_pointers_t = typename remove_all_pointers<T>::type;
+
+	template <bool Val, typename T>
+	using add_const_if_v = std::conditional_t<Val, std::add_const_t<T>, T>;
+
+	template <typename Test, typename T>
+	using add_const_if = add_const_if_v<std::is_const_v<Test>, T>;
 }
 
 #if defined(_CONSTEXPR20_CONTAINTER)

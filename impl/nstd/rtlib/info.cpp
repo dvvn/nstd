@@ -29,7 +29,8 @@ info_string::info_string(const std::wstring_view& raw_string)
 info* info::root_class( ) { return this; }
 const info* info::root_class( ) const { return this; }
 
-info::info(basic_info&& basic) :basic_info(std::move(basic))
+info::info(basic_info&& basic) noexcept
+	:basic_info(std::move(basic))
 {
 	const std::wstring_view path = {ENTRY( )->FullDllName.Buffer, ENTRY( )->FullDllName.Length / sizeof(wchar_t)};
 
