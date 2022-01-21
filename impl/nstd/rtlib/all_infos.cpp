@@ -143,7 +143,7 @@ bool modules_storage::update(bool force)
 			if (found == basic_storage.end( ))
 				continue;
 			//record already exists, move it
-			const auto idx = std::distance(found, basic_storage.end( ));
+			const auto idx = std::distance(basic_storage.begin( ), found);
 			temp_storage[idx] = std::move(rec);
 			stolen_data[idx] = true;
 		}
