@@ -30,6 +30,7 @@ export namespace nstd::rtlib
 		const info* root_class( ) const override;
 	public:
 
+		info( ) = default;
 		info(const basic_info& basic);
 		info(basic_info&& basic)noexcept;
 		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);

@@ -107,65 +107,61 @@ static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 	return static_cast<HMODULE>(info.AllocationBase);
 }
 
-template<typename Rng>
-static size_t _Get_current_index(const Rng& rng)
+static void _Write_current_idx(const modules_storage_data& storage, size_t& current_holder)
 {
-	static const address current_base = _Get_current_module_handle( );
-	return std::distance(rng.begin( ), std::ranges::find(rng, current_base, &basic_info::base));
+	const address current_base = _Get_current_module_handle( );
+	const auto index = std::distance(storage.begin( ), std::ranges::find(storage, current_base, &basic_info::base));
+	current_holder = index;
 }
 
 bool modules_storage::update(bool force)
 {
-	if (this->empty( ))
+	modules_storage_data& storage = *this;
+
+	if (!force && !storage.empty( ))
+		return false;
+
+	const auto basic_storage = _Get_all_modules( );
+
+	if (storage.empty( ))
 	{
-		const auto all = _Get_all_modules( );
-		this->reserve(all.size( ));
-		for (auto& i : all)
-			this->push_back(i);
-		current_index_ = _Get_current_index(all);
-		return true;
+		storage.assign(basic_storage.begin( ), basic_storage.end( ));
 	}
-	else if (force)
+	else if (std::ranges::equal(storage, basic_storage, [](const basic_info& l, const basic_info& r) {return l.base( ) == r.base( ); }))
 	{
-		const auto all = _Get_all_modules( );
-		if (std::ranges::equal(*this, all, [](const info& i, const basic_info& bi) {return i.base( ) == bi.base( ); }))
-			return false;
-
-		modules_storage_data storage;
-		storage.reserve(all.size( ));
-
-		if (this->empty( ))
+		return false;
+	}
+	else
+	{
+		modules_storage_data temp_storage;
+		temp_storage.resize(basic_storage.size( ));
+		std::vector<bool> stolen_data;
+		stolen_data.resize(basic_storage.size( ), false);
+		for (auto& rec : std::span(storage.begin( ), std::min(storage.size( ), basic_storage.size( ))))
 		{
-			for (const auto& i : all)
-				storage.push_back(i);
-		}
-		else
-		{
-			for (auto& i : *this)
-			{
-				const auto itr = std::ranges::find(all, i.base( ), &basic_info::base);
-				if (itr != all.end( ))
-					storage[std::distance(itr, all.end( ))] = std::move(i);
-			}
-
-			for (size_t idx = 0; idx < all.size( ); ++idx)
-			{
-				static const basic_info def_val = {};
-				auto& to = storage[idx];
-				//already filled
-				if (std::memcmp(static_cast<basic_info*>(std::addressof(to)), std::addressof(def_val), sizeof(basic_info)) != 0)
-					continue;
-
-				to = all[idx];
-			}
+			const auto found = std::ranges::find(basic_storage, rec.base( ), &basic_info::base);
+			if (found == basic_storage.end( ))
+				continue;
+			//record already exists, move it
+			const auto idx = std::distance(found, basic_storage.end( ));
+			temp_storage[idx] = std::move(rec);
+			stolen_data[idx] = true;
 		}
 
-		*static_cast<modules_storage_data*>(this) = std::move(storage);
-		current_index_ = _Get_current_index(all);
-		return true;
+		for (size_t idx = 0; idx < basic_storage.size( ); ++idx)
+		{
+			//stolen in previous loop
+			if (stolen_data[idx])
+				continue;
+
+			//construct it from basic_info
+			temp_storage[idx] = basic_storage[idx];
+		}
+		storage = std::move(temp_storage);
 	}
 
-	return false;
+	_Write_current_idx(storage, current_index_);
+	return true;
 }
 
 const info& modules_storage::current( ) const
