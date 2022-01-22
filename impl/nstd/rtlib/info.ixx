@@ -17,6 +17,13 @@ export namespace nstd::rtlib
 
 		info_string( ) = default;
 		info_string(const std::wstring_view& raw_string);
+
+		//"explicit" operator
+		template<std::same_as<info_string> T>
+		bool operator==(const T& other)const
+		{
+			return fixed == other.fixed;
+		}
 	};
 
 	struct info final : basic_info, sections_storage, exports_storage, vtables_storage

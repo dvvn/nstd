@@ -40,26 +40,25 @@ static std::optional<header> _Get_file_headers(address base)
 	return result;
 }
 
-static auto _Get_all_modules( )
+static auto _Get_ldr( )
 {
 	// TEB->ProcessEnvironmentBlock.
 #if defined(_M_X64) || defined(__x86_64__)
 	const auto mem = NtCurrentTeb( );
 	runtime_assert(mem != nullptr, "Teb not found");
+	return mem->ProcessEnvironmentBlock->Ldr;
 #else
 	const auto mem = reinterpret_cast<PPEB>(__readfsdword(0x30));
 	runtime_assert(mem != nullptr, "Peb not found");
+	return mem->Ldr;
 #endif
+}
 
-#if defined(_M_X64) || defined(__x86_64__)
-	auto
-		const auto ldr = mem->ProcessEnvironmentBlock->Ldr;
-#else
-	const auto ldr = mem->Ldr;
-#endif	
-
-	std::vector<basic_info> container;
-
+template<typename T = basic_info>
+static auto _Get_all_modules( )
+{
+	const auto ldr = _Get_ldr( );
+	std::vector<T> container;
 	// get module linked list.
 	const auto list = &ldr->InMemoryOrderModuleList;
 	// iterate linked list.
@@ -79,22 +78,8 @@ static auto _Get_all_modules( )
 		container.emplace_back(ldr_entry, headers->dos, headers->nt);
 	}
 
-	//all internal functions tested only on x86
-	//UPDATE: all works, except vtables finder
-
-	//runtime_assert(std::ranges::adjacent_find(container, {}, &info::name) == container.end( ));
 	return container;
 }
-
-//module_info_loaded::module_info_loaded(const boost::filesystem::path& p, DWORD flags):
-//    handle_(LoadLibraryExW(p.c_str( ), nullptr, flags))
-//{
-//    runtime_assert(handle_!=nullptr, "Unable to load module");
-//
-//
-//    auto all_infos=get_all_modules()
-//
-//}
 
 static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 {
@@ -112,6 +97,32 @@ static void _Write_current_idx(const modules_storage_data& storage, size_t& curr
 	const address current_base = _Get_current_module_handle( );
 	const auto index = std::distance(storage.begin( ), std::ranges::find(storage, current_base, &basic_info::base));
 	current_holder = index;
+}
+
+struct duplicate_info
+{
+	//offset from start to first object
+	size_t from_start;
+	//offset from object to duplicate
+	size_t from_obj;
+};
+
+template<typename Proj>
+static std::optional<duplicate_info> _Test_duplicate(const modules_storage_data& storage, Proj proj)
+{
+	const auto start = storage.begin( );
+	const auto end = storage.end( );
+	for (auto itr = start; itr != end; ++itr)
+	{
+		decltype(auto) obj1 = std::invoke(proj, *itr);
+		for (auto itr_next = std::next(itr); itr_next != end; ++itr_next)
+		{
+			decltype(auto) obj2 = std::invoke(proj, *itr_next);
+			if (obj1 == obj2)
+				return duplicate_info(std::distance(start, itr), std::distance(itr, itr_next));
+		}
+	}
+	return {};
 }
 
 bool modules_storage::update(bool force)
@@ -158,6 +169,7 @@ bool modules_storage::update(bool force)
 			temp_storage[idx] = basic_storage[idx];
 		}
 		storage = std::move(temp_storage);
+		runtime_assert(_Test_duplicate(storage, &info::name).has_value( ) == false);
 	}
 
 	_Write_current_idx(storage, current_index_);

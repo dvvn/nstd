@@ -7,6 +7,27 @@
 
 namespace nstd
 {
+#define NSTD_HASHED_STRING_WRAP(_NAME_) \
+	private:\
+		using Base::_NAME_;\
+	public:\
+		template<typename ...Args>\
+	/*requires (requires(Base &base,Args&&...args) { base._NAME_(std::forward<Args>(args)...); })*/\
+	decltype(auto) _NAME_(Args&&...args)\
+	{\
+		if constexpr(std::is_void_v<decltype(Base::_NAME_(std::forward<Args>(args)...))>)\
+		{\
+			Base::_NAME_(std::forward<Args>(args)...);\
+			this->_Calc_hash( );\
+		}\
+		else\
+		{\
+			auto ret = Base::_NAME_(std::forward<Args>(args)...);\
+			this->_Calc_hash( );\
+			return ret;\
+		}\
+	}
+
 	template<class Base, template<typename> class Hasher = std::hash>
 	struct hashed_string_wrapper : Base
 	{
@@ -47,9 +68,9 @@ namespace nstd
 			if constexpr (same_template<Hasher, Hasher2>( ))
 			{
 				if constexpr (std::same_as<Base, Base2>)
-					hash_ = holder.hash();
+					hash_ = holder.hash( );
 				else
-					_Write_hash(holder.hash());
+					_Write_hash(holder.hash( ));
 			}
 			else
 			{
@@ -76,21 +97,21 @@ namespace nstd
 			_Write_hash(other);
 		}
 
-		template<typename T>
-			requires(std::constructible_from<Base, T>)
-		constexpr hashed_string_wrapper(T&& val) :Base(std::forward<T>(val))
+		template<typename ...T>
+			requires(std::constructible_from<Base, T...>)
+		constexpr hashed_string_wrapper(T&&...val) :Base(std::forward<T>(val)...)
 		{
 			_Calc_hash( );
 		}
 
-		template<typename T>
-			requires(std::constructible_from<Base, T>)
-		constexpr hashed_string_wrapper(T&& val, hash_type hash) :Base(std::forward<T>(val))
+		template<typename ...T>
+			requires(std::constructible_from<Base, T...>)
+		constexpr hashed_string_wrapper(T&& ...val, hash_type hash) :Base(std::forward<T>(val)...)
 		{
 			_Write_hash(hash);
 		}
 
-		template<typename Itr>
+		/*template<typename Itr>
 			requires(std::constructible_from<Base, Itr, Itr>)
 		constexpr hashed_string_wrapper(Itr bg, Itr ed) :Base(bg, ed)
 		{
@@ -102,10 +123,12 @@ namespace nstd
 		constexpr hashed_string_wrapper(Itr bg, Itr ed, hash_type hash) :Base(bg, ed)
 		{
 			_Write_hash(hash);
-		}
+		}*/
 
 		constexpr hash_func_type get_hasher( )const { return hasher_; }
 		constexpr hash_type hash( )const { return hash_; }
+
+		NSTD_HASHED_STRING_WRAP(substr);
 	};
 
 	template<class Base, template<typename> class Hasher
@@ -118,8 +141,15 @@ namespace nstd
 
 	template<typename Chr
 		, template<typename> class Hasher = std::hash
-		, class Traits = std::char_traits<Chr>>
-		using basic_hashed_string_view = hashed_string_wrapper<std::basic_string_view<Chr, Traits>, Hasher >;
+		, class Traits = std::char_traits<Chr>
+		, class Base = hashed_string_wrapper<std::basic_string_view<Chr, Traits>, Hasher>>
+		struct basic_hashed_string_view : Base
+	{
+		using Base::Base;
+
+		NSTD_HASHED_STRING_WRAP(remove_prefix);
+		NSTD_HASHED_STRING_WRAP(remove_suffix);
+	};
 
 	using hashed_string_view = basic_hashed_string_view<char>;
 	using hashed_wstring_view = basic_hashed_string_view<wchar_t>;
@@ -127,9 +157,30 @@ namespace nstd
 	template<typename Chr
 		, template<typename> class Hasher = std::hash
 		, class Traits = std::char_traits<Chr>
-		, class Allocator = std::allocator<Chr>>
-		using basic_hashed_string = hashed_string_wrapper<std::basic_string<Chr, Traits, Allocator>, Hasher >;
+		, class Allocator = std::allocator<Chr>
+		, class Base = hashed_string_wrapper<std::basic_string<Chr, Traits, Allocator>, Hasher>>
+		struct basic_hashed_string : Base
+	{
+		using Base::Base;
+
+		NSTD_HASHED_STRING_WRAP(clear);
+		NSTD_HASHED_STRING_WRAP(insert);
+		NSTD_HASHED_STRING_WRAP(erase);
+		NSTD_HASHED_STRING_WRAP(push_back);
+		NSTD_HASHED_STRING_WRAP(pop_back);
+		NSTD_HASHED_STRING_WRAP(append);
+		NSTD_HASHED_STRING_WRAP(operator+=);
+		NSTD_HASHED_STRING_WRAP(replace);
+		NSTD_HASHED_STRING_WRAP(resize);
+#if __cplusplus > 202002L
+		NSTD_HASHED_STRING_WRAP(resize_and_overwrite);
+#endif
+	private:
+		using Base::swap;
+	};
 
 	using hashed_string = basic_hashed_string<char>;
 	using hashed_wstring = basic_hashed_string<wchar_t>;
+
+#undef NSTD_HASHED_STRING_WRAP
 }

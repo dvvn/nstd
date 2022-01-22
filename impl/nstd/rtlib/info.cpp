@@ -71,6 +71,7 @@ info& info::operator=(info&& other) noexcept
 	swap(full_path_, other.full_path_);
 	swap(name_, other.name_);
 	swap(work_dir_, other.work_dir_);
+
 	return *this;
 }
 
