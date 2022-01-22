@@ -12,7 +12,7 @@ namespace nstd
 		using Base::_NAME_;\
 	public:\
 		template<typename ...Args>\
-	/*requires (requires(Base &base,Args&&...args) { base._NAME_(std::forward<Args>(args)...); })*/\
+	/*requires requires(Base &base,Args&&...args) { base._NAME_(std::forward<Args>(args)...); }*/\
 	decltype(auto) _NAME_(Args&&...args)\
 	{\
 		if constexpr(std::is_void_v<decltype(Base::_NAME_(std::forward<Args>(args)...))>)\
@@ -149,6 +149,10 @@ namespace nstd
 
 		NSTD_HASHED_STRING_WRAP(remove_prefix);
 		NSTD_HASHED_STRING_WRAP(remove_suffix);
+#if __cplusplus > 201703L
+	private:
+		using Base::swap;
+#endif
 	};
 
 	using hashed_string_view = basic_hashed_string_view<char>;
