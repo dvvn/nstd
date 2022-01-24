@@ -1,9 +1,15 @@
-#pragma once
+module;
 #include "type_traits.h"
 #include "runtime_assert.h"
 
 #include <string>
 #include <functional>
+
+#ifdef _DEBUG
+#include <stdexcept>
+#endif
+
+export module nstd:hashed_string;
 
 namespace nstd
 {
@@ -131,14 +137,6 @@ namespace nstd
 		NSTD_HASHED_STRING_WRAP(substr);
 	};
 
-	template<class Base, template<typename> class Hasher
-		, class Base2, template<typename> class Hasher2 >
-		requires(std::equality_comparable_with<Base, Base2>&& nstd::same_template<Hasher, Hasher2>( ))
-	constexpr bool operator ==(const hashed_string_wrapper<Base, Hasher>& l, const hashed_string_wrapper<Base2, Hasher2>& r)
-	{
-		return l.hash( ) == r.hash( );
-	}
-
 	template<typename Chr
 		, template<typename> class Hasher = std::hash
 		, class Traits = std::char_traits<Chr>
@@ -149,14 +147,11 @@ namespace nstd
 
 		NSTD_HASHED_STRING_WRAP(remove_prefix);
 		NSTD_HASHED_STRING_WRAP(remove_suffix);
-#if __cplusplus > 201703L
 	private:
+#if __cplusplus > 201703L
 		using Base::swap;
 #endif
 	};
-
-	using hashed_string_view = basic_hashed_string_view<char>;
-	using hashed_wstring_view = basic_hashed_string_view<wchar_t>;
 
 	template<typename Chr
 		, template<typename> class Hasher = std::hash
@@ -182,9 +177,43 @@ namespace nstd
 	private:
 		using Base::swap;
 	};
+}
+
+export namespace nstd
+{
+#define NSTD_USE_HASHED_STRING_SPEC(_TYPE_,_PREFIX_,_POSTFIX_)\
+	using hashed_##_PREFIX_##string##_POSTFIX_ = basic_hashed_string##_POSTFIX_##<_TYPE_>;
+
+#define NSTD_USE_HASHED_STRING(_TYPE_,...)\
+	NSTD_USE_HASHED_STRING_SPEC(_TYPE_,__VA_ARGS__,)\
+	NSTD_USE_HASHED_STRING_SPEC(_TYPE_,__VA_ARGS__,_view)
+
+	NSTD_USE_HASHED_STRING(char);
+	NSTD_USE_HASHED_STRING(char16_t, u16);
+	NSTD_USE_HASHED_STRING(char32_t, u32);
+	NSTD_USE_HASHED_STRING(wchar_t, w);
+#ifdef __cpp_lib_char8_t
+	NSTD_USE_HASHED_STRING(char8_t, u8);
+#endif
+
+	/*using hashed_string_view = basic_hashed_string_view<char>;
+	using hashed_wstring_view = basic_hashed_string_view<wchar_t>;
 
 	using hashed_string = basic_hashed_string<char>;
-	using hashed_wstring = basic_hashed_string<wchar_t>;
+	using hashed_wstring = basic_hashed_string<wchar_t>;*/
 
-#undef NSTD_HASHED_STRING_WRAP
+#define NSTD_HASHED_STRING_OPERATOR_IMPL(_CHECK_,_RET_,_OP_)\
+	template<class Base, template<typename> class Hasher\
+		, class Base2, template<typename> class Hasher2>\
+		requires(_CHECK_<Base, Base2> && nstd::same_template<Hasher, Hasher2>( ))\
+	constexpr _RET_ operator _OP_(const hashed_string_wrapper<Base, Hasher>& l, const hashed_string_wrapper<Base2, Hasher2>& r)\
+	{\
+		return l.hash( ) _OP_ r.hash( );\
+	}
+
+#define NSTD_HASHED_STRING_OPERATOR(_OP_) \
+NSTD_HASHED_STRING_OPERATOR_IMPL(std::equality_comparable_with,bool,_OP_);
+
+	NSTD_HASHED_STRING_OPERATOR(== );
+	NSTD_HASHED_STRING_OPERATOR(!= );
 }

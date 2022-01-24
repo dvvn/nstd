@@ -7,6 +7,7 @@ export import :basic_info;
 export import :exports;
 export import :sections;
 export import :vtables;
+export import nstd;
 
 export namespace nstd::rtlib
 {
