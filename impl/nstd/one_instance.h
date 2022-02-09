@@ -9,13 +9,9 @@ namespace nstd
 	public:
 		constexpr one_instance( ) = default;
 		constexpr one_instance(const one_instance& other) = delete;
-		constexpr one_instance(one_instance&& other) noexcept = default;
 		constexpr one_instance& operator=(const one_instance& other) = delete;
-		constexpr one_instance& operator=(one_instance&& other) noexcept = default;
 
 		static constexpr size_t instance_index = Index;
-
-		using one_instance_tag = void*;
 
 		/*using value_type = T;
 		using reference = T&;
@@ -36,43 +32,12 @@ namespace nstd
 		{
 			return std::addressof(get( ));
 		}
-	};
 
-	template <typename T>
-	concept is_one_instance = requires
-	{
-		typename T::one_instance_tag;
-		T::instance_index;
-		T::get;
-	};
-
-	namespace detail
-	{
-		template <class T>
-		void reload_one_instance_impl(T& obj)
+		static void _Reload( )
 		{
-			if constexpr (std::swappable<T> && false)
-			{
-				T replace = {};
-				std::swap(obj, replace);
-			}
-			else
-			{
-				std::_Destroy_in_place(obj);
-				std::_Construct_in_place(obj);
-			}
+			auto ptr = get_ptr( );
+			std::destroy_at(ptr);
+			std::construct_at(ptr);
 		}
-	}
-
-	template <is_one_instance I>
-	void reload_one_instance(I& ins)
-	{
-		detail::reload_one_instance_impl(ins.get( ));
-	}
-
-	template <is_one_instance I>
-	void reload_one_instance( )
-	{
-		detail::reload_one_instance_impl(I::get( ));
-	}
+	};
 }

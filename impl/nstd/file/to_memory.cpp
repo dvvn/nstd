@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <functional>
+#include <filesystem>
 
 using namespace nstd;
 using namespace file;
@@ -15,10 +16,10 @@ void file::to_memory_impl(const std::wstring_view& path, const allocator_fn& all
 
 	ifstream infile;
 	constexpr auto open_flags = ios::in | ios::binary | ios::ate;
-	if (*path._Unchecked_end( ) == '\0')
-		infile.open(path._Unchecked_begin( ), open_flags);
+	if (*(path.data()+path.size()) == '\0')
+		infile.open(path.data( ), open_flags);
 	else
-		infile.open(std::wstring(path), open_flags);
+		infile.open(std::filesystem::path(path), open_flags);
 
 	//infile.seekg(0, infile.end); //done by ios::ate
 	const make_unsigned_t<streamoff> file_size0 = infile.tellg( );
@@ -55,12 +56,12 @@ uint8_t* copyable_inplace_start::end( )
 
 const uint8_t* copyable_inplace_start::begin( ) const
 {
-	return std::_Const_cast(this)->begin( );
+    return const_cast<copyable_inplace_start*>(this)->begin();
 }
 
 const uint8_t* copyable_inplace_start::end( ) const
 {
-	return std::_Const_cast(this)->end( );
+    return const_cast<copyable_inplace_start*>(this)->end();
 }
 
 size_t copyable_inplace_start::size( ) const

@@ -16,7 +16,8 @@ protect::protect(protect&& other) noexcept
 
 protect& protect::operator=(protect&& other) noexcept
 {
-	std::swap(this->info_, other.info_);
+	using std::swap;
+	swap(this->info_, other.info_);
 	return *this;
 }
 
@@ -34,7 +35,7 @@ protect::protect(address addr, SIZE_T size, DWORD new_flags)
 }
 
 protect::protect(const block& mem, DWORD new_flags)
-	: protect((mem._Unchecked_begin( )), mem.size( ), new_flags)
+	: protect((mem.data( )), mem.size( ), new_flags)
 {
 }
 
