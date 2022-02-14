@@ -14,9 +14,9 @@ export namespace nstd::rtlib
 		mem::address addr;
 	};
 
-	class exports_storage :protected cache<export_data>
+	class exports_storage :protected cache<export_data, true>
 	{
-		create_result create(const key_type& entry) override;
+		create_result create(const key_type& entry) final;
 
 	public:
 		cache& exports( ) { return *this; }

@@ -5,6 +5,8 @@ module;
 #include "info_includes.h"
 
 #include <functional>
+#include <cwctype>
+
 
 module nstd.rtlib:info;
 
@@ -12,18 +14,37 @@ using namespace nstd;
 using namespace mem;
 using namespace rtlib;
 
-template<typename Fn>
-static std::wstring _To_lower(const std::wstring_view& str, Fn fn)
+template<typename C, typename Fn>
+static auto _To_lower(const std::basic_string_view<C> str, Fn fn)
 {
 	std::wstring out;
 	const auto lstr = std::views::transform(str, fn);
-	out.append(lstr.begin( ), lstr.end( ));
+	out.assign(lstr.begin( ), lstr.end( ));
 	return out;
 }
 
-info_string::info_string(const std::wstring_view& raw_string)
-	:raw(raw_string), fixed(_To_lower(raw_string, towlower))
+info_string::fixed_type::fixed_type(const std::wstring_view str)
+	:hashed_wstring(_To_lower(str, [](wchar_t c) {return std::towlower(c); }))
 {
+
+}
+
+info_string::fixed_type::fixed_type(const std::string_view str)
+	: hashed_wstring(_To_lower(str, [](char c) {return static_cast<char>(std::tolower(c)); }))
+{
+
+}
+
+info_string::info_string(const std::wstring_view raw_string)
+	: raw(raw_string), fixed(raw_string)
+{
+	fixed = raw_string;
+	//if raw_string already lowercase, dont recalc the hash
+	if (fixed == raw_string)
+		raw = {raw_string, fixed.hash( )};
+	else
+		raw = {raw_string};
+
 }
 
 info* info::root_class( ) { return this; }

@@ -26,7 +26,7 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	const auto dir = base_address.add(data_dir->VirtualAddress).ptr<IMAGE_EXPORT_DIRECTORY>( );
 #ifdef NDEBUG
 	if (!dir)
-		return {};
+		return;
 #endif
 	// names / funcs / ordinals ( all of these are RVAs ).
 	const auto names = base_address.add(dir->AddressOfNames).ptr<uint32_t>( );
@@ -34,7 +34,7 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	const auto ords = base_address.add(dir->AddressOfNameOrdinals).ptr<uint16_t>( );
 #ifdef NDEBUG
 	if (!names || !funcs || !ords)
-		return {};
+		return;
 #endif
 
 	const auto all_modules = all_infos::get_ptr( );
@@ -103,6 +103,4 @@ auto exports_storage::create(const key_type& entry) -> create_result
 			}
 		}
 	}
-
-	return {{}, false};
 }

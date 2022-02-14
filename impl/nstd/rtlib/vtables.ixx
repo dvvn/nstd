@@ -14,9 +14,9 @@ export namespace nstd::rtlib
 		mem::address addr;
 	};
 
-	class vtables_storage :protected cache<vtable_data>
+	class vtables_storage :protected cache<vtable_data, false>
 	{
-		create_result create(const key_type& entry) override;
+		create_result create(const key_type& entry) final;
 
 	public:
 		cache& vtables( ) { return *this; }

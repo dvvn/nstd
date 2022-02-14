@@ -31,9 +31,7 @@ auto sections_storage::create(const key_type& entry) -> create_result
 		info.block = {base_address + header->VirtualAddress, header->SizeOfRawData};
 		info.data = header;
 
-		this->emplace(std::move(info_name), std::move(info));
+		cache::emplace(std::move(info_name), std::move(info));
 	}
-
-	return create_result{{}, false};
 }
 

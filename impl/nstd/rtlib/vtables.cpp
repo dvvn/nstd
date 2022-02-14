@@ -119,6 +119,5 @@ auto vtables_storage::create(const key_type& entry) -> create_result
 
 	auto result = _Load_vtable(dot_rdata, dot_text, type_descriptor);
 	runtime_assert(result.has_value( ));
-
-	return {*result, true};
+	return *result;
 }

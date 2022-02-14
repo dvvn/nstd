@@ -15,9 +15,9 @@ export namespace nstd::rtlib
 		IMAGE_SECTION_HEADER* data = nullptr;
 	};
 
-	class sections_storage :protected cache<section_data>
+	class sections_storage :protected cache<section_data, true>
 	{
-		create_result create(const key_type& entry) override;
+		create_result create(const key_type& entry) final;
 
 	public:
 		cache& sections( ) { return *this; }
