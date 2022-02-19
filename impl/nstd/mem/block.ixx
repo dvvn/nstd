@@ -3,7 +3,7 @@ module;
 #include "block_includes.h"
 
 export module nstd.mem:block;
-export import :address;
+//export import :address;
 export import :signature;
 
 export namespace nstd::mem
@@ -27,8 +27,16 @@ export namespace nstd::mem
 
 		block( ) = default;
 
-		block(const address& begin, size_type mem_size = sizeof(address));
-		block(const address& begin, const address& end);
+		//using address_type = basic_address<uint8_t>; 
+
+		block(uint8_t* begin, size_type mem_size = sizeof(uintptr_t))
+			:block_base(begin, mem_size)
+		{
+		}
+		block(uint8_t* begin, uint8_t* end)
+			: block_base(begin, end)
+		{
+		}
 
 		explicit block(const block_base& span);
 

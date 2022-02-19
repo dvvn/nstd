@@ -28,7 +28,7 @@ auto sections_storage::create(const key_type& entry) -> create_result
 	{
 		key_type info_name = (const char*)header->Name;
 		mapped_type info;
-		info.block = {base_address + header->VirtualAddress, header->SizeOfRawData};
+		info.block = {base_address.add(header->VirtualAddress).pointer, header->SizeOfRawData};
 		info.data = header;
 
 		cache::emplace(std::move(info_name), std::move(info));

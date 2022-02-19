@@ -23,19 +23,19 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	const auto base_address = root_class( )->base( );
 
 	// get export dir.
-	const auto dir = base_address.add(data_dir->VirtualAddress).ptr<IMAGE_EXPORT_DIRECTORY>( );
-#ifdef NDEBUG
-	if (!dir)
-		return;
-#endif
-	// names / funcs / ordinals ( all of these are RVAs ).
-	const auto names = base_address.add(dir->AddressOfNames).ptr<uint32_t>( );
-	const auto funcs = base_address.add(dir->AddressOfFunctions).ptr<uint32_t>( );
-	const auto ords = base_address.add(dir->AddressOfNameOrdinals).ptr<uint16_t>( );
-#ifdef NDEBUG
-	if (!names || !funcs || !ords)
-		return;
-#endif
+	IMAGE_EXPORT_DIRECTORY* const dir = base_address.add(data_dir->VirtualAddress).pointer;
+	//#ifdef NDEBUG
+	//	if (!dir)
+	//		return;
+	//#endif
+		// names / funcs / ordinals ( all of these are RVAs ).
+	uint32_t* const  names = base_address.add(dir->AddressOfNames).pointer;
+	uint32_t* const  funcs = base_address.add(dir->AddressOfFunctions).pointer;
+	uint16_t* const  ords = base_address.add(dir->AddressOfNameOrdinals).pointer;
+	//#ifdef NDEBUG
+	//	if (!names || !funcs || !ords)
+	//		return;
+	//#endif
 
 	const auto all_modules = all_infos::get_ptr( );
 	all_modules->update(false);
@@ -43,7 +43,7 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	// iterate names array.
 	for (auto i = 0u; i < dir->NumberOfNames; ++i)
 	{
-		const std::string_view export_name = base_address.add(names[i]).ptr<const char>( );
+		const std::string_view export_name = base_address.add(names[i]).pointer.get<const char>( );
 		if (export_name.empty( ) /*|| export_name.starts_with('?') || export_name.starts_with('@')*/)
 			continue;
 
@@ -61,7 +61,7 @@ auto exports_storage::create(const key_type& entry) -> create_result
 		else // it's a forwarded export, we must resolve it.
 		{
 			// get forwarder string.
-			const std::string_view fwd_str = export_ptr.ptr<const char>( );
+			const std::string_view fwd_str = export_ptr.pointer.get<const char>( );
 
 			// forwarders have a period as the delimiter.
 			const auto delim = fwd_str.find_last_of('.');

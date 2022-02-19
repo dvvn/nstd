@@ -7,7 +7,6 @@ module;
 #include <functional>
 #include <cwctype>
 
-
 module nstd.rtlib:info;
 
 using namespace nstd;
@@ -84,6 +83,7 @@ info::info(info&& other) noexcept
 info& info::operator=(info&& other) noexcept
 {
 	using std::swap;
+	using nstd::swap;
 	swap<basic_info>(*this, other);
 	swap(this->sections( ), other.sections( ));
 	swap(this->exports( ), other.exports( ));
@@ -98,7 +98,7 @@ info& info::operator=(info&& other) noexcept
 
 block info::mem_block( ) const
 {
-	return {base( ), image_size( )};
+	return {base( ).pointer, image_size( )};
 }
 
 DWORD info::check_sum( ) const

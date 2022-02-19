@@ -29,16 +29,6 @@ protect::protect(const LPVOID addr, SIZE_T size, DWORD new_flags)
 	info_.emplace(addr, size, old_flags);
 }
 
-protect::protect(address addr, SIZE_T size, DWORD new_flags)
-	: protect(addr.ptr<void>( ), size, new_flags)
-{
-}
-
-protect::protect(const block& mem, DWORD new_flags)
-	: protect((mem.data( )), mem.size( ), new_flags)
-{
-}
-
 template <bool FromDestructor>
 static auto _Restore_impl(std::optional<protect::value_type>& info)
 {

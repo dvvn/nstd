@@ -44,10 +44,10 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 			break;
 		from = from.shift_to(block._Unchecked_end( ));
 
-		const address xr = block.data( );
+		const basic_address xr = block.data( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
-		const uintptr_t vtable_offset = xr.remove(sizeof(uintptr_t) * 2).ref( );
+		const uintptr_t vtable_offset = *xr.remove(sizeof(uintptr_t) * 2).pointer;
 		if (vtable_offset != 0)
 			continue;
 
@@ -58,7 +58,7 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 			const auto object_locator = xr.remove(sizeof(uintptr_t) * 3);
 			const auto sig = make_signature(object_locator);
 			const auto found = dot_rdata.block.find_block(sig);
-			const address addr = found.data( );
+			const basic_address addr = found.data( );
 			return addr + sizeof(uintptr_t);
 		}();
 
@@ -107,7 +107,7 @@ auto vtables_storage::create(const key_type& entry) -> create_result
 	runtime_assert(!target_block.empty( ));
 
 	// get rtti type descriptor
-	address type_descriptor = target_block.data( );
+	basic_address type_descriptor = target_block.data( );
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 

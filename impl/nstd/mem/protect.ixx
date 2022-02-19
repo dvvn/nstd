@@ -4,7 +4,6 @@ module;
 #include <optional>
 
 export module nstd.mem:protect;
-export import :block;
 
 export namespace nstd::mem
 {
@@ -27,8 +26,6 @@ export namespace nstd::mem
 		protect( ) = default;
 
 		protect(LPVOID addr, SIZE_T size, DWORD new_flags);
-		protect(address addr, SIZE_T size, DWORD new_flags);
-		protect(const block& mem, DWORD new_flags);
 
 		~protect( );
 

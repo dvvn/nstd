@@ -9,15 +9,15 @@ import :protect;
 using namespace nstd;
 using namespace nstd::mem;
 
-block::block(const address& begin, size_type mem_size)
-	: block_base(begin.ptr<uint8_t>( ), mem_size)
-{
-}
-
-block::block(const address& begin, const address& end)
-	: block_base(begin.ptr<uint8_t>( ), end.ptr<uint8_t>( ))
-{
-}
+//block::block(uint8_t* begin, size_type mem_size)
+//	: block_base(begin.pointer.get( ), mem_size)
+//{
+//}
+//
+//block::block(uint8_t* begin, uint8_t* end)
+//	: block_base(begin.pointer.get( ), end.pointer.get( ))
+//{
+//}
 
 block::block(const block_base& span)
 	: block_base(span)

@@ -18,14 +18,14 @@ struct header
 
 static std::optional<header> _Get_file_headers(address base)
 {
-	const auto dos = base.ptr<IMAGE_DOS_HEADER>( );
+	IMAGE_DOS_HEADER* const dos = base.pointer;
 
 	// check for invalid DOS / DOS signature.
 	if (!dos || dos->e_magic != IMAGE_DOS_SIGNATURE /* 'MZ' */)
 		return {};
 
 	// get NT headers.
-	const auto nt = address(dos).add(dos->e_lfanew).ptr<IMAGE_NT_HEADERS>( );
+	IMAGE_NT_HEADERS* const nt = basic_address(dos).add(dos->e_lfanew).pointer;
 
 	// check for invalid NT / NT signature.
 	if (!nt || nt->Signature != IMAGE_NT_SIGNATURE /* 'PE\0\0' */)

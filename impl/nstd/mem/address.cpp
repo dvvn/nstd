@@ -6,6 +6,8 @@ module nstd.mem:address;
 
 using namespace nstd::mem;
 
+#if 0
+
 address address::deref(ptrdiff_t count) const
 {
 	runtime_assert(count != 0, "Count must be not zero!");
@@ -86,3 +88,25 @@ address address::operator*( )
 {
 	return this->ref( );
 }
+#endif
+
+#define NSTD_ADDRESS_PROVIDE(_TYPE_)\
+template struct basic_address<_TYPE_>;/*\
+template struct basic_address<const _TYPE_>;*/
+
+NSTD_ADDRESS_PROVIDE(void);
+NSTD_ADDRESS_PROVIDE(char);
+#ifdef __cpp_lib_char8_t
+NSTD_ADDRESS_PROVIDE(char8_t);
+#endif
+NSTD_ADDRESS_PROVIDE(char16_t);
+NSTD_ADDRESS_PROVIDE(char32_t);
+NSTD_ADDRESS_PROVIDE(wchar_t);
+NSTD_ADDRESS_PROVIDE(int8_t);
+NSTD_ADDRESS_PROVIDE(uint8_t);
+NSTD_ADDRESS_PROVIDE(int16_t);
+NSTD_ADDRESS_PROVIDE(uint16_t);
+NSTD_ADDRESS_PROVIDE(int32_t);
+NSTD_ADDRESS_PROVIDE(uint32_t);
+NSTD_ADDRESS_PROVIDE(int64_t);
+NSTD_ADDRESS_PROVIDE(uint64_t);

@@ -18,36 +18,100 @@ export namespace nstd::mem
 		static_cast<To>(val);
 	};
 
-	class ptr_auto_cast
+	template<typename Out, typename In>
+	Out force_cast(In in)
 	{
-		uintptr_t addr_;
-	public:
-		ptr_auto_cast(uintptr_t addr)
-			: addr_(addr)
+		if constexpr (reinterpret_convertible_to<In, Out>)
 		{
+			return reinterpret_cast<Out>(in);
 		}
+		else if constexpr (reinterpret_convertible_to<In, uintptr_t>)
+		{
+			auto tmp = reinterpret_cast<uintptr_t>(in);
+			return reinterpret_cast<Out>(tmp);
+		}
+		else
+		{
+			return reinterpret_cast<Out>(reinterpret_cast<uintptr_t&>(in));
+		}
+	}
 
-		template <typename T>
-		operator T* () const { return reinterpret_cast<T*>(addr_); }
-	};
-
+	template<typename T>
 	class ref_auto_cast
 	{
-		uintptr_t addr_;
+		T addr_;
 	public:
-		ref_auto_cast(uintptr_t addr)
+		ref_auto_cast(T addr)
 			: addr_(addr)
 		{
 		}
 
-		template <typename T>
-		operator T& () const { return *reinterpret_cast<T*>(addr_); }
+		template <typename Q>
+		operator Q& () const
+		{
+			return *force_cast<Q*>(addr_);
+		}
 	};
+
+	template<typename T>
+	ref_auto_cast(const T)->ref_auto_cast<T>;
+
+	template<typename T>
+	class ptr_auto_cast
+	{
+		T addr_;
+	public:
+		ptr_auto_cast(T addr)
+			: addr_(addr)
+		{
+		}
+
+		template <typename Q>
+		Q* get( )const
+		{
+			return force_cast<Q*>(addr_);
+		}
+
+		T get( )const
+		{
+			return addr_;
+		}
+
+		template <typename Q>
+		operator Q* () const
+		{
+			return get<Q>( );
+		}
+
+		T operator->( )const
+		{
+			return addr_;
+		}
+
+		ref_auto_cast<T> operator*( )const
+		{
+			return addr_;
+		}
+
+	};
+
+	template<typename T>
+	ptr_auto_cast(const T)->ptr_auto_cast<T>;
+
+
 }
+
+#if 0
 
 #define NSTD_ADDRESS_VALIDATE(_SOURCE_) \
 runtime_assert(_SOURCE_ != static_cast<uintptr_t>(0), "Address is null!");\
 runtime_assert(_SOURCE_ != static_cast<uintptr_t>(-1), "Address is incorrect!");
+
+#define NSTD_ADDRESS_VALIDATE_SIMPLE\
+	NSTD_ADDRESS_VALIDATE(this->value);\
+	NSTD_ADDRESS_VALIDATE(other.value);
+
+
 
 enum class addr_op :uint8_t
 {
@@ -80,109 +144,204 @@ constexpr R _Addr_op_clone(R addr_val, L other)
 	return addr_val;
 }
 
+#endif
+
 export namespace nstd::mem
 {
-	// class size is only 4 bytes on x86-32 and 8 bytes on x86-64.
-	class address
+#define NSTD_ADDRESS_OPERATOR_HEAD\
+	template<typename L, typename R>\
+	requires(have_address_tag<L> && address_constructible<R, L> || have_address_tag<R> && address_constructible<L, R>)
+
+#define NSTD_ADDRESS_OPERATOR_MATH(_OP_)\
+	NSTD_ADDRESS_OPERATOR_HEAD\
+	L& operator##_OP_##=(L& left, R right) noexcept\
+	{\
+		_Unwrap_address_value(left) _OP_##= _Unwrap_address_value(right);\
+		return left;\
+	}\
+	NSTD_ADDRESS_OPERATOR_HEAD\
+	L operator##_OP_##(L left, R right) noexcept\
+	{\
+		_Unwrap_address_value(left) _OP_##= _Unwrap_address_value(right);\
+		return left;\
+	}
+
+#define NSTD_ADDRESS_OPERATOR_EQUALITY(_OP_)\
+	NSTD_ADDRESS_OPERATOR_HEAD\
+	bool operator##_OP_##(L left, R right) noexcept\
+	{\
+		return _Unwrap_address_value(left) _OP_ _Unwrap_address_value(right);\
+	}
+
+	struct address_tag { };
+
+	template<typename T>
+	struct basic_address : address_tag
 	{
+		// class size is only 4 bytes on x86-32 and 8 bytes on x86-64.
+
+		using size_type = uintptr_t;
+		using difference_type = ptrdiff_t;
+		using value_type = /*std::remove_const_t<T>*/T;
+		using pointer_type = std::add_pointer_t<T>;
+
 		union
 		{
-			uintptr_t value_;
-			const void* ptr_;
+			size_type value;
+			ptr_auto_cast<pointer_type> pointer;
 		};
 
-	public:
-		constexpr address( ) :value_(0) { }
-		constexpr address(uintptr_t val) : value_(val) { }
-		constexpr address(std::nullptr_t) : ptr_(nullptr) { }
-		constexpr address(const void* ptr) : ptr_(ptr) { }
-		constexpr address(void* ptr) : ptr_(ptr) { }
+		basic_address( ) :value(0) { }
+		basic_address(size_type val) : value(val) { }
+		basic_address(std::nullptr_t) : pointer(nullptr) { }
+		basic_address(pointer_type ptr) : pointer(ptr) { }
 
-		[[deprecated]]
-		uintptr_t value( ) const;
+		template<typename T1>
+		basic_address(basic_address<T1> other) : value(other.value) { }
 
-		template <typename T>
-		T cast( ) const
+		basic_address deref(difference_type count)const
 		{
-			NSTD_ADDRESS_VALIDATE(value_);
-			if constexpr (reinterpret_convertible_to<uintptr_t, T>)
+			runtime_assert(count > 0, "Count must be larger than zero!");
+
+			auto ret = *this;
+			while (count-- > 0)
 			{
-				return reinterpret_cast<T>(value_);
+				pointer_type ptr = *ret.pointer;
+				ret.pointer = ptr;
 			}
-			else if constexpr (std::is_member_pointer_v<T>)
+			return ret;
+		}
+
+		/*template<size_type Count>
+		auto& deref( )const
+		{
+			if constexpr (Count == 1)
+				return *pointer;
+			else
+				return basic_address<std::remove_pointer_t<T>>(*pointer).deref<Count - 1>( );
+		}*/
+
+#if 0
+		template <typename Q>
+		auto cast( ) const
+		{
+			if constexpr (reinterpret_convertible_to<uintptr_t, Q>)
 			{
-				T ret;
-				reinterpret_cast<decltype(ptr_)&>(ret) = ptr_;
+				return reinterpret_cast<Q>(value);
+			}
+			else if constexpr (std::is_member_pointer_v<Q>)
+			{
+				Q ret;
+				reinterpret_cast<pointer&>(ret) = pointer;
 				return ret;
 			}
-			else
-			{
-				static_assert(std::_Always_false<T>, __FUNCTION__": unable to cast");
-				return T( );
-			}
 		}
+#endif
 
-		template <typename T = ptr_auto_cast>
+#if 0
+		template <typename Q>
 		auto ptr( ) const
 		{
-			if constexpr (std::is_same_v<T, ptr_auto_cast>)
-				return ptr_auto_cast(value_);
-			else
-				return cast<T*>( );
+			//return cast<Q*>( );
+			//basic_address<Q> tmp = value;
+			//return tmp.pointer;
+			return pointer.get<Q>( );
 		}
 
-		template <typename T = ref_auto_cast>
-		decltype(auto) ref( ) const
+		/*ptr_auto_cast<size_type> ptr( ) const
 		{
-			if constexpr (std::is_same_v<T, ref_auto_cast>)
-				return ref_auto_cast(value_);
-			else
-				return *ptr<T>( );
+			return value;
+		}*/
+
+		template <typename Q>
+		auto& ref( ) const
+		{
+			return *ptr<Q>( );
 		}
+
+		ref_auto_cast<size_type> ref( ) const
+		{
+			return value;
+		}
+#endif
 
 		//-----
 
-		//dereference
-		address deref(ptrdiff_t count) const;
-		[[deprecated]]
-		address deref_safe(ptrdiff_t count) const;
-
-#if 0
-		//deprecated
-		// follow relative8 and relative16/32 offsets.
-		address rel8(ptrdiff_t offset) const;
-		address rel32(ptrdiff_t offset) const;
-#endif
-		address jmp(ptrdiff_t offset = 0x1) const;
-		address operator*( );
-
-#define NSTD_ADDRESS_OPERATOR(_NAME_,_OP_)\
-		constexpr address operator##_OP_##(address other) const &{ return _Addr_op_clone<addr_op::_NAME_>(value_, other.value_); }\
-		constexpr address&& operator##_OP_##(address other) &&  { _Addr_op<addr_op::_NAME_>(value_, other.value_); return std::move(*this); }\
-		constexpr address& operator##_OP_##=(address other) { _Addr_op<addr_op::_NAME_>(value_, other.value_); return *this; }\
-		constexpr address _NAME_(address other) const & {  return *this _OP_ other; }\
-		constexpr address&& _NAME_(address other) && { return std::move(*this) _OP_ other; }\
-		constexpr address& _NAME_##_self(address other) {  return *this _OP_##= other; }
-
-		NSTD_ADDRESS_OPERATOR(add, +);
-		NSTD_ADDRESS_OPERATOR(remove, -);
-		NSTD_ADDRESS_OPERATOR(multiply, *);
-		NSTD_ADDRESS_OPERATOR(divide, / );
-		constexpr auto operator<=>(address other)const { return this->value_ <=> other.value_; }
-		constexpr bool operator==(address other)const { return this->value_ == other.value_; }
-		constexpr bool operator!=(address other)const { return this->value_ != other.value_; }
-
-		template<typename T>
-		constexpr auto _Unwrap( )const
+		basic_address add(difference_type offset)const
 		{
-			if constexpr (std::is_integral_v<T>)
-				return static_cast<T>(value_);
-			else if constexpr (std::is_pointer_v<T>)
-				return static_cast<T>(ptr_);
+			return static_cast<difference_type>(value) + offset;
+		}
+		basic_address& add_self(difference_type offset)
+		{
+			value += static_cast<size_type>(offset);
+			return *this;
+		}
+
+		basic_address remove(difference_type offset)const
+		{
+			return static_cast<difference_type>(value) - offset;
+		}
+
+		basic_address<void> jmp(difference_type offset = 0x1) const
+		{
+			//same as rel 32
+
+			// Example:
+			// E9 ? ? ? ?
+			// The offset has to skip the E9 (JMP) instruction
+			// Then deref the address coming after that to get to the function
+			// Since the relative JMP is based on the next instruction after the basic_address it has to be skipped
+
+			// Base address is the address that follows JMP ( 0xE9 ) instruction
+			basic_address<void> base = add(offset);
+
+			// Store the displacement
+			// Note: Displacement address can be signed
+			int32_t displacement = *base.pointer;
+
+			// The JMP is based on the instruction after the basic_address
+			// so the basic_address size has to be added
+			// Note: This is always 4 bytes, regardless of architecture
+			base.add_self(sizeof(uint32_t));
+
+			// Now finally do the JMP by adding the function basic_address
+			base.add_self(displacement);
+
+			return base;
 		}
 	};
 
-	static_assert(sizeof(address) == sizeof(uintptr_t));
+	template<typename T>
+	basic_address(T*)->basic_address<std::remove_cv_t<T>>;
+
+	template<class T>
+	concept have_address_tag = std::derived_from<T, address_tag>;
+	template<typename T, typename Addr>
+	concept address_constructible = std::constructible_from<Addr, T>;
+
+	template<typename T>
+	auto& _Unwrap_address_value(T& obj)
+	{
+		if constexpr (have_address_tag<std::remove_cv_t<T>>)
+			return obj.value;
+		else
+			return reinterpret_cast<basic_address<void>&>(obj).value;
+	}
+
+	template<typename L, typename R>
+	using select_address_t = std::conditional_t<have_address_tag<L>, L, R>;
+
+	NSTD_ADDRESS_OPERATOR_MATH(+);
+	NSTD_ADDRESS_OPERATOR_MATH(-);
+	NSTD_ADDRESS_OPERATOR_MATH(*);
+	NSTD_ADDRESS_OPERATOR_MATH(/ );
+	NSTD_ADDRESS_OPERATOR_EQUALITY(< );
+	NSTD_ADDRESS_OPERATOR_EQUALITY(<= );
+	NSTD_ADDRESS_OPERATOR_EQUALITY(> );
+	NSTD_ADDRESS_OPERATOR_EQUALITY(>= );
+	NSTD_ADDRESS_OPERATOR_EQUALITY(== );
+
+	using address = basic_address<void>;
 
 #if 0
 
@@ -445,7 +604,10 @@ constexpr T operator##_OP_##(T value, address addr)\
 				);
 		}
 #endif
-	}
+		}
 
 #endif
+
+	//--
+
 }
