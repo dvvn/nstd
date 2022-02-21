@@ -2,11 +2,11 @@ module;
 
 #include "block_includes.h"
 
-export module nstd.mem:block;
+export module nstd.mem.block;
 //export import :address;
-export import :signature;
+export import nstd.mem.signature;
 
-export namespace nstd::mem
+export namespace nstd::inline mem
 {
 	using block_base = std::span<uint8_t>;
 	class block final :public block_base

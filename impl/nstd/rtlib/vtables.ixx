@@ -5,7 +5,7 @@ module;
 
 export module nstd.rtlib:vtables;
 export import :cache;
-export import nstd.mem;
+export import nstd.mem.address;
 
 export namespace nstd::rtlib
 {

@@ -8,30 +8,27 @@ module;
 #include <cwctype>
 
 module nstd.rtlib:info;
+import nstd.text.actions;
+import nstd.container.wrapper;
 
 using namespace nstd;
-using namespace mem;
 using namespace rtlib;
-
-template<typename C, typename Fn>
-static auto _To_lower(const std::basic_string_view<C> str, Fn fn)
-{
-	std::wstring out;
-	const auto lstr = std::views::transform(str, fn);
-	out.assign(lstr.begin( ), lstr.end( ));
-	return out;
-}
+namespace rv = std::views;
 
 info_string::fixed_type::fixed_type(const std::wstring_view str)
-	:hashed_wstring(_To_lower(str, [](wchar_t c) {return std::towlower(c); }))
+	:hashed_wstring(nstd::append<std::wstring>(str | rv::transform(text::to_lower)))
 {
-
 }
 
 info_string::fixed_type::fixed_type(const std::string_view str)
-	: hashed_wstring(_To_lower(str, [](char c) {return static_cast<char>(std::tolower(c)); }))
+	: hashed_wstring(nstd::append<std::wstring>(str | rv::transform(nstd::cast_all<wchar_t>) | rv::transform(text::to_lower)))
 {
+}
 
+info_string::fixed_type::fixed_type(hashed_wstring&& str)noexcept
+	: hashed_wstring(std::move(str))
+{
+	runtime_assert(fixed_type(str) == *this, "Incorrect passed string!");
 }
 
 info_string::info_string(const std::wstring_view raw_string)
@@ -43,7 +40,6 @@ info_string::info_string(const std::wstring_view raw_string)
 		raw = {raw_string, fixed.hash( )};
 	else
 		raw = {raw_string};
-
 }
 
 info* info::root_class( ) { return this; }
@@ -98,7 +94,7 @@ info& info::operator=(info&& other) noexcept
 
 block info::mem_block( ) const
 {
-	return {base( ).pointer, image_size( )};
+	return {(uint8_t*)base( ), image_size( )};
 }
 
 DWORD info::check_sum( ) const

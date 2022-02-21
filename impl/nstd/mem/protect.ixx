@@ -3,9 +3,9 @@ module;
 #include <windows.h>
 #include <optional>
 
-export module nstd.mem:protect;
+export module nstd.mem.protect;
 
-export namespace nstd::mem
+export namespace nstd::inline mem
 {
 	class protect
 	{

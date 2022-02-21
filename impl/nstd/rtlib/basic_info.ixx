@@ -3,15 +3,14 @@ module;
 #include "basic_info_includes.h"
 
 export module nstd.rtlib:basic_info;
-export import nstd.mem;
 
 export namespace nstd::rtlib
 {
 	class basic_info
 	{
-		LDR_DATA_TABLE_ENTRY* ldr_entry_ = 0;
-		IMAGE_DOS_HEADER* dos_ = 0;
-		IMAGE_NT_HEADERS* nt_ = 0;
+		LDR_DATA_TABLE_ENTRY* ldr_entry_ = nullptr;
+		IMAGE_DOS_HEADER* dos_ = nullptr;
+		IMAGE_NT_HEADERS* nt_ = nullptr;
 	public:
 
 		basic_info( ) = default;
@@ -24,7 +23,7 @@ export namespace nstd::rtlib
 		basic_info& operator=(basic_info&& other)noexcept;
 
 		//module handle
-		mem::address base( ) const;
+		void* base( ) const;
 
 		LDR_DATA_TABLE_ENTRY* ENTRY( )const;
 		IMAGE_DOS_HEADER* DOS( ) const;

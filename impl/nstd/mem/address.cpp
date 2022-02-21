@@ -2,11 +2,10 @@ module;
 
 #include "address_includes.h"
 
-module nstd.mem:address;
-
-using namespace nstd::mem;
+module nstd.mem.address;
 
 #if 0
+using namespace nstd::mem;
 
 address address::deref(ptrdiff_t count) const
 {
@@ -90,9 +89,16 @@ address address::operator*( )
 }
 #endif
 
+#define NSTD_ADDRESS_PROVIDE_BEGIN \
+template struct ::nstd::mem::basic_address
+
+#define NSTD_ADDRESS_PROVIDE_CONST(_TYPE_)\
+NSTD_ADDRESS_PROVIDE_BEGIN<_TYPE_>;\
+NSTD_ADDRESS_PROVIDE_BEGIN<const _TYPE_>;
+
 #define NSTD_ADDRESS_PROVIDE(_TYPE_)\
-template struct basic_address<_TYPE_>;/*\
-template struct basic_address<const _TYPE_>;*/
+NSTD_ADDRESS_PROVIDE_CONST(_TYPE_);\
+NSTD_ADDRESS_PROVIDE_CONST(_TYPE_*);\
 
 NSTD_ADDRESS_PROVIDE(void);
 NSTD_ADDRESS_PROVIDE(char);

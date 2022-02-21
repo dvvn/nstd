@@ -4,9 +4,10 @@ module;
 
 module nstd.rtlib:exports;
 import :all_infos;
+import nstd.container.wrapper;
+import nstd.text.actions;
 
 using namespace nstd;
-using namespace mem;
 using namespace rtlib;
 
 auto exports_storage::create(const key_type& entry) -> create_result
@@ -20,18 +21,18 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	if (!data_dir->VirtualAddress)
 		throw std::runtime_error("Current module doesn't have virtual address!");
 
-	const auto base_address = root_class( )->base( );
+	const basic_address base_address = root_class( )->base( );
 
 	// get export dir.
-	IMAGE_EXPORT_DIRECTORY* const dir = base_address.add(data_dir->VirtualAddress).pointer;
+	const basic_address<IMAGE_EXPORT_DIRECTORY> dir = base_address + (data_dir->VirtualAddress);
 	//#ifdef NDEBUG
 	//	if (!dir)
 	//		return;
 	//#endif
 		// names / funcs / ordinals ( all of these are RVAs ).
-	uint32_t* const  names = base_address.add(dir->AddressOfNames).pointer;
-	uint32_t* const  funcs = base_address.add(dir->AddressOfFunctions).pointer;
-	uint16_t* const  ords = base_address.add(dir->AddressOfNameOrdinals).pointer;
+	uint32_t* const  names = base_address + dir->AddressOfNames;
+	uint32_t* const  funcs = base_address + (dir->AddressOfFunctions);
+	uint16_t* const  ords = base_address + (dir->AddressOfNameOrdinals);
 	//#ifdef NDEBUG
 	//	if (!names || !funcs || !ords)
 	//		return;
@@ -43,8 +44,8 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	// iterate names array.
 	for (auto i = 0u; i < dir->NumberOfNames; ++i)
 	{
-		const std::string_view export_name = base_address.add(names[i]).pointer.get<const char>( );
-		if (export_name.empty( ) /*|| export_name.starts_with('?') || export_name.starts_with('@')*/)
+		const char* export_name = base_address + names[i];
+		if (!export_name || *export_name == '\0'/*export_name.empty( ) || export_name.starts_with('?') || export_name.starts_with('@')*/)
 			continue;
 
 		/*
@@ -53,7 +54,8 @@ auto exports_storage::create(const key_type& entry) -> create_result
 		 */
 
 		 //if (export_ptr < dir || export_ptr >= memory_block(dir, data_dir->Size).addr( ))
-		if (const auto export_ptr = base_address + funcs[ords[i]]; export_ptr < dir || export_ptr >= address(dir) + data_dir->Size)
+		const auto export_ptr = base_address + funcs[ords[i]];
+		if (export_ptr < dir || export_ptr >= dir + data_dir->Size)
 		{
 			this->emplace(export_name, export_ptr);
 			//
@@ -61,36 +63,28 @@ auto exports_storage::create(const key_type& entry) -> create_result
 		else // it's a forwarded export, we must resolve it.
 		{
 			// get forwarder string.
-			const std::string_view fwd_str = export_ptr.pointer.get<const char>( );
+			const std::string_view fwd_str = export_ptr.get<const char*>( );
 
 			// forwarders have a period as the delimiter.
 			const auto delim = fwd_str.find_last_of('.');
 			if (delim == fwd_str.npos)
 				continue;
 
-			const auto fwd_module_str = [&]( )->hashed_wstring
+			using namespace std::string_view_literals;
+			// get forwarder mod name.
+			const info_string::fixed_type fwd_module_str = nstd::append<std::wstring>(fwd_str.substr(0, delim), L".dll"sv);
+
+			// get real export ptr ( recursively ).
+			const auto target_module = std::ranges::find_if(*all_modules, [&](const info& i)
 			{
-				// get forwarder mod name.
-				const auto fwd_module_name = fwd_str.substr(0, delim);
-				const auto fwd_module_name_lower = fwd_module_name | std::views::transform([](const char c) { return static_cast<wchar_t>(std::tolower(c)); });
-
-				constexpr std::wstring_view dot_dll = L".dll";
-
-				std::wstring out;
-				out.reserve(fwd_module_name.size( ) + dot_dll.size( ));
-				out.append(fwd_module_name_lower.begin( ), fwd_module_name_lower.end( ));
-				out.append(dot_dll);
-
-				return out;
-			}();
+				return i.name( ) == fwd_module_str;
+			});
+			if (target_module == all_modules->end( ))
+				continue;
 
 			// get forwarder export name.
 			const auto fwd_export_str = fwd_str.substr(delim + 1);
 
-			// get real export ptr ( recursively ).
-			const auto target_module = std::ranges::find_if(*all_modules, [&](const info& i) { return i.name( ).fixed == fwd_module_str; });
-			if (target_module == all_modules->end( ))
-				continue;
 			try
 			{
 				auto& exports = target_module->exports( );

@@ -5,7 +5,7 @@ module;
 #include <stdexcept>
 #include <Windows.h>
 
-module nstd.mem:protect;
+module nstd.mem.protect;
 
 using namespace nstd::mem;
 

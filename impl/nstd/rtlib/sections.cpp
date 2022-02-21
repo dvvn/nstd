@@ -16,7 +16,7 @@ using namespace rtlib;
 auto sections_storage::create(const key_type& entry) -> create_result
 {
 	const auto nt = root_class( )->NT( );
-	const auto base_address = root_class( )->base( );
+	const basic_address base_address = root_class( )->base( );
 
 	const auto number_of_sections = nt->FileHeader.NumberOfSections;
 	cache::reserve(number_of_sections);
@@ -28,7 +28,7 @@ auto sections_storage::create(const key_type& entry) -> create_result
 	{
 		key_type info_name = (const char*)header->Name;
 		mapped_type info;
-		info.block = {base_address.add(header->VirtualAddress).pointer, header->SizeOfRawData};
+		info.block = {base_address + header->VirtualAddress, header->SizeOfRawData};
 		info.data = header;
 
 		cache::emplace(std::move(info_name), std::move(info));

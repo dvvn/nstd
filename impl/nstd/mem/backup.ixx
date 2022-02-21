@@ -2,9 +2,9 @@ module;
 
 #include <optional>
 
-export module nstd.mem:backup;
+export module nstd.mem.backup;
 
-export namespace nstd::mem
+export namespace nstd::inline mem
 {
 	template <std::copyable T>
 	class backup
@@ -18,7 +18,7 @@ export namespace nstd::mem
 	public:
 		using value_type = T;
 
-		backup(const backup& other)            = delete;
+		backup(const backup& other) = delete;
 		backup& operator=(const backup& other) = delete;
 
 		backup(backup&& other) noexcept
@@ -40,9 +40,7 @@ export namespace nstd::mem
 		}
 
 		template <typename T1>
-			requires(std::constructible_from<T, T1>)
-		backup(T& from, T1&& owerride)
-			: backup(from)
+		backup(T& from, T1&& owerride) : backup(from)
 		{
 			from = T(std::forward<T1>(owerride));
 		}

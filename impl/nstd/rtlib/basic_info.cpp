@@ -22,7 +22,7 @@ basic_info::basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, I
 
 basic_info::basic_info(basic_info&& other)noexcept
 {
-	*this=std::move(other);
+	*this = std::move(other);
 }
 
 basic_info& basic_info::operator=(basic_info&& other)noexcept
@@ -34,7 +34,7 @@ basic_info& basic_info::operator=(basic_info&& other)noexcept
 	return *this;
 }
 
-mem::address basic_info::base( ) const
+void* basic_info::base( ) const
 {
 	return ldr_entry_->DllBase;
 }

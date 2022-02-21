@@ -2,151 +2,39 @@ module;
 
 #include "address_includes.h"
 
-export module nstd.mem:address;
+export module nstd.mem.address;
 
-export namespace nstd::mem
+template <typename From, typename To>
+concept reinterpret_convertible_to = requires(From val)
 {
-	template <typename From, typename To>
-	concept reinterpret_convertible_to = requires(From val)
-	{
-		reinterpret_cast<To>(val);
-	};
-
-	template <typename From, typename To>
-	concept static_convertible_to = requires(From val)
-	{
-		static_cast<To>(val);
-	};
-
-	template<typename Out, typename In>
-	Out force_cast(In in)
-	{
-		if constexpr (reinterpret_convertible_to<In, Out>)
-		{
-			return reinterpret_cast<Out>(in);
-		}
-		else if constexpr (reinterpret_convertible_to<In, uintptr_t>)
-		{
-			auto tmp = reinterpret_cast<uintptr_t>(in);
-			return reinterpret_cast<Out>(tmp);
-		}
-		else
-		{
-			return reinterpret_cast<Out>(reinterpret_cast<uintptr_t&>(in));
-		}
-	}
-
-	template<typename T>
-	class ref_auto_cast
-	{
-		T addr_;
-	public:
-		ref_auto_cast(T addr)
-			: addr_(addr)
-		{
-		}
-
-		template <typename Q>
-		operator Q& () const
-		{
-			return *force_cast<Q*>(addr_);
-		}
-	};
-
-	template<typename T>
-	ref_auto_cast(const T)->ref_auto_cast<T>;
-
-	template<typename T>
-	class ptr_auto_cast
-	{
-		T addr_;
-	public:
-		ptr_auto_cast(T addr)
-			: addr_(addr)
-		{
-		}
-
-		template <typename Q>
-		Q* get( )const
-		{
-			return force_cast<Q*>(addr_);
-		}
-
-		T get( )const
-		{
-			return addr_;
-		}
-
-		template <typename Q>
-		operator Q* () const
-		{
-			return get<Q>( );
-		}
-
-		T operator->( )const
-		{
-			return addr_;
-		}
-
-		ref_auto_cast<T> operator*( )const
-		{
-			return addr_;
-		}
-
-	};
-
-	template<typename T>
-	ptr_auto_cast(const T)->ptr_auto_cast<T>;
-
-
-}
-
-#if 0
-
-#define NSTD_ADDRESS_VALIDATE(_SOURCE_) \
-runtime_assert(_SOURCE_ != static_cast<uintptr_t>(0), "Address is null!");\
-runtime_assert(_SOURCE_ != static_cast<uintptr_t>(-1), "Address is incorrect!");
-
-#define NSTD_ADDRESS_VALIDATE_SIMPLE\
-	NSTD_ADDRESS_VALIDATE(this->value);\
-	NSTD_ADDRESS_VALIDATE(other.value);
-
-
-
-enum class addr_op :uint8_t
-{
-	add, remove, multiply, divide
+	reinterpret_cast<To>(val);
 };
 
-template<addr_op Op, std::integral R, std::integral L>
-constexpr void _Addr_op(R& addr_val, L other)
+template <typename From, typename To>
+concept static_convertible_to = requires(From val)
 {
-	NSTD_ADDRESS_VALIDATE(addr_val);
-	NSTD_ADDRESS_VALIDATE(other);
+	static_cast<To>(val);
+};
 
-	auto& r = addr_val;
-	auto l = other;
-
-	if constexpr (Op == addr_op::add)
-		r += l;
-	else if constexpr (Op == addr_op::remove)
-		r -= l;
-	else if constexpr (Op == addr_op::multiply)
-		r *= l;
-	else if constexpr (Op == addr_op::divide)
-		r /= l;
+template<typename Out, typename In>
+Out force_cast(In in)
+{
+	if constexpr (reinterpret_convertible_to<In, Out>)
+	{
+		return reinterpret_cast<Out>(in);
+	}
+	else if constexpr (reinterpret_convertible_to<In, uintptr_t>)
+	{
+		auto tmp = reinterpret_cast<uintptr_t>(in);
+		return reinterpret_cast<Out>(tmp);
+	}
+	else
+	{
+		return reinterpret_cast<Out>(reinterpret_cast<uintptr_t&>(in));
+	}
 }
 
-template<addr_op Op, std::integral R, std::integral L>
-constexpr R _Addr_op_clone(R addr_val, L other)
-{
-	_Addr_op<Op>(addr_val, other);
-	return addr_val;
-}
-
-#endif
-
-export namespace nstd::mem
+export namespace nstd::inline mem
 {
 #define NSTD_ADDRESS_OPERATOR_HEAD\
 	template<typename L, typename R>\
@@ -175,6 +63,11 @@ export namespace nstd::mem
 
 	struct address_tag { };
 
+	template<class T>
+	concept have_address_tag = std::derived_from<T, address_tag>;
+	template<typename T, typename Addr>
+	concept address_constructible = std::constructible_from<Addr, T>;
+
 	template<typename T>
 	struct basic_address : address_tag
 	{
@@ -188,7 +81,7 @@ export namespace nstd::mem
 		union
 		{
 			size_type value;
-			ptr_auto_cast<pointer_type> pointer;
+			pointer_type pointer;
 		};
 
 		basic_address( ) :value(0) { }
@@ -196,8 +89,28 @@ export namespace nstd::mem
 		basic_address(std::nullptr_t) : pointer(nullptr) { }
 		basic_address(pointer_type ptr) : pointer(ptr) { }
 
-		template<typename T1>
-		basic_address(basic_address<T1> other) : value(other.value) { }
+		template<have_address_tag Q>
+		basic_address(Q&& other) noexcept
+			: value(other.value)
+		{
+		}
+
+		template<have_address_tag Q>
+		basic_address& operator=(Q&& other) noexcept
+		{
+			value = other.value;
+			return *this;
+		}
+
+		template<size_type Count>
+		basic_address deref( )const
+		{
+			const basic_address addr = *force_cast<pointer_type*>(pointer);
+			if constexpr (Count == 1)
+				return addr;
+			else
+				return addr.deref<Count - 1>( );
+		}
 
 		basic_address deref(difference_type count)const
 		{
@@ -206,20 +119,32 @@ export namespace nstd::mem
 			auto ret = *this;
 			while (count-- > 0)
 			{
-				pointer_type ptr = *ret.pointer;
-				ret.pointer = ptr;
+				ret = ret.deref<1>( );
 			}
 			return ret;
 		}
 
-		/*template<size_type Count>
-		auto& deref( )const
+		pointer_type operator->( )const
 		{
-			if constexpr (Count == 1)
-				return *pointer;
-			else
-				return basic_address<std::remove_pointer_t<T>>(*pointer).deref<Count - 1>( );
-		}*/
+			return pointer;
+		}
+
+		template <typename Q>
+		operator Q* () const
+		{
+			return force_cast<Q*>(value);
+		}
+
+		template <typename Q>
+		operator Q& () const
+		{
+			return *force_cast<Q*>(value);
+		}
+
+		basic_address operator*( )const
+		{
+			return deref<1>( );
+		}
 
 #if 0
 		template <typename Q>
@@ -235,7 +160,7 @@ export namespace nstd::mem
 				reinterpret_cast<pointer&>(ret) = pointer;
 				return ret;
 			}
-		}
+	}
 #endif
 
 #if 0
@@ -262,14 +187,26 @@ export namespace nstd::mem
 		ref_auto_cast<size_type> ref( ) const
 		{
 			return value;
-		}
+}
 #endif
 
 		//-----
 
+		template<typename Q>
+		basic_address<Q> as( )const
+		{
+			return value;
+		}
+
+		template<typename Q>
+		Q get( )const
+		{
+			return force_cast<Q>(value);
+		}
+
 		basic_address add(difference_type offset)const
 		{
-			return static_cast<difference_type>(value) + offset;
+			return value + static_cast<size_type>(offset);
 		}
 		basic_address& add_self(difference_type offset)
 		{
@@ -279,7 +216,7 @@ export namespace nstd::mem
 
 		basic_address remove(difference_type offset)const
 		{
-			return static_cast<difference_type>(value) - offset;
+			return value - static_cast<size_type>(offset);
 		}
 
 		basic_address<void> jmp(difference_type offset = 0x1) const
@@ -297,7 +234,7 @@ export namespace nstd::mem
 
 			// Store the displacement
 			// Note: Displacement address can be signed
-			int32_t displacement = *base.pointer;
+			int32_t displacement = *base;
 
 			// The JMP is based on the instruction after the basic_address
 			// so the basic_address size has to be added
@@ -312,12 +249,7 @@ export namespace nstd::mem
 	};
 
 	template<typename T>
-	basic_address(T*)->basic_address<std::remove_cv_t<T>>;
-
-	template<class T>
-	concept have_address_tag = std::derived_from<T, address_tag>;
-	template<typename T, typename Addr>
-	concept address_constructible = std::constructible_from<Addr, T>;
+	basic_address(T*)->basic_address</*std::remove_cv_t<T>*/T>;
 
 	template<typename T>
 	auto& _Unwrap_address_value(T& obj)
@@ -342,6 +274,15 @@ export namespace nstd::mem
 	NSTD_ADDRESS_OPERATOR_EQUALITY(== );
 
 	using address = basic_address<void>;
+
+	/*template<typename Cast, typename Target>
+	struct address_auto_cast :Target
+	{
+		template<typename T>
+		address_auto_cast(basic_address<T> addr) :Target(addr.get<Cast>( ))
+		{
+		}
+	};*/
 
 #if 0
 
@@ -604,7 +545,7 @@ constexpr T operator##_OP_##(T value, address addr)\
 				);
 		}
 #endif
-		}
+	}
 
 #endif
 

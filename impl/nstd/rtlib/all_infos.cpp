@@ -4,10 +4,9 @@ module;
 
 module nstd.rtlib:all_infos;
 import :info;
-import nstd.mem;
+import nstd.mem.address;
 
 using namespace nstd;
-using namespace mem;
 using namespace rtlib;
 
 struct header
@@ -18,14 +17,14 @@ struct header
 
 static std::optional<header> _Get_file_headers(address base)
 {
-	IMAGE_DOS_HEADER* const dos = base.pointer;
+	IMAGE_DOS_HEADER* const dos = base;
 
 	// check for invalid DOS / DOS signature.
 	if (!dos || dos->e_magic != IMAGE_DOS_SIGNATURE /* 'MZ' */)
 		return {};
 
 	// get NT headers.
-	IMAGE_NT_HEADERS* const nt = basic_address(dos).add(dos->e_lfanew).pointer;
+	IMAGE_NT_HEADERS* const nt = basic_address(dos).add(dos->e_lfanew);
 
 	// check for invalid NT / NT signature.
 	if (!nt || nt->Signature != IMAGE_NT_SIGNATURE /* 'PE\0\0' */)
@@ -94,7 +93,7 @@ static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
 
 static void _Write_current_idx(const modules_storage_data& storage, size_t& current_holder)
 {
-	const address current_base = _Get_current_module_handle( );
+	const auto current_base = _Get_current_module_handle( );
 	const auto index = std::distance(storage.begin( ), std::ranges::find(storage, current_base, &basic_info::base));
 	current_holder = index;
 }

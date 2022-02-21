@@ -2,9 +2,9 @@ module;
 
 #include "comptr_includes.h"
 
-export module nstd.winapi:comptr;
+export module nstd.winapi.comptr;
 
-export namespace nstd::winapi
+export namespace nstd::inline winapi
 {
 	template <typename T, typename Base = Microsoft::WRL::ComPtr<T>>
 	struct comptr : Base

@@ -1,15 +1,13 @@
 module;
 
-
 #include "info_includes.h"
-
 
 export module nstd.rtlib:info;
 export import :basic_info;
 export import :exports;
 export import :sections;
 export import :vtables;
-export import nstd;
+export import nstd.text.hashed_string;
 
 export namespace nstd::rtlib
 {
@@ -21,10 +19,10 @@ export namespace nstd::rtlib
 			raw_type(T&& ...args) :hashed_wstring_view(std::forward<T>(args)...) { }
 		};*/
 
-		using raw_type = hashed_wstring_view;
+		using raw_type = nstd::text::hashed_wstring_view;
 
 		//lowercase
-		struct fixed_type :hashed_wstring
+		struct fixed_type : nstd::text::hashed_wstring
 		{
 			fixed_type( ) = default;
 
@@ -36,6 +34,7 @@ export namespace nstd::rtlib
 			{
 			}
 
+			fixed_type(nstd::text::hashed_wstring&& str) noexcept;
 		};
 
 		raw_type raw;

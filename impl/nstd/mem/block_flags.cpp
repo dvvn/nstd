@@ -4,7 +4,7 @@ module;
 #include <windows.h>
 #include <stdexcept>
 
-module nstd.mem:block;
+module nstd.mem.block;
 
 using namespace nstd::mem;
 
@@ -78,7 +78,6 @@ static bool _Dont_have_flags(const block* mblock, DWORD flags)
 							  return !(mem_flags & flags);
 						  });
 }
-
 
 #ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
 bool block::have_flags(DWORD flags) const

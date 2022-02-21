@@ -3,8 +3,8 @@ module;
 #include "block_includes.h"
 #include <algorithm>
 
-module nstd.mem:block;
-import :protect;
+module nstd.mem.block;
+import nstd.mem.protect;
 
 using namespace nstd;
 using namespace nstd::mem;

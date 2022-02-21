@@ -2,9 +2,9 @@ module;
 
 #include "signature_includes.h"
 
-export module nstd.mem:signature;
+export module nstd.mem.signature;
 
-export namespace nstd::mem
+export namespace nstd::inline mem
 {
 	namespace detail
 	{
