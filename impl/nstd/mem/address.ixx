@@ -30,7 +30,7 @@ Out force_cast(In in)
 	}
 	else
 	{
-		return reinterpret_cast<Out>(reinterpret_cast<uintptr_t&>(in));
+		return reinterpret_cast<Out&>(reinterpret_cast<uintptr_t&>(in));
 	}
 }
 
