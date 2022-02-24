@@ -5,18 +5,20 @@ module;
 export module nstd.rtlib:all_infos;
 export import :info;
 
-export namespace nstd::rtlib
+namespace nstd::rtlib
 {
 	using modules_storage_data = std::/*list*/vector<info>;
-	class modules_storage : modules_storage_data
+	export class modules_storage : modules_storage_data
 	{
-	public:
+		modules_storage& operator=(modules_storage_data&& other)noexcept;
 
+	public:
 		modules_storage( ) = default;
 
 		using modules_storage_data::begin;
 		using modules_storage_data::end;
 		using modules_storage_data::size;
+		using modules_storage_data::operator[];
 
 		bool update(bool force = false);
 
@@ -28,6 +30,6 @@ export namespace nstd::rtlib
 	private:
 		size_t current_index_ = static_cast<size_t>(-1);
 	};
-		
-	using all_infos = one_instance<modules_storage>;
+
+	export using all_infos = one_instance<modules_storage>;
 }

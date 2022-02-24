@@ -9,24 +9,30 @@ export namespace nstd::rtlib
 	class basic_info
 	{
 		LDR_DATA_TABLE_ENTRY* ldr_entry_ = nullptr;
-		IMAGE_DOS_HEADER* dos_ = nullptr;
-		IMAGE_NT_HEADERS* nt_ = nullptr;
+		/*IMAGE_DOS_HEADER* dos_ = nullptr;
+		IMAGE_NT_HEADERS* nt_ = nullptr;*/
 	public:
 
-		basic_info( ) = default;
-		basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
-
-		basic_info(const basic_info& other) = default;
-		basic_info& operator=(const basic_info& other) = default;
-
-		basic_info(basic_info&& other)noexcept;
-		basic_info& operator=(basic_info&& other)noexcept;
-
-		//module handle
-		void* base( ) const;
+		basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry = nullptr);
 
 		LDR_DATA_TABLE_ENTRY* ENTRY( )const;
+		//DllBase (module handle)
 		IMAGE_DOS_HEADER* DOS( ) const;
 		IMAGE_NT_HEADERS* NT( ) const;
+
+		template<std::same_as<basic_info> T>
+		bool operator==(T other)const
+		{
+			return ldr_entry_ == other.ldr_entry_;
+		}
+
+		template<class T>
+		bool operator!=(T other)const
+		{
+			return !(*this == other);
+		}
+
+		explicit operator bool( )const;
 	};
+
 }

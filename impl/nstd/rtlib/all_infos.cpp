@@ -9,6 +9,38 @@ import nstd.mem.address;
 using namespace nstd;
 using namespace rtlib;
 
+static DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
+{
+	MEMORY_BASIC_INFORMATION info;
+	constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
+
+	//todo: is this is dll, try to load this function from inside
+	const auto len = VirtualQueryEx(GetCurrentProcess( ), _Get_current_module_handle, std::addressof(info), info_size);
+	runtime_assert(len == info_size, "Wrong size");
+	return static_cast<HMODULE>(info.AllocationBase);
+}
+
+static size_t _Get_current_idx(const modules_storage_data& storage)
+{
+	const auto current_base = _Get_current_module_handle( );
+	for (size_t i = 0; i < storage.size( ); i++)
+	{
+		if (reinterpret_cast<HMODULE>(storage[i].DOS( )) == current_base)
+			return i;
+	}
+	runtime_assert("Unable to find current module!");
+	return static_cast<size_t>(-1);
+}
+
+modules_storage& modules_storage::operator=(modules_storage_data&& other) noexcept
+{
+	current_index_ = _Get_current_idx(other);
+
+	using std::swap;
+	swap<modules_storage_data>(*this, other);
+	return *this;
+}
+
 struct header
 {
 	PIMAGE_DOS_HEADER dos;
@@ -24,7 +56,7 @@ static std::optional<header> _Get_file_headers(address base)
 		return {};
 
 	// get NT headers.
-	IMAGE_NT_HEADERS* const nt = basic_address(dos).add(dos->e_lfanew);
+	IMAGE_NT_HEADERS* const nt = basic_address(dos) + dos->e_lfanew;
 
 	// check for invalid NT / NT signature.
 	if (!nt || nt->Signature != IMAGE_NT_SIGNATURE /* 'PE\0\0' */)
@@ -53,7 +85,7 @@ static auto _Get_ldr( )
 #endif
 }
 
-template<typename T = basic_info>
+template<typename T>
 static auto _Get_all_modules( )
 {
 	const auto ldr = _Get_ldr( );
@@ -74,28 +106,10 @@ static auto _Get_all_modules( )
 			continue;
 
 		// push module to out container.
-		container.emplace_back(ldr_entry, headers->dos, headers->nt);
+		container.emplace_back(ldr_entry/*, headers->dos, headers->nt*/);
 	}
 
 	return container;
-}
-
-static volatile DECLSPEC_NOINLINE HMODULE _Get_current_module_handle( )
-{
-	MEMORY_BASIC_INFORMATION info;
-	constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
-
-	//todo: is this is dll, try to load this function from inside
-	const auto len = VirtualQueryEx(GetCurrentProcess( ), _Get_current_module_handle, std::addressof(info), info_size);
-	runtime_assert(len == info_size, "Wrong size");
-	return static_cast<HMODULE>(info.AllocationBase);
-}
-
-static void _Write_current_idx(const modules_storage_data& storage, size_t& current_holder)
-{
-	const auto current_base = _Get_current_module_handle( );
-	const auto index = std::distance(storage.begin( ), std::ranges::find(storage, current_base, &basic_info::base));
-	current_holder = index;
 }
 
 struct duplicate_info
@@ -106,73 +120,80 @@ struct duplicate_info
 	size_t from_obj;
 };
 
-template<typename Proj>
-static std::optional<duplicate_info> _Test_duplicate(const modules_storage_data& storage, Proj proj)
+static std::optional<duplicate_info> _Test_duplicate(const modules_storage_data& storage)
 {
 	const auto start = storage.begin( );
 	const auto end = storage.end( );
 	for (auto itr = start; itr != end; ++itr)
 	{
-		decltype(auto) obj1 = std::invoke(proj, *itr);
+		const auto& name1 = itr->name;
 		for (auto itr_next = std::next(itr); itr_next != end; ++itr_next)
 		{
-			decltype(auto) obj2 = std::invoke(proj, *itr_next);
-			if (obj1 == obj2)
+			const auto& name2 = itr_next->name;
+			if (name1 == name2)
 				return duplicate_info(std::distance(start, itr), std::distance(itr, itr_next));
 		}
 	}
 	return {};
 }
 
-bool modules_storage::update(bool force)
+static auto _Update_full(modules_storage_data& current_storage)
 {
-	modules_storage_data& storage = *this;
-
-	if (!force && !storage.empty( ))
-		return false;
-
-	const auto basic_storage = _Get_all_modules( );
-
-	if (storage.empty( ))
+	modules_storage_data new_storage;
+	const auto basic_storage = _Get_all_modules<basic_info>( );
+	if (!std::ranges::equal(current_storage, basic_storage, std::equal_to<basic_info>( )))
 	{
-		storage.assign(basic_storage.begin( ), basic_storage.end( ));
-	}
-	else if (std::ranges::equal(storage, basic_storage, [](const basic_info& l, const basic_info& r) {return l.base( ) == r.base( ); }))
-	{
-		return false;
-	}
-	else
-	{
-		modules_storage_data temp_storage;
-		temp_storage.resize(basic_storage.size( ));
-		std::vector<bool> stolen_data;
-		stolen_data.resize(basic_storage.size( ), false);
-		for (auto& rec : std::span(storage.begin( ), std::min(storage.size( ), basic_storage.size( ))))
+		new_storage.resize(basic_storage.size( ));
+		std::vector<bool> stoled_info;
+		stoled_info.resize(basic_storage.size( ), false);
+
+		//steal already filled data
+		for (auto& current_rec : std::span(current_storage.begin( ), std::min(current_storage.size( ), basic_storage.size( ))))
 		{
-			const auto found = std::ranges::find(basic_storage, rec.base( ), &basic_info::base);
+			const auto found = std::ranges::find(basic_storage, static_cast<basic_info>(current_rec));
+			//record not found, create it later
 			if (found == basic_storage.end( ))
 				continue;
+
 			//record already exists, move it
 			const auto idx = std::distance(basic_storage.begin( ), found);
-			temp_storage[idx] = std::move(rec);
-			stolen_data[idx] = true;
+			new_storage[idx] = std::move(current_rec);
+			stoled_info[idx] = true;
 		}
 
 		for (size_t idx = 0; idx < basic_storage.size( ); ++idx)
 		{
 			//stolen in previous loop
-			if (stolen_data[idx])
+			if (stoled_info[idx])
 				continue;
 
 			//construct it from basic_info
-			temp_storage[idx] = basic_storage[idx];
+			new_storage[idx] = basic_storage[idx];
 		}
-		storage = std::move(temp_storage);
-		runtime_assert(_Test_duplicate(storage, &info::name).has_value( ) == false);
+
+		runtime_assert(!_Test_duplicate(new_storage));
 	}
 
-	_Write_current_idx(storage, current_index_);
-	return true;
+	return new_storage;
+}
+
+bool modules_storage::update(bool force)
+{
+	if (this->empty( ))
+	{
+		*this = _Get_all_modules<info>( );
+		return true;
+	}
+	if (force)
+	{
+		auto new_data = _Update_full(*this);
+		if (new_data.empty( ))
+			return false;
+		*this = std::move(new_data);
+		return true;
+	}
+
+	return false;
 }
 
 const info& modules_storage::current( ) const

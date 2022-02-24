@@ -45,30 +45,18 @@ info_string::info_string(const std::wstring_view raw_string)
 info* info::root_class( ) { return this; }
 const info* info::root_class( ) const { return this; }
 
-info::info(basic_info&& basic) noexcept
-	:basic_info(std::move(basic))
+info::info(const basic_info& basic)
+	:basic_info(basic)
 {
+	if (!basic)
+		return;
+
 	const std::wstring_view path = {ENTRY( )->FullDllName.Buffer, ENTRY( )->FullDllName.Length / sizeof(wchar_t)};
 
-	full_path_ = path;
+	full_path = path;
 	const auto name_bg = path.find_last_of('\\');
-	name_ = path.substr(name_bg + 1);
-	work_dir_ = path.substr(0, name_bg);
-}
-
-static basic_info _Copy_info(const basic_info& basic)
-{
-	return basic;
-}
-
-info::info(const basic_info& basic) :info(_Copy_info(basic))
-{
-}
-
-info::info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)
-	: info(basic_info(ldr_entry, dos, nt))
-{
-
+	name = path.substr(name_bg + 1);
+	work_dir = path.substr(0, name_bg);
 }
 
 info::info(info&& other) noexcept
@@ -85,48 +73,29 @@ info& info::operator=(info&& other) noexcept
 	swap(this->exports( ), other.exports( ));
 	swap(this->vtables( ), other.vtables( ));
 
-	swap(full_path_, other.full_path_);
-	swap(name_, other.name_);
-	swap(work_dir_, other.work_dir_);
+	swap(full_path, other.full_path);
+	swap(name, other.name);
+	swap(work_dir, other.work_dir);
 
 	return *this;
 }
 
 block info::mem_block( ) const
 {
-	return {(uint8_t*)base( ), image_size( )};
+	return {(uint8_t*)DOS( ), NT( )->OptionalHeader.SizeOfImage};
 }
 
-DWORD info::check_sum( ) const
-{
-	return NT( )->OptionalHeader.CheckSum;
-}
-
-DWORD info::code_size( ) const
-{
-	return NT( )->OptionalHeader.SizeOfCode;
-}
-
-DWORD info::image_size( ) const
-{
-	return NT( )->OptionalHeader.SizeOfImage;
-}
-
-const info_string& info::full_path( ) const
-{
-	//return {this->ldr_entry_->FullDllName.Buffer, this->ldr_entry_->FullDllName.Length / sizeof(wchar_t)};
-	return full_path_;
-}
-
-const info_string& info::name( ) const
-{
-	return name_;
-}
-
-const info_string& info::work_dir( ) const
-{
-	/*auto path_to = full_path( );
-	path_to.remove_suffix(raw_name( ).size( ));
-	return path_to;*/
-	return work_dir_;
-}
+//DWORD info::check_sum( ) const
+//{
+//	return NT( )->OptionalHeader.CheckSum;
+//}
+//
+//DWORD info::code_size( ) const
+//{
+//	return NT( )->OptionalHeader.SizeOfCode;
+//}
+//
+//DWORD info::image_size( ) const
+//{
+//	return NT( )->OptionalHeader.SizeOfImage;
+//}

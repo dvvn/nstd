@@ -16,7 +16,7 @@ using namespace rtlib;
 auto sections_storage::create(const key_type& entry) -> create_result
 {
 	const auto nt = root_class( )->NT( );
-	const basic_address base_address = root_class( )->base( );
+	const basic_address base_address = root_class( )->DOS( );
 
 	const auto number_of_sections = nt->FileHeader.NumberOfSections;
 	cache::reserve(number_of_sections);

@@ -3,12 +3,13 @@ module;
 #include "basic_info_includes.h"
 
 module nstd.rtlib:basic_info;
+import nstd.mem.address;
 
-using namespace nstd;
-using namespace rtlib;
+using namespace nstd::rtlib;
 
-basic_info::basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt)
+basic_info::basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry)
 {
+#if 0
 	runtime_assert(ldr_entry != nullptr);
 	runtime_assert(dos != nullptr);
 	runtime_assert(nt != nullptr);
@@ -18,25 +19,13 @@ basic_info::basic_info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, I
 	ldr_entry_ = ldr_entry;
 	dos_ = dos;
 	nt_ = nt;
+#endif
+	ldr_entry_ = ldr_entry;
 }
 
-basic_info::basic_info(basic_info&& other)noexcept
+basic_info::operator bool( )const
 {
-	*this = std::move(other);
-}
-
-basic_info& basic_info::operator=(basic_info&& other)noexcept
-{
-	using std::swap;
-	swap(ldr_entry_, other.ldr_entry_);
-	swap(dos_, other.dos_);
-	swap(nt_, other.nt_);
-	return *this;
-}
-
-void* basic_info::base( ) const
-{
-	return ldr_entry_->DllBase;
+	return ldr_entry_ != nullptr;
 }
 
 LDR_DATA_TABLE_ENTRY* basic_info::ENTRY( ) const
@@ -46,10 +35,11 @@ LDR_DATA_TABLE_ENTRY* basic_info::ENTRY( ) const
 
 IMAGE_DOS_HEADER* basic_info::DOS( ) const
 {
-	return dos_;
+	return static_cast<IMAGE_DOS_HEADER*>(ldr_entry_->DllBase);
 }
 
 IMAGE_NT_HEADERS* basic_info::NT( ) const
 {
-	return nt_;
+	const basic_address dos = this->DOS( );
+	return dos + dos->e_lfanew;
 }

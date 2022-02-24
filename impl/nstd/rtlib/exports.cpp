@@ -17,22 +17,22 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	const auto nt = root_class( )->NT( );
 
 	// get export data directory.
-	const auto data_dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-	if (!data_dir->VirtualAddress)
+	const auto& data_dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+	if (!data_dir.VirtualAddress)
 		throw std::runtime_error("Current module doesn't have virtual address!");
 
-	const basic_address base_address = root_class( )->base( );
+	const basic_address base_address = root_class( )->DOS( );
 
-	// get export dir.
-	const basic_address<IMAGE_EXPORT_DIRECTORY> dir = base_address + (data_dir->VirtualAddress);
+	// get export export_dir.
+	const basic_address<IMAGE_EXPORT_DIRECTORY> export_dir = base_address + data_dir.VirtualAddress;
 	//#ifdef NDEBUG
-	//	if (!dir)
+	//	if (!export_dir)
 	//		return;
 	//#endif
 		// names / funcs / ordinals ( all of these are RVAs ).
-	uint32_t* const  names = base_address + dir->AddressOfNames;
-	uint32_t* const  funcs = base_address + (dir->AddressOfFunctions);
-	uint16_t* const  ords = base_address + (dir->AddressOfNameOrdinals);
+	uint32_t* const  names = base_address + export_dir->AddressOfNames;
+	uint32_t* const  funcs = base_address + export_dir->AddressOfFunctions;
+	uint16_t* const  ords = base_address + export_dir->AddressOfNameOrdinals;
 	//#ifdef NDEBUG
 	//	if (!names || !funcs || !ords)
 	//		return;
@@ -42,7 +42,7 @@ auto exports_storage::create(const key_type& entry) -> create_result
 	all_modules->update(false);
 
 	// iterate names array.
-	for (auto i = 0u; i < dir->NumberOfNames; ++i)
+	for (auto i = 0u; i < export_dir->NumberOfNames; ++i)
 	{
 		const char* export_name = base_address + names[i];
 		if (!export_name || *export_name == '\0'/*export_name.empty( ) || export_name.starts_with('?') || export_name.starts_with('@')*/)
@@ -53,9 +53,9 @@ auto exports_storage::create(const key_type& entry) -> create_result
 			&& export_addr.cast<uintptr_t>() < reinterpret_cast<uintptr_t>(export_directory) + data_directory->Size)
 		 */
 
-		 //if (export_ptr < dir || export_ptr >= memory_block(dir, data_dir->Size).addr( ))
+		 //if (export_ptr < export_dir || export_ptr >= memory_block(export_dir, data_dir.Size).addr( ))
 		const auto export_ptr = base_address + funcs[ords[i]];
-		if (export_ptr < dir || export_ptr >= dir + data_dir->Size)
+		if (export_ptr < export_dir || export_ptr >= export_dir + data_dir.Size)
 		{
 			this->emplace(export_name, export_ptr);
 			//
@@ -77,7 +77,7 @@ auto exports_storage::create(const key_type& entry) -> create_result
 			// get real export ptr ( recursively ).
 			const auto target_module = std::ranges::find_if(*all_modules, [&](const info& i)
 			{
-				return i.name( ) == fwd_module_str;
+				return i.name == fwd_module_str;
 			});
 			if (target_module == all_modules->end( ))
 				continue;

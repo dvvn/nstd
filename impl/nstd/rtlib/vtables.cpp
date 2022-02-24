@@ -34,11 +34,11 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 	};*/
 
 	auto from = dot_rdata.block;
-	auto search = make_signature(type_descriptor);
+	const auto search = make_signature(type_descriptor);
 
 	for (;;)
 	{
-		auto block = from.find_block(search);
+		const auto block = from.find_block(search);
 		if (block.empty( ))
 			break;
 		from = from.shift_to(block._Unchecked_end( ));
@@ -46,7 +46,7 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 		const basic_address xr = block.data( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
-		const uintptr_t vtable_offset = *xr.remove(sizeof(uintptr_t) * 2).pointer;
+		const uintptr_t vtable_offset = *xr - sizeof(uintptr_t) * 2;
 		if (vtable_offset != 0)
 			continue;
 
@@ -54,7 +54,7 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 
 		const auto vtable_address = [&]
 		{
-			const auto object_locator = xr.remove(sizeof(uintptr_t) * 3);
+			const auto object_locator = xr - sizeof(uintptr_t) * 3;
 			const auto sig = make_signature(object_locator);
 			const auto found = dot_rdata.block.find_block(sig);
 			const basic_address addr = found.data( );
@@ -81,11 +81,9 @@ static std::optional<vtable_data> _Load_vtable(const section_data& dot_rdata, co
 	return {};
 }
 
-using namespace std::string_view_literals;
-
-
 auto vtables_storage::create(const key_type& entry) -> create_result
 {
+	using namespace std::string_view_literals;
 	const auto real_name = nstd::append<std::string>(".?AV"sv, entry, "@@"sv);
 
 	auto info_ptr = this->root_class( );

@@ -13,12 +13,6 @@ export namespace nstd::rtlib
 {
 	struct info_string
 	{
-		/*struct raw_type :hashed_wstring_view
-		{
-			template<typename ...T>
-			raw_type(T&& ...args) :hashed_wstring_view(std::forward<T>(args)...) { }
-		};*/
-
 		using raw_type = nstd::text::hashed_wstring_view;
 
 		//lowercase
@@ -62,30 +56,36 @@ export namespace nstd::rtlib
 
 	struct info final : basic_info, sections_storage, exports_storage, vtables_storage
 	{
-	private:
-		info_string full_path_;
-		info_string name_;
-		info_string work_dir_;
+		info_string full_path;
+		info_string name;
+		info_string work_dir;
 
 		info* root_class( ) override;
 		const info* root_class( ) const override;
-	public:
 
 		info( ) = default;
 		info(const basic_info& basic);
-		info(basic_info&& basic)noexcept;
-		info(LDR_DATA_TABLE_ENTRY* ldr_entry, IMAGE_DOS_HEADER* dos, IMAGE_NT_HEADERS* nt);
 		info(info&& other) noexcept;
 		info& operator=(info&& other) noexcept;
 
+		template<typename T>
+		bool operator==(const T& other)const
+		{
+			static_assert(std::derived_from<T, basic_info>, __FUNCSIG__": Incorrect type");
+
+			const bool equal = *static_cast<const basic_info*>(this) == other;
+
+			if constexpr (std::same_as<T, info>)
+				return equal && full_path == other.full_path;
+			else
+				return equal;
+		}
+		template<typename T>
+		bool operator!=(const T& other)const
+		{
+			return !(*this == other);
+		}
+
 		mem::block mem_block( ) const;
-
-		DWORD check_sum( ) const;
-		DWORD code_size( ) const;
-		DWORD image_size( ) const;
-
-		const info_string& full_path( ) const;
-		const info_string& name( ) const;
-		const info_string& work_dir( ) const;
 	};
 }
