@@ -34,7 +34,7 @@ Out force_cast(In in)
 	}
 }
 
-export namespace nstd::/*inline*/ mem
+export namespace nstd::inline mem
 {
 	struct address_tag { };
 
@@ -279,14 +279,14 @@ export namespace nstd::/*inline*/ mem
 	}
 
 	template<typename T>
-	basic_address<T> basic_address<T>::multiply(ptrdiff_t value)const
+	basic_address<T> basic_address<T>::multiply(ptrdiff_t val)const
 	{
-		return *this * value;
+		return *this * val;
 	}
 
 	template<typename T>
-	basic_address<T> basic_address<T>::divide(ptrdiff_t value)const
+	basic_address<T> basic_address<T>::divide(ptrdiff_t val)const
 	{
-		return *this / value;
+		return *this / val;
 	}
 }

@@ -45,7 +45,7 @@ void append_proxy(size_t& offset, T& rng, A&& arg)
 	if constexpr (have_append<T, itr_t>)
 		rng.append(bg, ed);
 	else
-		rng.insert(rng.begin( ) + offset, bg, ed);
+		rng.insert(std::next(rng.begin( ), offset), bg, ed);
 
 	offset += std::distance(bg, ed);
 }
@@ -55,28 +55,27 @@ export namespace nstd::inline container
 	template<typename T, typename ...Args>
 	void append(T & cont, Args&& ...args)
 	{
-		size_t offset = cont.size( );
-		if constexpr (sizeof...(Args) > 1)
+		auto offset = cont.size( );
+		if constexpr (sizeof...(Args) > 1 && std::random_access_iterator<typename T::iterator>)
 		{
 			const auto buff_size = (args.size( ) + ...);
 			cont.resize(offset + buff_size);
 
-			if constexpr (std::random_access_iterator<typename T::iterator>)
-			{
-				auto itr = cont.begin( ) + offset;
-				(copy_or_move(itr, std::forward<Args>(args)), ...);
-				return;
-			}
-		}
+			auto itr = cont.begin( ) + offset;
+			(copy_or_move(itr, std::forward<Args>(args)), ...);
 
-		(append_proxy(offset, cont, std::forward<Args>(args)), ...);
+		}
+		else
+		{
+			(append_proxy(offset, cont, std::forward<Args>(args)), ...);
+		}
 	}
 
 	template<typename T, typename ...Args>
 	T append(Args&& ...args)
 	{
 		T out;
-		append(out,std::forward<Args>(args)...);
+		append(out, std::forward<Args>(args)...);
 		return out;
 	}
 }

@@ -2,9 +2,11 @@
 
 // ReSharper disable once CppUnusedIncludeDirective
 #include "core.h"
-#include "one_instance.h"
 
+#include <memory>
 #include <source_location>
+
+import nstd.one_instance;
 
 namespace nstd
 {
