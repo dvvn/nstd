@@ -16,36 +16,64 @@ void copy_or_move(T& itr, A&& arg)
 }
 
 template<typename Rng, typename Itr>
+concept have_assign = requires(Rng & rng, Itr itr)
+{
+	rng.assign(itr, itr);
+};
+
+template<typename Rng, typename Itr>
 concept have_append = requires(Rng & rng, Itr itr)
 {
 	rng.append(itr, itr);
 };
 
 template<typename Rng, typename Itr>
-concept have_insert = requires(Rng & rng, Itr itr)
+concept have_hint = requires(Rng & rng, Itr itr)
+{
+	rng.insert(rng.begin( ), itr, itr);
+};
+
+template<typename Rng, typename Itr>
+concept have_insert_rng = requires(Rng & rng, Itr itr)
 {
 	rng.insert(itr, itr);
 };
 
-template<typename T, typename A>
-void append_proxy(size_t& offset, T& rng, A&& arg)
+template<typename Rng>
+concept have_reserve = requires(Rng & rng)
 {
-	auto bg = arg.begin( );
-	auto ed = arg.end( );
+	rng.reserve(1337);
+};
 
-	if (rng.empty( ))
-	{
-		rng.assign(bg, ed);
-		return;
-	}
+template<typename T, typename A>
+void append_proxy(size_t& offset, T& dst, A&& src)
+{
+	const auto bg = src.begin( );
+	const auto ed = src.end( );
 
-	//constexpr bool rvalue = std::is_rvalue_reference_v<decltype(arg)>;
+	//constexpr bool rvalue = std::is_rvalue_reference_v<decltype(src)>;
 	using itr_t = decltype(bg);
 
-	if constexpr (have_append<T, itr_t>)
-		rng.append(bg, ed);
+	auto pos = std::next(dst.begin( ), offset);
+
+	if constexpr (have_hint<T, itr_t>)
+	{
+		dst.insert(pos, bg, ed);
+	}
 	else
-		rng.insert(std::next(rng.begin( ), offset), bg, ed);
+	{
+		using val_t = typename T::value_type;
+		if (pos == dst.end( ))
+		{
+			for (auto itr = bg; itr != ed; ++itr)
+				dst.insert(dst.end( ), val_t(*itr));
+		}
+		else
+		{
+			for (auto itr = bg; itr != ed; ++itr)
+				pos = dst.insert(pos, val_t(*itr));
+		}
+	}
 
 	offset += std::distance(bg, ed);
 }
@@ -55,8 +83,9 @@ export namespace nstd::inline container
 	template<typename T, typename ...Args>
 	void append(T & cont, Args&& ...args)
 	{
+		constexpr auto args_count = sizeof...(Args);
 		auto offset = cont.size( );
-		if constexpr (sizeof...(Args) > 1 && std::random_access_iterator<typename T::iterator>)
+		if constexpr (args_count > 1 && std::random_access_iterator<typename T::iterator>)
 		{
 			const auto buff_size = (args.size( ) + ...);
 			cont.resize(offset + buff_size);
@@ -67,6 +96,12 @@ export namespace nstd::inline container
 		}
 		else
 		{
+			if constexpr (args_count > 1 && have_reserve<T>)
+			{
+				const auto buff_size = (args.size( ) + ...);
+				cont.reserve(offset + buff_size);
+			}
+
 			(append_proxy(offset, cont, std::forward<Args>(args)), ...);
 		}
 	}
