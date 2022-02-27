@@ -176,11 +176,13 @@ export namespace nstd::inline mem
 			return force_cast<Q>(value);
 		}
 
+		basic_address operator[](ptrdiff_t index) const;
+
 		basic_address<void> jmp(ptrdiff_t offset = 0x1) const;
-		basic_address plus(ptrdiff_t offset)const;
-		basic_address minus(ptrdiff_t offset)const;
-		basic_address multiply(ptrdiff_t value)const;
-		basic_address divide(ptrdiff_t value)const;
+		basic_address<void> plus(ptrdiff_t offset)const;
+		basic_address<void> minus(ptrdiff_t offset)const;
+		basic_address<void> multiply(ptrdiff_t value)const;
+		basic_address<void> divide(ptrdiff_t value)const;
 	};
 
 	template<typename T>
@@ -238,6 +240,22 @@ export namespace nstd::inline mem
 	NSTD_ADDRESS_OPERATOR_EQUALITY(== );
 
 	template<typename T>
+	basic_address<T> basic_address<T>::operator[](ptrdiff_t index) const
+	{
+		constexpr auto step = []
+		{
+			if constexpr (std::is_void_v<T>)
+				return sizeof(uintptr_t);
+			else
+				return sizeof(T);
+		}();
+
+		const auto element = *this + index * step;
+		return *element;
+	}
+
+
+	template<typename T>
 	basic_address<void> basic_address<T>::jmp(ptrdiff_t offset) const
 	{
 		//same as rel 32
@@ -267,25 +285,25 @@ export namespace nstd::inline mem
 	}
 
 	template<typename T>
-	basic_address<T> basic_address<T>::plus(ptrdiff_t offset)const
+	basic_address<void> basic_address<T>::plus(ptrdiff_t offset)const
 	{
 		return *this + offset;
 	}
 
 	template<typename T>
-	basic_address<T> basic_address<T>::minus(ptrdiff_t offset)const
+	basic_address<void> basic_address<T>::minus(ptrdiff_t offset)const
 	{
 		return *this - offset;
 	}
 
 	template<typename T>
-	basic_address<T> basic_address<T>::multiply(ptrdiff_t val)const
+	basic_address<void> basic_address<T>::multiply(ptrdiff_t val)const
 	{
 		return *this * val;
 	}
 
 	template<typename T>
-	basic_address<T> basic_address<T>::divide(ptrdiff_t val)const
+	basic_address<void> basic_address<T>::divide(ptrdiff_t val)const
 	{
 		return *this / val;
 	}
