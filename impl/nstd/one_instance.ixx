@@ -1,69 +1,199 @@
 module;
 
+#include <nstd/type_traits.h>
 #include <memory>
 
 export module nstd.one_instance;
 
+template <typename Last = void, typename T>
+auto deref_ptr(T ptr)
+{
+	if constexpr (!std::is_pointer_v<std::remove_pointer_t<T>> || std::same_as<Last, T>)
+		return ptr;
+	else
+		return deref_ptr<Last>(*ptr);
+}
+
+template<typename T>
+bool nullptr_check(T ptr)
+{
+	if (ptr == nullptr)
+		return true;
+
+	if constexpr (!std::is_pointer_v<std::remove_pointer_t<T>>)
+		return false;
+	else
+		return nullptr_check(*ptr);
+}
+
+template <typename T>
+class pointer_wrapper
+{
+	T ptr_;
+
+public:
+
+	pointer_wrapper(T ptr)
+		:ptr_(ptr)
+	{
+	}
+
+	T operator->( )const
+	{
+		return ptr_;
+	}
+
+	auto& operator*( )const
+	{
+		return *ptr_;
+	}
+};
+
+template <typename T>
+class pointer_wrapper<T**>
+{
+	T** ptr_;
+
+	bool _Is_null( )const
+	{
+		return nullptr_check(ptr_);
+	}
+
+public:
+
+	pointer_wrapper(T** ptr)
+		:ptr_(ptr)
+	{
+	}
+
+	auto operator->( )const
+	{
+		return deref_ptr(ptr_);
+	}
+
+	auto& operator*( )const
+	{
+		return *deref_ptr(ptr_);
+	}
+
+	bool operator==(nullptr_t)const
+	{
+		return _Is_null( );
+	}
+
+	bool operator!=(nullptr_t)const
+	{
+		return !_Is_null( );
+	}
+
+	operator bool( )const
+	{
+		return !_Is_null( );
+	}
+
+	bool operator!( )const
+	{
+		return _Is_null( );
+	}
+};
+
 export namespace nstd
 {
 	template <typename T>
-	class one_instance_default_getter
+	struct one_instance_getter
 	{
-		T item_;
+		using value_type = T;
+		using reference = value_type&;
+		using pointer = value_type*;
 
-	public:
-		one_instance_default_getter( )
-			:item_( )
+		one_instance_getter( )
+			:item_(_Construct( ))
 		{
 		}
 
-		operator T& ()
-		{
-			return item_;
-		}
-
-		operator const T& () const
+		reference ref( )
 		{
 			return item_;
 		}
+
+		pointer ptr( )
+		{
+			return std::addressof(item_);
+		}
+
+	private:
+		value_type item_;
+		value_type _Construct( ) const { return {}; }
 	};
 
-	/*template <typename T>
-	class one_instance_default_getter<std::shared_ptr<T>>
+	template <typename T>
+	class one_instance_getter<T*>
 	{
-		using value_type = std::shared_ptr<T>;
-		value_type item_;
-
 	public:
-		one_instance_default_getter( )
-			:item_(std::make_shared<T>( ))
+		using element_type = T*;
+		using value_type = nstd::remove_all_pointers_t<element_type>;
+		using reference = value_type&;
+		using real_pointer = value_type*;
+		using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
+
+		one_instance_getter( )
+			:item_(_Construct( ))
 		{
 		}
 
-		operator T& () const
+		reference ref( )const
 		{
-			return *item_;
+			return *deref_ptr(item_);
 		}
 
-		operator value_type& ()
+		pointer ptr( )const
 		{
 			return item_;
 		}
 
-		operator const value_type& () const
-		{
-			return item_;
-		}
-	};*/
+	private:
+		element_type item_;
+		element_type _Construct( ) const;
+	};
 
-	template <typename T, size_t Index = 0, class Getter = one_instance_default_getter<T>>
+	template <typename T>
+	one_instance_getter(T)->one_instance_getter<T>;
+
+	/*template <typename T>
+class one_instance_getter<std::shared_ptr<T>>
+{
+	using value_type = std::shared_ptr<T>;
+	value_type item_;
+
+public:
+	one_instance_getter( )
+		:item_(std::make_shared<T>( ))
+	{
+	}
+
+	operator T& () const
+	{
+		return *item_;
+	}
+
+	operator value_type& ()
+	{
+		return item_;
+	}
+
+	operator const value_type& () const
+	{
+		return item_;
+	}
+};*/
+
+	template <typename T, size_t Instance = 0>
 	class one_instance
 	{
-		static Getter& _Get( )
+		static auto& _Get( )
 		{
-			static_assert(std::is_default_constructible_v<Getter>, __FUNCSIG__": getter must be default constructible!");
-			static Getter getter;
-			return getter;
+			static one_instance_getter<T> g;
+			return g;
 		}
 
 	public:
@@ -73,22 +203,14 @@ export namespace nstd
 		constexpr one_instance(one_instance&& other) noexcept = delete;
 		constexpr one_instance& operator=(one_instance&& other) noexcept = delete;
 
-		/*using value_type = T;
-		using reference = T&;
-		using const_reference = const T&;
-		using pointer = T*;
-		using const_pointer = const T*;*/
-
-		using element_type = T;
-
-		static T& get( )
+		static auto& get( )
 		{
-			return _Get( );
+			return _Get( ).ref( );
 		}
 
-		static T* get_ptr( )
+		static auto get_ptr( )
 		{
-			return std::addressof(get( ));
+			return _Get( ).ptr( );
 		}
 
 		static void _Reload( )
