@@ -5,6 +5,7 @@ module;
 module nstd.rtlib:all_infos;
 import :info;
 import nstd.mem.address;
+import nstd.lazy_invoke;
 
 using namespace nstd;
 using namespace rtlib;
@@ -179,21 +180,23 @@ static auto _Update_full(modules_storage_data& current_storage)
 
 bool modules_storage::update(bool force)
 {
-	if (this->empty( ))
-	{
-		*this = _Get_all_modules<info>( );
-		return true;
-	}
-	if (force)
-	{
-		auto new_data = _Update_full(*this);
-		if (new_data.empty( ))
-			return false;
-		*this = std::move(new_data);
-		return true;
-	}
+	if (locked( ))
+		throw std::logic_error("Unable to update locked storage!");
 
-	return false;
+	modules_storage_data new_storage;
+
+	if (this->empty( ))
+		new_storage = _Get_all_modules<info>( );
+	else if (force)
+		new_storage = _Update_full(*this);
+
+	if (new_storage.empty( ))
+		return false;
+
+	*this = std::move(new_storage);
+	try_lock( );
+
+	return true;
 }
 
 const info& modules_storage::current( ) const
@@ -214,4 +217,33 @@ const info& modules_storage::owner( )const
 info& modules_storage::owner( )
 {
 	return this->front( );
+}
+
+bool modules_storage::locked( )const
+{
+	return locked_;
+}
+
+void modules_storage::unlock( )
+{
+	locked_ = false;
+}
+
+void modules_storage::set_locker(lock_fn&& fn)
+{
+	runtime_assert(fn != nullptr, "Unable to write empty function!");
+	runtime_assert(!locked( ), "Storage is locked");
+	locker_ = std::move(fn);
+	try_lock( );
+}
+
+bool modules_storage::contains_locker( )const
+{
+	return locker_ != nullptr;
+}
+
+void modules_storage::try_lock( )
+{
+	runtime_assert(!locked( ) && contains_locker( ));
+	locked_ = locker_(*this);
 }

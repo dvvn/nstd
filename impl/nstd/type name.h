@@ -10,7 +10,7 @@
 
 namespace nstd
 {
-	constexpr void erase_substring(std::string& str, const std::string_view& substr)
+	constexpr void erase_substring(std::string& str, const std::string_view substr)
 	{
 #if 1
 		size_t pos = 0;
@@ -84,7 +84,7 @@ namespace nstd
 	}
 
 	template<typename T>
-	constexpr std::string_view filter_substring(T* buffer_pos, const std::string_view& str, const std::string_view& substr)
+	constexpr std::string_view filter_substring(T* buffer_pos, const std::string_view str, const std::string_view substr)
 	{
 		auto buffer_start = buffer_pos;
 		bool already_filled = *buffer_pos != 0;
@@ -145,7 +145,7 @@ namespace nstd
 	template<typename T, typename ...Strings>
 	constexpr std::string_view filter_substring_multi(T* buffer_pos, std::string_view str, const Strings& ...substrs)
 	{
-		const auto process = [&](const std::string_view& substr)
+		const auto process = [&](const std::string_view substr)
 		{
 			str = filter_substring(buffer_pos, str, substr);
 		};
@@ -194,7 +194,7 @@ namespace nstd
 		}
 
 		template <typename T>
-		_INLINE_VAR constexpr auto type_name_holder = []
+		inline constexpr auto type_name_holder = []
 		{
 			constexpr auto tmp = type_name_impl<T>( );
 			if constexpr (tmp.ideal( ))
@@ -221,7 +221,7 @@ namespace nstd
 		}
 
 		template <template<class...>class T>
-		_INLINE_VAR constexpr auto type_name_holder_partial = []
+		inline constexpr auto type_name_holder_partial = []
 		{
 			constexpr auto tmp = type_name_impl<T>( );
 			if constexpr (tmp.ideal( ))
@@ -231,7 +231,7 @@ namespace nstd
 		}();
 
 #if 0
-		constexpr auto drop_namespace_impl(std::string& str, const std::string_view& drop)
+		constexpr auto drop_namespace_impl(std::string& str, const std::string_view drop)
 		{
 			std::string drop_str;
 			std::string_view drop_sv;
@@ -269,7 +269,8 @@ namespace nstd
 	static_assert(type_name<std::exception>( ) == "std::exception");
 
 #if 1
-	constexpr auto drop_namespace(const std::string_view& in, const std::string_view& drop)
+	template<size_t InBuff = 254, size_t DropBuff = 63>
+	constexpr auto drop_namespace(const std::string_view in, const std::string_view drop)
 	{
 #ifdef _DEBUG
 		if (drop.ends_with(":::")
@@ -281,7 +282,7 @@ namespace nstd
 		}
 #endif
 
-		auto buffer = detail::prepare_buffer<char, 255>( );
+		auto buffer = detail::prepare_buffer<char, InBuff>( );
 		auto bg = buffer.data( );
 		if (drop.ends_with("::"))
 		{
@@ -289,7 +290,7 @@ namespace nstd
 		}
 		else
 		{
-			auto tmp_buffer = detail::prepare_buffer<char, 63>( );
+			auto tmp_buffer = detail::prepare_buffer<char, DropBuff>( );
 			auto pos = std::copy(drop.begin( ), drop.end( ), tmp_buffer.begin( ));
 			*pos++ = ':';
 			auto tmp_buffer_size = drop.size( ) + 1;
@@ -304,11 +305,20 @@ namespace nstd
 
 		return buffered_string(buffer);
 	}
+
+	template<typename Chr, size_t SizeIn, size_t SizeDrop>
+	constexpr auto drop_namespace(const buffered_string<Chr, SizeIn> in, const Chr(&drop)[SizeDrop])
+	{
+		constexpr auto drop_length = SizeDrop - 1;
+		const std::basic_string_view<Chr> drop_str = {drop, drop_length};
+		return drop_namespace<SizeIn - 1, drop_length + 2/*::*/>(in.view( ), drop_str);
+	}
+
 	static_assert(drop_namespace("test::test::string", "test") == "string");
 	static_assert(drop_namespace("test::test2::string", "test2") == "test::string");
 #else
 	template<typename Str>
-	constexpr auto drop_namespace(Str&& in, const std::string_view& drop)
+	constexpr auto drop_namespace(Str&& in, const std::string_view drop)
 	{
 		auto out = std::string(std::forward<Str>(in));
 		detail::drop_namespace_impl(out, drop);

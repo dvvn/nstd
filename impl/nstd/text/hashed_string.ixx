@@ -241,8 +241,8 @@ export namespace nstd::inline text
 		, class Base2, template<typename> class Hasher2>\
 	constexpr _RET_ operator _OP_(const hashed_string_wrapper<Base, Hasher>& l, const hashed_string_wrapper<Base2, Hasher2>& r)\
 	{\
-		static_assert(std::equality_comparable_with<Base, Base2>, __FUNCTION__": Base classes must be equality comparable!");\
-		static_assert(nstd::same_template<Hasher, Hasher2>( ), __FUNCTION__": Hash functions must be have same base!");\
+		static_assert(std::equality_comparable_with<Base, Base2>, __FUNCSIG__": Base classes must be equality comparable!");\
+		static_assert(nstd::same_template<Hasher, Hasher2>( ), __FUNCSIG__": Hash functions must be have same base!");\
 		return l.hash( ) _OP_ r.hash( );\
 	}\
 	NSTD_HASHED_STRING_OPERATOR_SIMPLE_HEAD\
