@@ -1,16 +1,14 @@
 #pragma once
 
 #if __has_include(<veque.hpp>)
-#include <string>
-#include <veque.hpp>
-#ifdef __cpp_modules
+#include <cstddef>
 namespace std
 {
 	using size_t = ::size_t;
 	using ptrdiff_t = ::ptrdiff_t;
 }
-#endif
-
+#include <string>
+#include <veque.hpp>
 #else
 #include <deque>
 #endif
