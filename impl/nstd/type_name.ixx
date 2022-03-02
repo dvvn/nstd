@@ -173,7 +173,7 @@ constexpr decltype(auto) type_name_raw( )
 	return __FUNCSIG__;
 }
 
-template<size_t Size, bool NullTerminated>
+template<size_t Size, bool NullTerminated = false>
 constexpr auto make_string_buffer(const std::string_view str)
 {
 	auto buff = std::array<char, Size + static_cast<size_t>(NullTerminated)>( );
@@ -183,59 +183,48 @@ constexpr auto make_string_buffer(const std::string_view str)
 	return buff;
 }
 
-template <typename T, bool ClampBuffer>
+template <typename T>
 constexpr auto type_name_impl( )
 {
 	constexpr std::string_view raw_name = type_name_raw<T>( );
-	const auto result = clean_type_name(raw_name);
-
-	if constexpr (!ClampBuffer)
-	{
-		return make_string_buffer<raw_name.size( ), true>(result);
-	}
+	constexpr auto out_buffer_size = clean_type_name_size(raw_name);
+	if constexpr (raw_name.size( ) == out_buffer_size)
+		return raw_name;
 	else
-	{
-		constexpr auto out_buffer_size = clean_type_name_size(raw_name);
-		if constexpr (raw_name.size( ) == out_buffer_size)
-			return raw_name;
-		else
-			return make_string_buffer<out_buffer_size, false>(result);
-	}
+		return make_string_buffer<out_buffer_size>(clean_type_name(raw_name));
 }
 
 template <template<class...> class T>
 constexpr auto type_name_partial_impl( )
 {
 	constexpr std::string_view raw_name = type_name_raw<T>( );
-
 	constexpr auto out_buffer_size = clean_type_name_size(raw_name);
 	if constexpr (raw_name.size( ) == out_buffer_size)
 		return raw_name;
 	else
-	{
-		const auto result = clean_type_name(raw_name);
-		return make_string_buffer<out_buffer_size, false>(result);
-	}
+		return make_string_buffer<out_buffer_size>(clean_type_name(raw_name));
 }
 
 template <typename T>
 constexpr auto type_name_drop_templates_impl( )
 {
-	constexpr auto name = type_name_impl<T, false>( );
-	constexpr std::string_view name_sized = name.data( );
+	constexpr auto name = type_name_impl<T>( );
+	constexpr std::string_view name_sized = {name.data( ),name.size( )};
 
 	constexpr auto template_start = name_sized.find('<');
 	if constexpr (template_start == name_sized.npos)
+	{
 		return name;
+	}
 	else
 	{
 		constexpr auto name_clamped = name_sized.substr(0, template_start);
-		return make_string_buffer<name_clamped.size( ), false>(name_clamped);
+		return make_string_buffer<name_clamped.size( )>(name_clamped);
 	}
 }
 
 template <typename T>
-constexpr auto type_name_holder = type_name_impl<T, true>( );
+constexpr auto type_name_holder = type_name_impl<T>( );
 
 template <template<class...> class T>
 constexpr auto type_name_holder_partial = type_name_partial_impl<T>( );
