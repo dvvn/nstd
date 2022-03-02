@@ -2,6 +2,7 @@ module;
 
 #include <nstd/type_traits.h>
 #include <nstd/runtime_assert.h>
+//#include <nstd/type_name.h>
 
 #include <string>
 //#include <functional>
@@ -13,6 +14,7 @@ module;
 
 export module nstd.text.hashed_string;
 import nstd.lazy_invoke;
+import nstd.type_name;
 
 #define NSTD_COMMA ,
 
@@ -207,7 +209,7 @@ template<typename Chr
 	NSTD_HASHED_STRING_WRAP_THIS(operator+=);
 	NSTD_HASHED_STRING_WRAP_THIS(replace);
 	NSTD_HASHED_STRING_WRAP_VOID(resize);
-#if __cplusplus > 202002L
+#ifdef __cpp_lib_string_resize_and_overwrite
 	NSTD_HASHED_STRING_WRAP_VOID(resize_and_overwrite);
 #endif
 private:
