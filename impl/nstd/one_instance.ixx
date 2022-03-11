@@ -97,6 +97,14 @@ public:
 	}
 };
 
+template <typename T>
+void recreate(T& ref)
+{
+	auto ptr = std::addressof(ref);
+	std::destroy_at(ptr);
+	std::construct_at(ptr);
+}
+
 export namespace nstd
 {
 	template <typename T>
@@ -157,7 +165,36 @@ export namespace nstd
 	};
 
 	template <typename T>
-	one_instance_getter(T)->one_instance_getter<T>;
+	class one_instance_getter<std::unique_ptr<T>>
+	{
+	public:
+		using element_type = std::unique_ptr<T>;
+		using value_type = T;
+		using reference = value_type&;
+		using pointer = value_type*;
+
+		one_instance_getter( )
+			:item_(_Construct( ))
+		{
+		}
+
+		reference ref( )
+		{
+			return *item_;
+		}
+
+		pointer ptr( )
+		{
+			return item_.get( );
+		}
+
+	private:
+		element_type item_;
+		element_type _Construct( ) const { return std::make_unique<T>( ); }
+	};
+
+	/*template <typename T>
+	one_instance_getter(T)->one_instance_getter<T>;*/
 
 	/*template <typename T>
 class one_instance_getter<std::shared_ptr<T>>
@@ -193,7 +230,14 @@ public:
 		static auto& _Get( )
 		{
 			static one_instance_getter<T> g;
+			static bool call_once = _Initialized( ) = true;
 			return g;
+		}
+
+		static bool& _Initialized( )
+		{
+			static bool val = false;
+			return val;
 		}
 
 	public:
@@ -202,6 +246,11 @@ public:
 		constexpr one_instance& operator=(const one_instance& other) = delete;
 		constexpr one_instance(one_instance&& other) noexcept = delete;
 		constexpr one_instance& operator=(one_instance&& other) noexcept = delete;
+
+		static bool initialized( )
+		{
+			return _Initialized( );
+		}
 
 		static auto& get( )
 		{
@@ -213,11 +262,53 @@ public:
 			return _Get( ).ptr( );
 		}
 
-		static void _Reload( )
+		static void _Recreate( )
 		{
-			auto ptr = std::addressof(_Get( ));
-			std::destroy_at(ptr);
-			std::construct_at(ptr);
+			recreate(_Get( ));
+		}
+	};
+
+	template <typename T, size_t Instance = 0>
+	class one_instance_obj final
+	{
+		static auto& _Get( )
+		{
+			static one_instance_getter<T> g;
+			static bool call_once = _Initialized( ) = true;
+			return g;
+		}
+
+		static bool& _Initialized( )
+		{
+			static bool val = false;
+			return val;
+		}
+
+	public:
+		constexpr one_instance_obj( ) = default;
+		constexpr one_instance_obj(const one_instance_obj& other) = delete;
+		constexpr one_instance_obj& operator=(const one_instance_obj& other) = delete;
+		constexpr one_instance_obj(one_instance_obj&& other) noexcept = delete;
+		constexpr one_instance_obj& operator=(one_instance_obj&& other) noexcept = delete;
+
+		bool initialized( ) const
+		{
+			return _Initialized( );
+		}
+
+		auto& operator*( )const
+		{
+			return _Get( ).ref( );
+		}
+
+		auto operator->( )const
+		{
+			return _Get( ).ptr( );
+		}
+
+		void _Recreate( )const
+		{
+			recreate(_Get( ));
 		}
 	};
 }
