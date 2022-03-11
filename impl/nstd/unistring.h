@@ -10,6 +10,8 @@
 #endif
 #include <vector>
 
+import nstd.type_name;
+
 template < >
 struct ww898::utf::detail::utf_selector<char8_t> final
 {

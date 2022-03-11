@@ -9,6 +9,7 @@
 #include <fmt/format.h>
 #include <fmt/xchar.h>
 #include <fmt/ranges.h>
+#include <fmt/ostream.h>
 namespace std
 {
 	using namespace fmt;
