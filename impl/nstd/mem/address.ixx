@@ -55,10 +55,29 @@ export namespace nstd::inline mem
 			pointer_type pointer;
 		};
 
-		basic_address( ) :value(0) { }
-		explicit basic_address(uintptr_t val) : value(val) { }
-		basic_address(std::nullptr_t) : pointer(nullptr) { }
-		basic_address(pointer_type ptr) : pointer(ptr) { }
+		basic_address( )
+			:value(0)
+		{
+		}
+		explicit basic_address(uintptr_t val)
+			: value(val)
+		{
+		}
+		basic_address(std::nullptr_t)
+			: pointer(nullptr)
+		{
+		}
+		basic_address(pointer_type ptr)
+			: pointer(ptr)
+		{
+		}
+
+		template<typename Q>
+		basic_address(Q* ptr)
+			: pointer(force_cast<pointer_type>(ptr))
+		{
+		}
+
 
 		template<have_address_tag Q>
 		basic_address(Q&& other) noexcept

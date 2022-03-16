@@ -1,51 +1,42 @@
 module;
-#include "info_includes.h"
-#include "nstd/ranges.h"
 
-module nstd.rtlib:exports;
-import :all_infos;
-import nstd.container.wrapper;
-import nstd.text.actions;
+#include <nstd/runtime_assert.h>
+#include <windows.h>
+#include <winternl.h>
+#include <string_view>
 
-using namespace nstd;
-using namespace rtlib;
+module nstd.winapi.exports;
+import nstd.mem.address;
 
-auto exports_storage::create(const key_type& entry) -> create_result
+using namespace nstd::mem;
+
+void* find_export_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view name)
 {
-	//fill whole cache
-
-	const auto nt = root_class( )->NT( );
+	//base address
+	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
+	const basic_address<IMAGE_NT_HEADERS> nt = dos + dos->e_lfanew;
 
 	// get export data directory.
 	const auto& data_dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-	if (!data_dir.VirtualAddress)
-		throw std::runtime_error("Current module doesn't have virtual address!");
-
-	const basic_address base_address = root_class( )->DOS( );
+	runtime_assert(data_dir.VirtualAddress, "Current module doesn't have the virtual address!");
 
 	// get export export_dir.
-	const basic_address<IMAGE_EXPORT_DIRECTORY> export_dir = base_address + data_dir.VirtualAddress;
-	//#ifdef NDEBUG
-	//	if (!export_dir)
-	//		return;
-	//#endif
-		// names / funcs / ordinals ( all of these are RVAs ).
-	uint32_t* const  names = base_address + export_dir->AddressOfNames;
-	uint32_t* const  funcs = base_address + export_dir->AddressOfFunctions;
-	uint16_t* const  ords = base_address + export_dir->AddressOfNameOrdinals;
-	//#ifdef NDEBUG
-	//	if (!names || !funcs || !ords)
-	//		return;
-	//#endif
+	const basic_address<IMAGE_EXPORT_DIRECTORY> export_dir = dos + data_dir.VirtualAddress;
 
-	const auto all_modules = all_infos::get_ptr( );
-	all_modules->update(false);
+	// names / funcs / ordinals ( all of these are RVAs ).
+	uint32_t* const names = dos + export_dir->AddressOfNames;
+	uint32_t* const funcs = dos + export_dir->AddressOfFunctions;
+	uint16_t* const ords = dos + export_dir->AddressOfNameOrdinals;
 
 	// iterate names array.
 	for (auto i = 0u; i < export_dir->NumberOfNames; ++i)
 	{
-		const char* export_name = base_address + names[i];
-		if (!export_name || *export_name == '\0'/*export_name.empty( ) || export_name.starts_with('?') || export_name.starts_with('@')*/)
+		const char* export_name = dos + names[i];
+		if (!export_name)
+			continue;
+		if (std::memcmp(export_name, name.data( ), name.size( )) != 0)
+			continue;
+		if (export_name[name.size( )] != '\0')
 			continue;
 
 		/*
@@ -54,14 +45,15 @@ auto exports_storage::create(const key_type& entry) -> create_result
 		 */
 
 		 //if (export_ptr < export_dir || export_ptr >= memory_block(export_dir, data_dir.Size).addr( ))
-		const auto export_ptr = base_address + funcs[ords[i]];
+		const auto export_ptr = dos + funcs[ords[i]];
 		if (export_ptr < export_dir || export_ptr >= export_dir + data_dir.Size)
 		{
-			this->emplace(export_name, export_ptr);
-			//
+			return export_ptr;
 		}
 		else // it's a forwarded export, we must resolve it.
 		{
+			break;
+#if 0
 			// get forwarder string.
 			const std::string_view fwd_str = export_ptr.get<const char*>( );
 
@@ -95,6 +87,8 @@ auto exports_storage::create(const key_type& entry) -> create_result
 			catch (std::exception)
 			{
 			}
+#endif
 		}
 	}
+	return nullptr;
 }

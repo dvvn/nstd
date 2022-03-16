@@ -16,18 +16,17 @@ namespace nstd
 		std::array<Chr, Size> cache;
 
 		using value_type = Chr;
-		using size_type = std::size_t;
 		using view_type = std::basic_string_view<Chr>;
 
-		static constexpr size_type size = Size;
+		static constexpr size_t size = Size;
 
-		template <size_type...Idx>
+		template <size_t...Idx>
 		constexpr chars_cache(const Chr* arr, std::index_sequence<Idx...>)
 			: cache{ arr[Idx]... }
 		{
 		}
 
-		template <size_type...Idx>
+		template <size_t...Idx>
 		constexpr chars_cache(const Chr* arr)
 			: chars_cache((arr), std::make_index_sequence<Size>())
 		{
@@ -38,7 +37,7 @@ namespace nstd
 		{
 		}
 
-		template <size_type...Idx>
+		template <size_t...Idx>
 		constexpr chars_cache(const view_type& view, std::index_sequence<Idx...>)
 			: cache{ Idx < view.size() ? view[Idx] : static_cast<Chr>('\0')... }
 		{
