@@ -1,5 +1,6 @@
 module;
 
+#include <nstd/text/provide_string.h>
 #include <nstd/type_traits.h>
 #include <nstd/runtime_assert.h>
 //#include <nstd/type_name.h>
@@ -69,12 +70,12 @@ private:
 	hash_type hash_;
 	[[no_unique_address]] hash_func_type hasher_;
 
-	constexpr hash_type _Get_hash( )const
+	constexpr hash_type _Get_hash( ) const
 	{
 		return std::invoke(hasher_, *static_cast<const Base*>(this));
 	}
 
-	constexpr void _Validate_hash(hash_type hash)const
+	constexpr void _Validate_hash(hash_type hash) const
 	{
 #ifdef _DEBUG
 		if (_Get_hash( ) == hash)
@@ -164,8 +165,8 @@ public:
 		_Write_hash(hash);
 	}
 
-	constexpr hash_func_type hash_function( )const { return hasher_; }
-	constexpr hash_type hash( )const { return hash_; }
+	constexpr hash_func_type hash_function( ) const { return hasher_; }
+	constexpr hash_type hash( ) const { return hash_; }
 
 };
 
@@ -216,22 +217,12 @@ private:
 	using Base::swap;
 };
 
-export namespace nstd::inline text
-{
-#define NSTD_USE_HASHED_STRING_SPEC(_TYPE_,_PREFIX_,_POSTFIX_)\
+#define NSTD_STRING_DECLARE_IMPL(_TYPE_,_PREFIX_,_POSTFIX_)\
 	using hashed_##_PREFIX_##string##_POSTFIX_ = basic_hashed_string##_POSTFIX_##<_TYPE_>;
 
-#define NSTD_USE_HASHED_STRING(_TYPE_,_PREFIX_)\
-	NSTD_USE_HASHED_STRING_SPEC(_TYPE_,_PREFIX_,)\
-	NSTD_USE_HASHED_STRING_SPEC(_TYPE_,_PREFIX_,_view)
-
-	NSTD_USE_HASHED_STRING(char,);
-	NSTD_USE_HASHED_STRING(char16_t, u16);
-	NSTD_USE_HASHED_STRING(char32_t, u32);
-	NSTD_USE_HASHED_STRING(wchar_t, w);
-#ifdef __cpp_lib_char8_t
-	NSTD_USE_HASHED_STRING(char8_t, u8);
-#endif
+export namespace nstd::inline text
+{
+	NSTD_STRING_DECLARE;
 
 #define NSTD_HASHED_STRING_OPERATOR_SIMPLE_HEAD \
 	template<class Base, template<typename> class Hasher\

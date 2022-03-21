@@ -73,6 +73,7 @@ static constexpr auto _Module_name_comparer = []<typename ...Unused>(const std::
 template<typename T>
 LDR_DATA_TABLE_ENTRY* _Find_module_wide(const std::basic_string_view<T> name, bool check_whole_path)
 {
+	static_assert(sizeof(T) <= sizeof(WCHAR));
 	if constexpr (sizeof(T) == sizeof(WCHAR))
 	{
 		const std::basic_string_view buff = {reinterpret_cast<const WCHAR*>(name.data( )), name.size( )};
@@ -83,10 +84,6 @@ LDR_DATA_TABLE_ENTRY* _Find_module_wide(const std::basic_string_view<T> name, bo
 		const std::basic_string<WCHAR> buff = {name.begin( ), name.end( )};
 		const std::basic_string_view<WCHAR> buff2 = buff;
 		return _Find_module(std::bind_front(_Module_name_comparer, buff2, check_whole_path));
-	}
-	else
-	{
-		static_assert(false, __FUNCSIG__": Not implemented");
 	}
 }
 
