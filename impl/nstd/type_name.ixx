@@ -210,7 +210,6 @@ constexpr auto type_name_drop_templates_impl( )
 {
 	constexpr auto name = type_name_impl<T>( );
 	constexpr std::string_view name_sized = {name.data( ),name.size( )};
-
 	constexpr auto template_start = name_sized.find('<');
 	if constexpr (template_start == name_sized.npos)
 	{
@@ -232,25 +231,30 @@ constexpr auto type_name_holder_partial = type_name_partial_impl<T>( );
 template <typename T>
 constexpr auto type_name_holder_drop_templates = type_name_drop_templates_impl<T>( );
 
+template <class T>
+constexpr std::string_view extract_holder(const T& holder)
+{
+	return {holder.data( ),holder.size( )};
+}
+
 export namespace nstd
 {
 	template <typename T>
 	constexpr std::string_view type_name( )
 	{
-		return {type_name_holder<T>.data( ),type_name_holder<T>.size( )};
+		return extract_holder(type_name_holder<T>);
 	}
 
 	template <template<typename...>class T>
 	constexpr std::string_view type_name( )
 	{
-		return {type_name_holder_partial<T>.data( ), type_name_holder_partial<T>.size( )};
+		return extract_holder(type_name_holder_partial<T>);
 	}
 
 	template <template<typename, size_t> class T>
 	constexpr std::string_view type_name( )
 	{
-		using val_t = T<int, 0>;
-		return {type_name_holder_drop_templates<val_t>.data( ), type_name_holder_drop_templates<val_t>.size( )};
+		return extract_holder(type_name_holder_drop_templates<T<int, 0>>);
 	}
 
 	static_assert(type_name<int>( ) == "int");
@@ -282,28 +286,24 @@ export namespace nstd
 	template <class T1, template<class...> class T2>
 	constexpr bool same_template( )
 	{
-
 		return template_comparer(type_name_raw<T1>( ), type_name_raw<T2>( ));
 	}
 
 	template <template<class...> class T1, class T2>
 	constexpr bool same_template( )
 	{
-
 		return same_template<T2, T1>( );
 	}
 
 	template <template<class...> class T1, template<class...> class T2>
 	constexpr bool same_template( )
 	{
-
 		return template_comparer(type_name_raw<T1>( ), type_name_raw<T2>( ));
 	}
 
 	template <class T1, class T2>
 	constexpr bool same_template( )
 	{
-
 		if constexpr (std::is_same_v<T1, T2>)
 			return true;
 		else

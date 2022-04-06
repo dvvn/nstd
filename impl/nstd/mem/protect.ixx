@@ -5,34 +5,35 @@ module;
 
 export module nstd.mem.protect;
 
-export namespace nstd::inline mem
+export namespace nstd::mem
 {
 	class protect
 	{
 	public:
-		struct value_type
+		struct data
 		{
 			LPVOID addr;
 			SIZE_T size;
 			DWORD flags;
+
+			DWORD set( ) const noexcept;
 		};
+
+		using value_type = std::optional<data>;
+
+		protect( );
+		protect(const LPVOID addr, const SIZE_T size, const DWORD new_flags);
+		protect(protect&& other) noexcept;
+		~protect( );
 
 		protect(const protect&) = delete;
 		protect& operator=(const protect&) = delete;
-
-		protect(protect&& other) noexcept;
 		protect& operator=(protect&& other) noexcept;
 
-		protect( ) = default;
-
-		protect(LPVOID addr, SIZE_T size, DWORD new_flags);
-
-		~protect( );
-
-		bool restore( );
-		bool has_value( ) const;
+		bool restore( ) noexcept;
+		bool has_value( ) const noexcept;
 
 	private:
-		std::optional<value_type> info_;
+		value_type info_;
 	};
 }

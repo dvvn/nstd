@@ -6,7 +6,7 @@ export module nstd.mem.block;
 //export import :address;
 export import nstd.mem.signature;
 
-export namespace nstd::inline mem
+export namespace nstd::mem
 {
 	using block_base = std::span<uint8_t>;
 	class block final :public block_base
@@ -52,6 +52,7 @@ export namespace nstd::inline mem
 #ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
 		bool have_flags(DWORD flags) const;
 		bool dont_have_flags(DWORD flags) const;
+		DWORD get_flags( ) const;
 #endif 
 		bool readable( ) const;
 		bool readable_ex( ) const;

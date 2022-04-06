@@ -229,8 +229,7 @@ public:
 	{
 		static auto& _Get( )
 		{
-			static one_instance_getter<T> g;
-			static bool call_once = _Initialized( ) = true;
+			static auto g = _Init( );
 			return g;
 		}
 
@@ -238,6 +237,12 @@ public:
 		{
 			static bool val = false;
 			return val;
+		}
+
+		static one_instance_getter<T> _Init( )
+		{
+			_Initialized( ) = true;
+			return {};
 		}
 
 	public:
@@ -273,8 +278,7 @@ public:
 	{
 		static auto& _Get( )
 		{
-			static one_instance_getter<T> g;
-			static bool call_once = _Initialized( ) = true;
+			static auto g = _Init( );
 			return g;
 		}
 
@@ -282,6 +286,12 @@ public:
 		{
 			static bool val = false;
 			return val;
+		}
+
+		static one_instance_getter<T> _Init( )
+		{
+			_Initialized( ) = true;
+			return {};
 		}
 
 	public:

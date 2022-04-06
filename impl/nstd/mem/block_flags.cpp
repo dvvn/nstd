@@ -18,16 +18,16 @@ public:
 	SIZE_T size( ) const { return this->RegionSize; }
 	DWORD state( ) const { return this->State; }
 
+	bool valid;
+
 	MEMORY_BASIC_INFORMATION_UPDATER(LPCVOID address)
 	{
-		if (VirtualQuery(address, this, class_size) != class_size)
-			throw std::runtime_error("Unable to update memory information");
+		valid = VirtualQuery(address, this, class_size) == class_size;
 	}
 
 	MEMORY_BASIC_INFORMATION_UPDATER(HANDLE process, LPCVOID address)
 	{
-		if (VirtualQueryEx(process, address, this, class_size) != class_size)
-			throw std::runtime_error("Unable to update external memory information");
+		valid = VirtualQueryEx(process, address, this, class_size) == class_size;
 	}
 };
 
@@ -36,47 +36,50 @@ static constexpr DWORD _Page_write_flags = PAGE_READWRITE | PAGE_WRITECOPY | PAG
 static constexpr DWORD _Page_execute_flags = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
 
 template <typename Fn>
-static bool _Flags_checker(block mblock, Fn checker = {})
+static bool _Flags_iterator(block mblock, Fn func = {}) noexcept
 {
-	try
+	for (;;)
 	{
-		for (;;)
+		const MEMORY_BASIC_INFORMATION_UPDATER info = mblock.data( );
+		if (!info.valid)
+			return false;
+		//memory isn't commit!
+		if (info.state( ) != MEM_COMMIT)
+			return false;
+		using ret_t = std::invoke_result_t<Fn, DWORD>;
+		if constexpr (std::is_void_v<ret_t>)
 		{
-			const MEMORY_BASIC_INFORMATION_UPDATER info = mblock.data( );
-
-			//memory isn't commit!
-			if (info.state( ) != MEM_COMMIT)
-				return false;
-			//flags check isn't passed!
-			if (!std::invoke(checker, info.flags( )))
-				return false;
-			//found good result
-			if (info.size( ) >= mblock.size( ))
-				return true;
-			//check next block
-			mblock = mblock.subblock(info.size( ));
+			std::invoke(func, info.flags( ));
 		}
-	}
-	catch (const std::exception&)
-	{
-		return false;
+		else
+		{
+			static_assert(std::same_as<bool, ret_t>);
+			//flags check isn't passed!
+			if (!std::invoke(func, info.flags( )))
+				return false;
+		}
+		//found good result
+		if (info.size( ) >= mblock.size( ))
+			return true;
+		//check next block
+		mblock = mblock.subblock(info.size( ));
 	}
 }
 
 static bool _Have_flags(const block* mblock, DWORD flags)
 {
-	return _Flags_checker(*mblock, [flags](DWORD mem_flags)
-						  {
-							  return !!(mem_flags & flags);
-						  });
+	return _Flags_iterator(*mblock, [flags](DWORD mem_flags)
+	{
+		return !!(mem_flags & flags);
+	});
 }
 
 static bool _Dont_have_flags(const block* mblock, DWORD flags)
 {
-	return _Flags_checker(*mblock, [flags](DWORD mem_flags)
-						  {
-							  return !(mem_flags & flags);
-						  });
+	return _Flags_iterator(*mblock, [flags](DWORD mem_flags)
+	{
+		return !(mem_flags & flags);
+	});
 }
 
 #ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
@@ -88,6 +91,16 @@ bool block::have_flags(DWORD flags) const
 bool block::dont_have_flags(DWORD flags) const
 {
 	return _Dont_have_flags(this, flags);
+}
+
+DWORD block::get_flags( )const
+{
+	DWORD flags = 0;
+	const auto result = _Flags_iterator(*this, [&](DWORD current_flags)
+	{
+		flags |= current_flags;
+	});
+	return result ? flags : 0;
 }
 #endif
 
