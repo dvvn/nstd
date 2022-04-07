@@ -18,74 +18,65 @@ using namespace mem;
 
 //block = {dos + header->VirtualAddress, header->SizeOfRawData}
 
-static block _To_block(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* section)
+static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* section)
 {
 	uint8_t* const ptr = dos + section->VirtualAddress;
 	return {ptr,section->SizeOfRawData};
 }
 
+//template<typename T>
+//static block _Address_to_rng(const basic_address<T> addr)
+//{
+//	return {addr.get<uint8_t*>( ), sizeof(uintptr_t)};
+//}
+
 //todo: add x64 support
-static uint8_t* _Load_vtable(const block rdata_block, const block text_block, const address type_descriptor)
+static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const basic_address<void> type_descriptor)
 {
-	/*const auto all_blocks = [&]
-	{
-		std::vector<block> storage;
-		auto from = dot_rdata.block;
-		const auto block = make_signature(type_descriptor);
-		for (;;)
-		{
-			auto found_block = from.find_block(block);
-			if (found_block.empty( ))
-				break;
-			from = from.shift_to(found_block._Unchecked_end( ));
-			storage.push_back(std::move(found_block));
-		}
-		return storage;
-	};*/
-
-	//const block rdata_block = {dos + dot_rdata->VirtualAddress, dot_rdata->SizeOfRawData};
-	//const block text_block = {dos + dot_text->VirtualAddress, dot_text->SizeOfRawData};
-
-	auto from = rdata_block;
+	auto from = dot_rdata;
 	const auto search = make_signature(type_descriptor);
 
 	for (;;)
 	{
-		const auto block = from.find_block(search);
+		auto block = from.find_block({search.begin( ),search.size( )});
 		if (block.empty( ))
 			break;
-		from = from.shift_to(block._Unchecked_end( ));
+		from = from.shift_to(block.data( ) + block.size( ));
 
-		const basic_address xr = block.data( );
+		//-------------
+
+		const basic_address<void> xr = block.data( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
-		const uintptr_t vtable_offset = *xr - sizeof(uintptr_t) * 2;
-		if (vtable_offset != 0)
+		if (const uintptr_t vtable_offset = xr.minus(sizeof(uintptr_t) * 2).deref<1>( ); vtable_offset != 0)
 			continue;
 
-		// get the object locater
+		// get the object locator
 
 		const auto vtable_address = [&]
 		{
-			const auto object_locator = xr - sizeof(uintptr_t) * 3;
+			const auto object_locator = xr.minus(sizeof(uintptr_t) * 3);
 			const auto sig = make_signature(object_locator);
-			const auto found = rdata_block.find_block(sig);
-			const basic_address addr = found.data( );
+			const auto found = dot_rdata.find_block({sig.begin( ),sig.size( )});
+			const basic_address<void> addr = found.data( );
 			return addr + sizeof(uintptr_t);
 		}();
 
 		// check is valid offset
-		if (vtable_address <= sizeof(uintptr_t))
+		if (vtable_address.value <= sizeof(uintptr_t))
 			continue;
 
 		// get a pointer to the vtable
 
 		// convert the vtable address to an ida pattern
-		const auto temp_result = text_block.find_block(make_signature(vtable_address));
-		if (temp_result.empty( ))
-			continue;
+		const auto temp_result = [&]
+		{
+			const auto sig = make_signature(vtable_address);
+			return dot_text.find_block({sig.begin( ),sig.size( )});
+		}();
 
-		return temp_result.data( );
+		if (!temp_result.empty( ))
+			return temp_result.data( );
 	}
 
 	return nullptr;
@@ -106,14 +97,14 @@ void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view n
 	runtime_assert(!target_block.empty( ));
 
 	// get rtti type descriptor
-	basic_address type_descriptor = target_block.data( );
+	basic_address<void> type_descriptor = target_block.data( );
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 
 	const auto dot_rdata = winapi::find_section_impl(ldr_entry, ".rdata");
 	const auto dot_text = winapi::find_section_impl(ldr_entry, ".text");
 
-	const auto result = _Load_vtable(_To_block(dos, dot_rdata), _To_block(dos, dot_text), type_descriptor);
+	const auto result = _Load_vtable(_Section_to_rng(dos, dot_rdata), _Section_to_rng(dos, dot_text), type_descriptor);
 	runtime_assert(result != nullptr);
 	return result;
 }

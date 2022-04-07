@@ -24,13 +24,13 @@ block::block(const block_base& span)
 {
 }
 
-block block::find_block(std::span<const uint8_t> unkbytes) const
+block block::find_block(const block other) const
 {
-	const auto rng_size = unkbytes.size( );
+	const auto rng_size = other.size( );
 	const auto limit = this->size( ) - rng_size;
 
 	const auto start0 = this->data( );
-	const auto start2 = unkbytes.data( );
+	const auto start2 = other.data( );
 
 	for (auto offset = static_cast<size_t>(0); offset < limit; ++offset)
 	{
@@ -53,7 +53,7 @@ struct unknown_find_result
 	bool found;
 };
 
-static unknown_find_result _Find_unknown_bytes(const block& block, const signature_unknown_bytes& unkbytes)
+static unknown_find_result _Find_unknown_bytes(const block& mem, const signature_unknown_bytes& unkbytes)
 {
 	size_t offset = 0;
 	size_t scanned = 0;
@@ -62,10 +62,10 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 	if (!known0.empty( ))
 	{
 		// ReSharper disable once CppInconsistentNaming
-		const auto _Begin = block.find_block(known0);
+		const auto _Begin = mem.find_block({known0.data( ), known0.size( )});
 		if (_Begin.empty( ))
-			return {block.size( ) - known0.size( ), 0, false};
-		scanned = std::distance(block.data( ), _Begin.data( ));
+			return {mem.size( ) - known0.size( ), 0, false};
+		scanned = std::distance(mem.data( ), _Begin.data( ));
 		offset = _Begin.size( );
 	}
 
@@ -74,7 +74,7 @@ static unknown_find_result _Find_unknown_bytes(const block& block, const signatu
 	for (const auto& [known, skip] : std::span(std::next(unkbytes.begin( )), unkbytes.end( )))
 	{
 		// ReSharper disable once CppInconsistentNaming
-		const auto _Next = block.subblock(scanned + offset);
+		const auto _Next = mem.subblock(scanned + offset);
 		const auto start1 = _Next.data( );
 		const auto start2 = known.data( );
 		if (std::memcmp(start1, start2, known.size( )) != 0)

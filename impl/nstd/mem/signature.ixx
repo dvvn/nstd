@@ -28,6 +28,7 @@ export namespace nstd::inline mem
 		using StorageType::begin;
 		using StorageType::end;
 		using StorageType::size;
+		using StorageType::data;
 
 		using StorageType::StorageType;
 
@@ -87,8 +88,6 @@ export namespace nstd::inline mem
 	public:
 		using Storage::begin;
 		using Storage::end;
-		using Storage::_Unchecked_begin;
-		using Storage::_Unchecked_end;
 		using Storage::empty;
 		using Storage::size;
 		using Storage::operator[];
@@ -150,7 +149,7 @@ export namespace nstd::inline mem
 		}
 	};
 
-	using storage_for_bytes = std::basic_string<uint8_t, std::_Narrow_char_traits<uint8_t, uint32_t>>;
+	using storage_for_bytes = std::vector<uint8_t>;
 
 	class signature_unknown_bytes : public signature_unknown_bytes_impl<std::vector<std::pair<storage_for_bytes, size_t>>>
 	{

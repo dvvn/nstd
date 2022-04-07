@@ -29,22 +29,29 @@ export namespace nstd::mem
 
 		//using address_type = basic_address<uint8_t>; 
 
-		block(uint8_t* begin, size_type mem_size = sizeof(uintptr_t))
-			:block_base(begin, mem_size)
+		template<typename Bg>
+		block(Bg* begin, size_type mem_size = sizeof(uintptr_t))
+			:block_base((uint8_t*)begin, mem_size)
 		{
+			static_assert(sizeof(Bg) == sizeof(uint8_t));
 		}
-		block(uint8_t* begin, uint8_t* end)
-			: block_base(begin, end)
+		template<typename Bg, typename Ed>
+		block(Bg* begin, Ed* end)
+			: block_base((uint8_t*)begin, (uint8_t*)end)
 		{
+			static_assert(sizeof(Bg) + sizeof(Ed) == sizeof(uint8_t) * 2);
 		}
 
 		explicit block(const block_base& span);
 
-		block find_block(std::span<const uint8_t> rng) const;
+		block find_block(const block other) const;
 		block find_block(const signature_unknown_bytes& rng) const;
 
 		template <class StorageType>
-		block find_block(const signature_known_bytes<StorageType>& rng) const { return find_block(rng.storage( )); }
+		block find_block(const signature_known_bytes<StorageType>& rng) const
+		{
+			return find_block({rng.data( ),rng.size( )});
+		}
 
 		block shift_to(pointer ptr) const;
 		block subblock(size_t offset, size_t count = std::dynamic_extent) const;

@@ -17,7 +17,7 @@ concept static_convertible_to = requires(From val)
 };
 
 template<typename Out, typename In>
-Out force_cast(In in)
+Out force_cast(In in) noexcept
 {
 	if constexpr (reinterpret_convertible_to<In, Out>)
 	{
@@ -93,7 +93,7 @@ export namespace nstd::inline mem
 		}
 
 		template<size_t Count>
-		basic_address deref( )const
+		basic_address deref( ) const noexcept
 		{
 			const basic_address addr = *force_cast<pointer_type*>(pointer);
 			if constexpr (Count == 1)
@@ -103,7 +103,7 @@ export namespace nstd::inline mem
 		}
 
 		[[deprecated]]
-		basic_address deref(size_t count) const
+		basic_address deref(size_t count) const noexcept
 		{
 			runtime_assert(count > 0, "Count must be larger than zero!");
 
@@ -115,24 +115,33 @@ export namespace nstd::inline mem
 			return ret;
 		}
 
-		pointer_type operator->( )const
+		pointer_type operator->( ) const noexcept
 		{
 			return pointer;
 		}
 
 		template <typename Q>
-		operator Q* () const
+			requires(std::is_reference_v<Q>)
+		operator Q( ) const noexcept
 		{
-			return force_cast<Q*>(value);
+			return *force_cast<std::remove_reference_t<Q>*>(value);
 		}
 
 		template <typename Q>
-		operator Q& () const
+			requires(std::is_pointer_v<Q> || std::is_member_function_pointer_v<Q> || std::is_function_v<Q>)
+		operator Q( ) const noexcept
 		{
-			return *force_cast<Q*>(value);
+			return force_cast<Q>(value);
 		}
 
-		basic_address operator*( )const
+		template <typename Q>
+			requires(std::is_integral_v<Q>)
+		operator Q( ) const noexcept
+		{
+			return static_cast<Q>(value);
+		}
+
+		basic_address operator*( ) const noexcept
 		{
 			return deref<1>( );
 		}
@@ -181,27 +190,37 @@ export namespace nstd::inline mem
 		}
 #endif
 
+		bool operator!( ) const noexcept
+		{
+			return pointer == nullptr;
+		}
+
+		explicit operator bool( ) const noexcept
+		{
+			return pointer != nullptr;
+		}
+
 		//-----
 
 		template<typename Q>
-		basic_address<Q> as( )const
+		[[deprecated]] basic_address<Q> as( ) const noexcept
 		{
 			return value;
 		}
 
 		template<typename Q>
-		Q get( )const
+		/*[[deprecated]]*/ Q get( ) const noexcept
 		{
 			return force_cast<Q>(value);
 		}
 
-		basic_address operator[](ptrdiff_t index) const;
+		basic_address operator[](ptrdiff_t index) const noexcept;
 
-		basic_address<void> jmp(ptrdiff_t offset = 0x1) const;
-		basic_address<void> plus(ptrdiff_t offset)const;
-		basic_address<void> minus(ptrdiff_t offset)const;
-		basic_address<void> multiply(ptrdiff_t value)const;
-		basic_address<void> divide(ptrdiff_t value)const;
+		basic_address<void> jmp(ptrdiff_t offset = 0x1) const noexcept;
+		basic_address<void> plus(ptrdiff_t offset) const noexcept;
+		basic_address<void> minus(ptrdiff_t offset) const noexcept;
+		basic_address<void> multiply(ptrdiff_t value) const noexcept;
+		basic_address<void> divide(ptrdiff_t value) const noexcept;
 	};
 
 	template<typename T>
@@ -259,7 +278,7 @@ export namespace nstd::inline mem
 	NSTD_ADDRESS_OPERATOR_EQUALITY(== );
 
 	template<typename T>
-	basic_address<T> basic_address<T>::operator[](ptrdiff_t index) const
+	basic_address<T> basic_address<T>::operator[](ptrdiff_t index) const noexcept
 	{
 		constexpr auto step = []
 		{
@@ -275,7 +294,7 @@ export namespace nstd::inline mem
 
 
 	template<typename T>
-	basic_address<void> basic_address<T>::jmp(ptrdiff_t offset) const
+	basic_address<void> basic_address<T>::jmp(ptrdiff_t offset) const noexcept
 	{
 		//same as rel 32
 
@@ -304,25 +323,25 @@ export namespace nstd::inline mem
 	}
 
 	template<typename T>
-	basic_address<void> basic_address<T>::plus(ptrdiff_t offset)const
+	basic_address<void> basic_address<T>::plus(ptrdiff_t offset) const noexcept
 	{
 		return *this + offset;
 	}
 
 	template<typename T>
-	basic_address<void> basic_address<T>::minus(ptrdiff_t offset)const
+	basic_address<void> basic_address<T>::minus(ptrdiff_t offset) const noexcept
 	{
 		return *this - offset;
 	}
 
 	template<typename T>
-	basic_address<void> basic_address<T>::multiply(ptrdiff_t val)const
+	basic_address<void> basic_address<T>::multiply(ptrdiff_t val) const noexcept
 	{
 		return *this * val;
 	}
 
 	template<typename T>
-	basic_address<void> basic_address<T>::divide(ptrdiff_t val)const
+	basic_address<void> basic_address<T>::divide(ptrdiff_t val) const noexcept
 	{
 		return *this / val;
 	}
