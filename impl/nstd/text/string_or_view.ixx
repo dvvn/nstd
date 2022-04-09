@@ -9,7 +9,6 @@ template<typename T>
 class basic_string_or_view_holder
 {
 public:
-
 	using value_type = T;
 	using string_type = std::basic_string<T>;
 	using view_type = std::basic_string_view<T>;

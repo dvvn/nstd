@@ -1,45 +1,43 @@
-#include "runtime_assert_impl.h"
+#include <nstd/runtime_assert_impl.h>
 
-#include <algorithm>
+#ifdef _DEBUG
 #include <stdexcept>
+#endif
+#include <algorithm>
 #include <variant>
 #include <vector>
 #include <mutex>
 #undef NDEBUG
 #include <cassert>
 
-using namespace nstd;
+import nstd.one_instance;
 
-template<typename C>
-static auto _End(const C* ptr)
+template<typename C, typename Arg1, typename ...Args>
+static auto _Build_string(Arg1 arg, Args ...args)
 {
-	return ptr + std::char_traits<C>::length(ptr);
-}
-
-template<typename T, typename C>
-static auto _To_string(const C* str)
-{
-	return std::basic_string<T>(str, _End(str));
-}
-
-template<typename S, typename C>
-static void _Append(S& str, const C* ptr)
-{
-	str.append(ptr, _End(ptr));
-}
-
-template<typename S, typename C>
-static void _Append(S& str, C chr)
-{
-	str += static_cast<S::value_type>(chr);
+	std::basic_string_view arg_sv = arg;
+	if constexpr (sizeof...(Args) == 0 && std::is_same_v<decltype(arg_sv)::value_type, C>)
+	{
+		return arg_sv;
+	}
+	else
+	{
+		return std::apply([]<typename ...S>(const S ...strings) noexcept
+		{
+			std::basic_string<C> buff;
+			buff.reserve((strings.size( ) + ...));
+			(buff.append(strings.begin( ), strings.end( )), ...);
+			return buff;
+		}, std::make_tuple(arg_sv, std::basic_string_view(args)...));
+	}
 }
 
 template<typename C>
 class msg_packed
 {
 public:
-
 	using string_type = std::basic_string<C>;
+	using string_view_type = std::basic_string_view<C>;
 	using pointer_type = const C*;
 
 	msg_packed( ) = default;
@@ -48,43 +46,39 @@ public:
 	msg_packed(pointer_type ptr) :data_(ptr) { }
 
 	template<typename T>
-	msg_packed(const T* ptr) : data_(_To_string<C>(ptr))
+	msg_packed(const T* ptr)
 	{
 		static_assert(sizeof(T) < sizeof(C));
+		const std::basic_string_view tmp = ptr;
+		data_.emplace<string_type>(tmp.begin( ), tmp.end( ));
 	}
 
-	operator pointer_type ( )const
+	operator pointer_type( ) const noexcept
 	{
-		return std::visit([]<typename T>(const T & obj)
+		return std::visit([]<typename T>(const T & obj) noexcept
 		{
 			if constexpr (std::is_class_v<T>)
-				return obj.c_str( );
+				return obj.data( );
 			else
 				return obj;
 		}, data_);
 	}
 
 private:
-	std::variant<string_type, pointer_type>data_;
+	std::variant<string_type, string_view_type, pointer_type> data_;
 };
 
 template<typename C>
 msg_packed(const C*)->msg_packed<C>;
 
 template<typename C>
-static msg_packed<C> _Assert_msg(const char* expression, const char* message)
+static msg_packed<C> _Assert_msg(const char* expression, const char* message) noexcept
 {
 	if (!expression)
 		return message;
 	if (!message)
 		return expression;
-
-	std::basic_string<C> msg;
-	_Append(msg, message);
-	_Append(msg, " (");
-	_Append(msg, expression);
-	_Append(msg, ')');
-	return msg;
+	return _Build_string<C>(message, "( ", expression, ")");
 }
 
 static void _Assert(const char* expression, const char* message, const std::source_location& location) noexcept
@@ -98,7 +92,9 @@ static void _Assert(const char* expression, const char* message, const std::sour
 #endif
 }
 
-struct default_assert_handler final : rt_assert_handler
+using nstd::rt_assert_handler;
+
+struct rt_assert_handler_default final : rt_assert_handler
 {
 	void handle(const char* expression, const char* message, const std::source_location& location) noexcept override
 	{
@@ -111,14 +107,43 @@ struct default_assert_handler final : rt_assert_handler
 	}
 };
 
-template<class T>
-concept class_only = std::is_class_v<T>;
-
-struct rt_assert_handler_root::entry
+class rt_assert_entry
 {
-	rt_assert_handler* get( ) const
+	using value_type = std::variant<rt_assert_handler::unique, rt_assert_handler::shared, rt_assert_handler::raw>;
+	value_type data_;
+
+public:
+	rt_assert_entry(rt_assert_handler::unique&& data)
+		:data_(std::move(data))
 	{
-		return std::visit([]<typename T>(const T & obj)
+	}
+
+	rt_assert_entry(const rt_assert_handler::shared& data)
+		:data_(data)
+	{
+	}
+
+	rt_assert_entry(rt_assert_handler::raw data)
+		:data_(data)
+	{
+	}
+
+	rt_assert_entry(rt_assert_entry&& other) noexcept
+	{
+		*this = std::move(other);
+	}
+
+	rt_assert_entry& operator=(rt_assert_entry&& other) noexcept
+	{
+		using std::swap;
+		swap(data_, other.data_);
+
+		return *this;
+	}
+
+	rt_assert_handler* get( ) const noexcept
+	{
+		return std::visit([]<typename T>(const T & obj) noexcept
 		{
 			if constexpr (std::is_class_v<T>)
 				return obj.get( );
@@ -127,100 +152,100 @@ struct rt_assert_handler_root::entry
 		}, data_);
 	}
 
-	rt_assert_handler* operator->( ) const
+	rt_assert_handler* operator->( ) const noexcept
 	{
 		return get( );
 	}
-
-	entry(handler_unique&& h) :data_(std::move(h)) { }
-	entry(const handler_shared& h) :data_(h) { }
-	entry(handler_ptr h) :data_(h) { }
-
-private:
-	std::variant<handler_unique, handler_shared, handler_ptr> data_;
 };
 
-struct rt_assert_handler_root::impl
+class rt_assert_data
 {
-	std::mutex mtx;
-	std::vector<entry> storage;
-};
+	std::mutex mtx_;
+	std::vector<rt_assert_entry> storage_;
 
-rt_assert_handler_root::rt_assert_handler_root( )
-{
-	impl_ = std::make_unique<impl>( );
-	//add nolock
-	impl_->storage.emplace_back(std::make_unique<default_assert_handler>( ));
-}
+public:
+	template<bool Lock = true>
+	void add(rt_assert_entry&& entry) runtime_assert_noexcept
+	{
+		if constexpr (Lock)
+			mtx_.lock( );
 
-rt_assert_handler_root::~rt_assert_handler_root( ) = default;
-
-template <class Mtx, class Rng, typename T>
-static void _Add_impl(Mtx & mtx, Rng & storage, T && handler)
-{
-	const auto lock = std::scoped_lock(mtx);
 #ifdef _DEBUG
-	if (!storage.empty( ))
-	{
-		const size_t id = handler->id( );
-		for (const auto& el : storage)
+		if (!storage_.empty( ))
 		{
-			if (el->id( ) == id)
-				throw std::logic_error("Handler with given id already exists!");
+			const size_t id = entry->id( );
+			for (const auto& el : storage_)
+			{
+				if (el->id( ) == id)
+					throw std::logic_error("Handler with given id already exists!");
+			}
 		}
-	}
 #endif
-	storage.emplace_back(std::forward<T>(handler));
-}
+		storage_.push_back(std::move(entry));
 
-void rt_assert_handler_root::add(handler_unique && handler)
-{
-	_Add_impl(impl_->mtx, impl_->storage, std::move(handler));
-}
+		if constexpr (Lock)
+			mtx_.unlock( );
+	}
 
-void rt_assert_handler_root::add(const handler_shared & handler)
-{
-	_Add_impl(impl_->mtx, impl_->storage, handler);
-}
-
-void rt_assert_handler_root::add(handler_ptr handler)
-{
-	_Add_impl(impl_->mtx, impl_->storage, handler);
-}
-
-void rt_assert_handler_root::remove(size_t id)
-{
-	const auto lock = std::scoped_lock(impl_->mtx);
-	auto& s = impl_->storage;
-	const auto end = s.end( );
-	for (auto itr = s.begin( ); itr != end; ++itr)
+	void remove(const size_t id) noexcept
 	{
-		if (id == (*itr)->id( ))
+		const auto lock = std::scoped_lock(mtx_);
+		const auto end = storage_.end( );
+		for (auto itr = storage_.begin( ); itr != end; ++itr)
 		{
-			s.erase(itr);
-			break;
+			if (id == (*itr)->id( ))
+			{
+				storage_.erase(itr);
+				break;
+			}
 		}
 	}
-}
 
-template<class Mtx, class Rng, typename ...Args>
-static void _Handle(Mtx & mtx, Rng & storage, Args...args)
+	template<typename ...Args>
+	void handle(const Args& ...args) noexcept
+	{
+		const auto lock = std::scoped_lock(mtx_);
+		for (const auto& el : storage_)
+			el->handle(args...);
+	}
+
+	rt_assert_data( )
+	{
+		rt_assert_handler::unique ptr = std::make_unique<rt_assert_handler_default>( );
+		this->add<false>(std::move(ptr));
+	}
+};
+
+static nstd::one_instance_obj<rt_assert_data> _Rt;
+
+void nstd::_Rt_assert_add(rt_assert_handler::unique&& handler) runtime_assert_noexcept
 {
-	const auto lock = std::scoped_lock(mtx);
-	for (const auto& el : storage)
-		el->handle(args...);
+	_Rt->add(std::move(handler));
 }
 
-void rt_assert_handler_root::handle(bool expression_result, const char* expression, const char* message, const std::source_location & location) const noexcept
+void nstd::_Rt_assert_add(const rt_assert_handler::shared& handler) runtime_assert_noexcept
+{
+	_Rt->add(handler);
+}
+
+void nstd::_Rt_assert_add(rt_assert_handler::raw handler) runtime_assert_noexcept
+{
+	_Rt->add(handler);
+}
+
+void nstd::_Rt_assert_remove(const size_t id) noexcept
+{
+	_Rt->remove(id);
+}
+
+void nstd::_Rt_assert_handle(bool expression_result, const char* expression, const char* message, const std::source_location& location) noexcept
 {
 	if (expression_result)
 		return;
-	_Handle(impl_->mtx, impl_->storage, expression, message, location);
+	_Rt->handle(expression, message, location);
 }
 
-void rt_assert_handler_root::handle(const char* message,
-									[[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2
-									, const std::source_location & location) const noexcept
+void nstd::_Rt_assert_handle(const char* message, [[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2, const std::source_location& location) noexcept
 {
-	_Handle(impl_->mtx, impl_->storage, message, location);
+	_Rt->handle(message, location);
 }

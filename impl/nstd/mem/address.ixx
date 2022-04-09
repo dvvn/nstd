@@ -1,6 +1,6 @@
 module;
 
-#include "address_includes.h"
+#include <concepts>
 
 export module nstd.mem.address;
 
@@ -102,7 +102,7 @@ export namespace nstd::inline mem
 				return addr.deref<Count - 1>( );
 		}
 
-		[[deprecated]]
+		/*[[deprecated]]
 		basic_address deref(size_t count) const noexcept
 		{
 			runtime_assert(count > 0, "Count must be larger than zero!");
@@ -113,7 +113,7 @@ export namespace nstd::inline mem
 				ret = ret.deref<1>( );
 			}
 			return ret;
-		}
+		}*/
 
 		pointer_type operator->( ) const noexcept
 		{
