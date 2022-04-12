@@ -1,19 +1,17 @@
 module;
 
-#include <nstd/chars cache.h>
 #include <windows.h>
 #include <winternl.h>
+
 #include <string_view>
 //#include <functional>
 #include <concepts>
 
 export module nstd.winapi.modules;
-
-LDR_DATA_TABLE_ENTRY* find_module_impl(const std::string_view name, bool check_whole_path);
-LDR_DATA_TABLE_ENTRY* find_module_impl(const std::wstring_view name, bool check_whole_path);
+import nstd.text.chars_cache;
 
 template<typename T>
-constexpr bool check_whole_path(const std::basic_string_view<T> name)
+constexpr bool check_whole_path(const std::basic_string_view<T> name) noexcept
 {
 	constexpr auto chr = static_cast<T>(':');
 	return name.
@@ -25,12 +23,15 @@ constexpr bool check_whole_path(const std::basic_string_view<T> name)
 		;
 }
 
+LDR_DATA_TABLE_ENTRY* find_module_impl(const std::string_view name, const bool check_whole_path) noexcept;
+LDR_DATA_TABLE_ENTRY* find_module_impl(const std::wstring_view name, const bool check_whole_path) noexcept;
+
 export namespace nstd::winapi
 {
-	template<typename Msg, typename T>
-	LDR_DATA_TABLE_ENTRY* find_module_impl(const std::basic_string_view<T> name)
+	template<typename Msg = void*, typename T>
+	LDR_DATA_TABLE_ENTRY* find_module(const std::basic_string_view<T> name) noexcept
 	{
-		const auto found = ::find_module_impl(name, ::check_whole_path(name));
+		const auto found = find_module_impl(name, check_whole_path(name));
 		if constexpr (std::invocable<Msg, decltype(found), decltype(name)>)
 		{
 			Msg msg;
@@ -39,12 +40,12 @@ export namespace nstd::winapi
 		return found;
 	}
 
-	template<chars_cache Name, typename Msg = void*>
-	auto find_module( )
+	template<text::chars_cache Name, typename Msg = void*>
+	auto find_module( ) noexcept
 	{
-		static auto found = find_module_impl<Msg>(Name.view( ));
+		static const auto found = find_module<Msg>(Name.view( ));
 		return found;
 	}
 
-	LDR_DATA_TABLE_ENTRY* current_module( );
+	LDR_DATA_TABLE_ENTRY* current_module( ) noexcept;
 }

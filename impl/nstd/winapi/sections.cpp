@@ -1,17 +1,21 @@
 module;
 
 #include <nstd/runtime_assert.h>
+
 #include <windows.h>
 #include <winternl.h>
+
 #include <string_view>
 
 module nstd.winapi.sections;
 import nstd.mem.address;
 
-using namespace nstd::mem;
+using namespace nstd;
 
-IMAGE_SECTION_HEADER* nstd::winapi::find_section_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view name)
+IMAGE_SECTION_HEADER* winapi::find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
 {
+	using mem::basic_address;
+
 	//base address
 	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
 	const basic_address<IMAGE_NT_HEADERS> nt = dos + dos->e_lfanew;
@@ -26,10 +30,6 @@ IMAGE_SECTION_HEADER* nstd::winapi::find_section_impl(LDR_DATA_TABLE_ENTRY* ldr_
 			continue;
 		if (header->Name[name.size( )] != '\0')
 			continue;
-
-		//info.block = {dos + header->VirtualAddress, header->SizeOfRawData};
-		//info.data = header;
-
 		return header;
 	}
 

@@ -1,18 +1,19 @@
 module;
 
-#include <nstd/chars cache.h>
 #include <windows.h>
 #include <winternl.h>
+
 #include <string_view>
 #include <functional>
 
 export module nstd.winapi.vtables;
 export import nstd.winapi.modules;
-
-void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view name);
+import nstd.text.chars_cache;
 
 export namespace nstd::winapi
 {
+	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept;
+
 	template<typename T>
 	struct found_vtable
 	{
@@ -26,10 +27,10 @@ export namespace nstd::winapi
 		}
 	};
 
-	template<typename Msg, typename T>
-	void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::basic_string_view<T> module_name, const std::string_view vtable_name)
+	template<typename Msg = void*, typename T>
+	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::basic_string_view<T> module_name, const std::string_view vtable_name) noexcept
 	{
-		const auto found = find_vtable_impl(ldr_entry, vtable_name);
+		const auto found = find_vtable(ldr_entry, vtable_name);
 		if constexpr (std::invocable<Msg, found_vtable<void*>, std::basic_string_view<T>, std::string_view>)
 		{
 			Msg msg;
@@ -38,10 +39,10 @@ export namespace nstd::winapi
 		return found;
 	}
 
-	template<typename T, chars_cache Module, chars_cache Class, typename Msg = void*>
-	T* find_vtable( )
+	template<typename T, text::chars_cache Module, text::chars_cache Class, typename Msg = void*>
+	T* find_vtable( ) noexcept
 	{
-		static found_vtable<T> found = find_vtable_impl<Msg>(find_module<Module, Msg>( ), Module.view( ), Class.view( ));
+		static const found_vtable<T> found = find_vtable<Msg>(find_module<Module, Msg>( ), Module.view( ), Class.view( ));
 		return found.ptr;
 	}
 }

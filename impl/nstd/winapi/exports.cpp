@@ -1,17 +1,21 @@
 module;
 
 #include <nstd/runtime_assert.h>
+
 #include <windows.h>
 #include <winternl.h>
+
 #include <string_view>
 
 module nstd.winapi.exports;
 import nstd.mem.address;
 
-using namespace nstd::mem;
+using namespace nstd;
 
-void* find_export_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view name)
+void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
 {
+	using mem::basic_address;
+
 	//base address
 	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
 	const basic_address<IMAGE_NT_HEADERS> nt = dos + dos->e_lfanew;
@@ -47,48 +51,46 @@ void* find_export_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view n
 		 //if (export_ptr < export_dir || export_ptr >= memory_block(export_dir, data_dir.Size).addr( ))
 		const auto export_ptr = dos + funcs[ords[i]];
 		if (export_ptr < export_dir || export_ptr >= export_dir + data_dir.Size)
-		{
 			return export_ptr;
-		}
-		else // it's a forwarded export, we must resolve it.
-		{
-			break;
+
+		runtime_assert("Forwarded export detected");
+		break;
 #if 0
-			// get forwarder string.
-			const std::string_view fwd_str = export_ptr.get<const char*>( );
+		// get forwarder string.
+		const std::string_view fwd_str = export_ptr.get<const char*>( );
 
-			// forwarders have a period as the delimiter.
-			const auto delim = fwd_str.find_last_of('.');
-			if (delim == fwd_str.npos)
-				continue;
+		// forwarders have a period as the delimiter.
+		const auto delim = fwd_str.find_last_of('.');
+		if (delim == fwd_str.npos)
+			continue;
 
-			using namespace std::string_view_literals;
-			// get forwarder mod name.
-			const info_string::fixed_type fwd_module_str = nstd::append<std::wstring>(fwd_str.substr(0, delim), L".dll"sv);
+		using namespace std::string_view_literals;
+		// get forwarder mod name.
+		const info_string::fixed_type fwd_module_str = nstd::append<std::wstring>(fwd_str.substr(0, delim), L".dll"sv);
 
-			// get real export ptr ( recursively ).
-			const auto target_module = std::ranges::find_if(*all_modules, [&](const info& i)
-			{
-				return i.name == fwd_module_str;
-			});
-			if (target_module == all_modules->end( ))
-				continue;
+		// get real export ptr ( recursively ).
+		const auto target_module = std::ranges::find_if(*all_modules, [&](const info& i)
+		{
+			return i.name == fwd_module_str;
+		});
+		if (target_module == all_modules->end( ))
+			continue;
 
-			// get forwarder export name.
-			const auto fwd_export_str = fwd_str.substr(delim + 1);
+		// get forwarder export name.
+		const auto fwd_export_str = fwd_str.substr(delim + 1);
 
-			try
-			{
-				auto& exports = target_module->exports( );
-				auto fwd_export_ptr = exports.at(fwd_export_str);
+		try
+		{
+			auto& exports = target_module->exports( );
+			auto fwd_export_ptr = exports.at(fwd_export_str);
 
-				this->emplace(export_name, fwd_export_ptr);
-			}
-			catch (std::exception)
-			{
-			}
-#endif
+			this->emplace(export_name, fwd_export_ptr);
 		}
+		catch (std::exception)
+		{
+		}
+#endif
 	}
+
 	return nullptr;
 }

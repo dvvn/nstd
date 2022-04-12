@@ -17,10 +17,10 @@ using namespace mem;
 
 //block = {dos + header->VirtualAddress, header->SizeOfRawData}
 
-static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* section)
+static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* const section) noexcept
 {
 	uint8_t* const ptr = dos + section->VirtualAddress;
-	return {ptr,section->SizeOfRawData};
+	return {ptr, section->SizeOfRawData};
 }
 
 //template<typename T>
@@ -32,6 +32,9 @@ static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SE
 namespace nstd::mem
 {
 	template<typename T>
+	block make_signature(basic_address<T>&& addr) = delete;
+
+	template<typename T>
 	block make_signature(const basic_address<T>& addr) noexcept
 	{
 		//return {addr.get<uint8_t*>( ), sizeof(uintptr_t)};
@@ -40,7 +43,7 @@ namespace nstd::mem
 }
 
 //todo: add x64 support
-static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const basic_address<void> type_descriptor)
+static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const basic_address<void> type_descriptor) noexcept
 {
 	auto from = dot_rdata;
 	const auto search = make_signature(type_descriptor);
@@ -104,7 +107,7 @@ static std::string _Make_vtable_name(const std::string_view name) noexcept
 	return buff;
 }
 
-void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view name)
+void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
 {
 	//base address
 	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
@@ -112,7 +115,7 @@ void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view n
 
 	const auto real_name = _Make_vtable_name(name);
 
-	const block bytes = {dos.get<uint8_t*>( ),nt->OptionalHeader.SizeOfImage};
+	const block bytes = {dos.get<uint8_t*>( ), nt->OptionalHeader.SizeOfImage};
 	const auto target_block = bytes.find_block({real_name.data( ), real_name.size( )});
 	//class descriptor
 	runtime_assert(!target_block.empty( ));
@@ -122,8 +125,8 @@ void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view n
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 
-	const auto dot_rdata = winapi::find_section_impl(ldr_entry, ".rdata");
-	const auto dot_text = winapi::find_section_impl(ldr_entry, ".text");
+	const auto dot_rdata = find_section(ldr_entry, ".rdata");
+	const auto dot_text = find_section(ldr_entry, ".text");
 
 	const auto result = _Load_vtable(_Section_to_rng(dos, dot_rdata), _Section_to_rng(dos, dot_text), type_descriptor);
 	runtime_assert(result != nullptr);
