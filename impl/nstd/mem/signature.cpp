@@ -84,17 +84,6 @@ size_t unknown_bytes::bytes_count( ) const noexcept
 	return ret;
 }
 
-bool unknown_bytes::all_known( ) const noexcept
-{
-	for (auto& entry : data_)
-	{
-		if (entry.skip > 0)
-			return false;
-	}
-
-	return true;
-}
-
 //---------------
 
 static bool validate_signature(const std::string_view rng) noexcept

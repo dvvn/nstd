@@ -83,7 +83,7 @@ static block _Find_block_ranges(const block from, const block other) noexcept
 	if (!found.empty( ))
 		return {found.data( ),found.size( )};
 	return {};
-	}
+}
 
 //3x slower than handmade verison (debug)
 static block _Find_block_iters(const block from, const block other) noexcept
@@ -137,46 +137,57 @@ static block _Find_unk_block_modern(const block from, const signature_unknown_by
 		return {};
 
 	const block unkbytes_first_block = {unkbytes[0].buff.begin( ), unkbytes[0].buff.end( )};
-
-	if (unkbytes.size( ) == 1 && unkbytes.all_known( ))
-		return from.find_block(unkbytes_first_block);
-
-	const std::span unkbytes_except_first = {unkbytes.begin( ) + 1, unkbytes.end( )};
 	const auto unkbytes_first_skip = unkbytes[0].skip;
 
-	auto current_pos = from.data( );
-	const auto last_pos = current_pos + from.size( );
-	const auto last_readable_pos = last_pos - unkbytes_count;
-
-	do
+	if (unkbytes.size( ) == 1)
 	{
-		const block found0 = block(current_pos, last_pos).find_block(unkbytes_first_block);
-		if (found0.empty( ))
-			break;
-
-		current_pos = found0.data( ) + found0.size( );
-		auto tmp_pos = current_pos + unkbytes_first_skip;
-
-		bool found = true;
-		for (const auto& [buff, skip] : unkbytes_except_first)
+		const auto found = from.find_block(unkbytes_first_block);
+		if (!found.empty( ) && unkbytes_first_skip > 0)
 		{
-			const auto buff_size = buff.size( );
-			if (std::memcmp(tmp_pos, buff.begin( ), buff_size) != 0)
-			{
-				found = false;
+			const auto mem_after = from.shift_to(found.data( ) + found.size( ));
+			if (mem_after.size( ) < unkbytes_first_skip)
+				return {};
+		}
+		return found;
+	}
+	else
+	{
+		const std::span unkbytes_except_first = {unkbytes.begin( ) + 1, unkbytes.end( )};
+
+		auto current_pos = from.data( );
+		const auto last_pos = current_pos + from.size( );
+		const auto last_readable_pos = last_pos - unkbytes_count;
+
+		do
+		{
+			const block found0 = block(current_pos, last_pos).find_block(unkbytes_first_block);
+			if (found0.empty( ))
 				break;
+
+			current_pos = found0.data( ) + found0.size( );
+			auto tmp_pos = current_pos + unkbytes_first_skip;
+
+			bool found = true;
+			for (const auto& [buff, skip] : unkbytes_except_first)
+			{
+				const auto buff_size = buff.size( );
+				if (std::memcmp(tmp_pos, buff.begin( ), buff_size) != 0)
+				{
+					found = false;
+					break;
+				}
+
+				current_pos = tmp_pos + buff_size;
+				tmp_pos = current_pos + skip;
 			}
 
-			current_pos = tmp_pos + buff_size;
-			tmp_pos = current_pos + skip;
+			if (found)
+				return {found0.data( ), unkbytes_count};
 		}
+		while (current_pos <= last_readable_pos);
 
-		if (found)
-			return {found0.data( ), unkbytes_count};
+		return {};
 	}
-	while (current_pos <= last_readable_pos);
-
-	return {};
 }
 
 block block::find_block(const signature_unknown_bytes& unkbytes) const noexcept

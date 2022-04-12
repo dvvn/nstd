@@ -56,7 +56,6 @@ public:
 
 	const unknown_bytes_data& operator[](const size_t index) const noexcept;
 	size_t bytes_count( ) const noexcept;
-	bool all_known( ) const noexcept;
 
 private:
 	std::vector<unknown_bytes_data> data_;
