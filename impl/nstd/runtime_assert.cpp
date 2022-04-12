@@ -245,7 +245,9 @@ void nstd::_Rt_assert_handle(bool expression_result, const char* expression, con
 	_Rt->handle(expression, message, location);
 }
 
+[[noreturn]]
 void nstd::_Rt_assert_handle(const char* message, [[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2, const std::source_location& location) noexcept
 {
 	_Rt->handle(message, location);
+	std::terminate( );
 }

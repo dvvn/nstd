@@ -1,36 +1,41 @@
 module;
 
+#include <nstd/text/provide_string.h>
+
 #include <string>
 #include <variant>
 
 export module nstd.text.string_or_view;
 
 template<typename T>
-class basic_string_or_view_holder
+inline constexpr size_t small_string_size = std::basic_string<T>( ).capacity( ) - 1;
+
+template<typename T>
+class basic_string_or_view
 {
 public:
 	using value_type = T;
 	using string_type = std::basic_string<T>;
 	using view_type = std::basic_string_view<T>;
 
-	basic_string_or_view_holder( )
+	basic_string_or_view( )
 	{
 		str_.emplace<view_type>( );
 	}
-	basic_string_or_view_holder(const view_type sv)
+	basic_string_or_view(const view_type sv)
 	{
 		str_.emplace<view_type>(sv);
 	}
-	basic_string_or_view_holder(string_type&& str)
+	basic_string_or_view(string_type&& str)
 	{
 		str_.emplace<string_type>(std::move(str));
 	}
-	basic_string_or_view_holder(const T* str)
+	basic_string_or_view(const T* str)
 	{
 		str_.emplace<view_type>(str);
 	}
 
-	basic_string_or_view_holder(string_type& str) = delete;
+	basic_string_or_view(string_type& str) = delete;
 
 	operator string_type& ()&
 	{
@@ -38,13 +43,14 @@ public:
 	}
 	operator string_type( )&&
 	{
-		constexpr auto small_string_size = string_type( ).capacity( ) - 1;
 		return std::visit([]<class S>(S & ref)-> string_type
 		{
 			if constexpr (std::is_same_v<S, string_type>)
 			{
-				if (ref.size( ) > small_string_size)
+				if (ref.size( ) > small_string_size<T>)
 					return std::move(ref);
+
+				//if size < small_string_size no memory allocated
 			}
 
 			return {ref.data( ),ref.size( )};
@@ -62,7 +68,10 @@ private:
 	std::variant<string_type, view_type> str_;
 };
 
+#define NSTD_STRING_DECLARE_IMPL(_TYPE_,_PREFIX_,_POSTFIX_)\
+	using _PREFIX_##string_or_view##_POSTFIX_ = basic_string_or_view<_TYPE_>;
+
 export namespace nstd::inline text
 {
-	using string_or_view_holder = basic_string_or_view_holder<char>;
+	NSTD_STRING_DECLARE;
 }

@@ -37,6 +37,7 @@ namespace nstd
 						   const char* expression,
 						   const char* message = nullptr
 						   , const std::source_location& location = std::source_location::current( )) noexcept;
+	[[noreturn]]
 	void _Rt_assert_handle(const char* message,
 						   const char* unused1 = nullptr,
 						   const char* unused2 = nullptr
