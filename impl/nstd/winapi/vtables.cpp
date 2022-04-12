@@ -8,7 +8,6 @@ module;
 
 module nstd.winapi.vtables;
 import nstd.winapi.sections;
-import nstd.container.wrapper;
 import nstd.mem.block;
 import nstd.mem.address;
 import nstd.mem.signature;
@@ -30,6 +29,16 @@ static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SE
 //	return {addr.get<uint8_t*>( ), sizeof(uintptr_t)};
 //}
 
+namespace nstd::mem
+{
+	template<typename T>
+	block make_signature(const basic_address<T>& addr) noexcept
+	{
+		//return {addr.get<uint8_t*>( ), sizeof(uintptr_t)};
+		return {(uint8_t*)std::addressof(addr), sizeof(uintptr_t)};
+	}
+}
+
 //todo: add x64 support
 static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const basic_address<void> type_descriptor)
 {
@@ -38,7 +47,7 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 
 	for (;;)
 	{
-		auto block = from.find_block({search.begin( ),search.size( )});
+		auto block = from.find_block(search);
 		if (block.empty( ))
 			break;
 		from = from.shift_to(block.data( ) + block.size( ));
@@ -57,7 +66,7 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 		{
 			const auto object_locator = xr.minus(sizeof(uintptr_t) * 3);
 			const auto sig = make_signature(object_locator);
-			const auto found = dot_rdata.find_block({sig.begin( ),sig.size( )});
+			const auto found = dot_rdata.find_block(sig);
 			const basic_address<void> addr = found.data( );
 			return addr + sizeof(uintptr_t);
 		}();
@@ -72,7 +81,7 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 		const auto temp_result = [&]
 		{
 			const auto sig = make_signature(vtable_address);
-			return dot_text.find_block({sig.begin( ),sig.size( )});
+			return dot_text.find_block(sig);
 		}();
 
 		if (!temp_result.empty( ))
@@ -82,17 +91,29 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 	return nullptr;
 }
 
+static std::string _Make_vtable_name(const std::string_view name) noexcept
+{
+	constexpr std::string_view prefix = ".?AV";
+	constexpr std::string_view suffix = "@@";
+
+	std::string buff;
+	buff.reserve(prefix.size( ) + name.size( ) + suffix.size( ));
+	buff += prefix;
+	buff += name;
+	buff += suffix;
+	return buff;
+}
+
 void* find_vtable_impl(LDR_DATA_TABLE_ENTRY* ldr_entry, const std::string_view name)
 {
 	//base address
 	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
 	const basic_address<IMAGE_NT_HEADERS> nt = dos + dos->e_lfanew;
 
-	using namespace std::string_view_literals;
-	const auto real_name = nstd::append<std::string>(".?AV"sv, name, "@@"sv);
+	const auto real_name = _Make_vtable_name(name);
 
 	const block bytes = {dos.get<uint8_t*>( ),nt->OptionalHeader.SizeOfImage};
-	const auto target_block = bytes.find_block(make_signature(real_name.begin( ), real_name.end( ), signature_direct( )));
+	const auto target_block = bytes.find_block({real_name.data( ), real_name.size( )});
 	//class descriptor
 	runtime_assert(!target_block.empty( ));
 

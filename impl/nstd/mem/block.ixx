@@ -42,29 +42,29 @@ export namespace nstd::mem
 			static_assert(sizeof(Bg) + sizeof(Ed) == sizeof(uint8_t) * 2);
 		}
 
-		explicit block(const block_base& span);
+		explicit block(const block_base span);
 
-		block find_block(const block other) const;
-		block find_block(const signature_unknown_bytes& rng) const;
+		block find_block(const block other) const noexcept;
+		block find_block(const signature_unknown_bytes& unkbytes) const noexcept;
 
-		template <class StorageType>
+		/*template <class StorageType>
 		block find_block(const signature_known_bytes<StorageType>& rng) const
 		{
 			return find_block({rng.data( ),rng.size( )});
-		}
+		}*/
 
-		block shift_to(pointer ptr) const;
-		block subblock(size_t offset, size_t count = std::dynamic_extent) const;
+		block shift_to(pointer ptr) const noexcept;
+		//block subblock(size_t offset, size_t count = std::dynamic_extent) const;
 
 #ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
 		bool have_flags(DWORD flags) const;
 		bool dont_have_flags(DWORD flags) const;
 		DWORD get_flags( ) const;
 #endif 
-		bool readable( ) const;
-		bool readable_ex( ) const;
-		bool writable( ) const;
-		bool executable( ) const;
-		bool code_padding( ) const;
+		bool readable( ) const noexcept;
+		bool readable_ex( ) const noexcept;
+		bool writable( ) const noexcept;
+		bool executable( ) const noexcept;
+		bool code_padding( ) const noexcept;
 	};
 }
