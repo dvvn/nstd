@@ -6,7 +6,7 @@ module;
 export module nstd.one_instance;
 
 template <typename Last = void, typename T>
-auto deref_ptr(T ptr)
+auto deref_ptr(T ptr) noexcept
 {
 	if constexpr (!std::is_pointer_v<std::remove_pointer_t<T>> || std::same_as<Last, T>)
 		return ptr;
@@ -15,7 +15,7 @@ auto deref_ptr(T ptr)
 }
 
 template<typename T>
-bool nullptr_check(T ptr)
+bool nullptr_check(T ptr) noexcept
 {
 	if (ptr == nullptr)
 		return true;
@@ -38,12 +38,12 @@ public:
 	{
 	}
 
-	T operator->( )const
+	T operator->( ) const noexcept
 	{
 		return ptr_;
 	}
 
-	auto& operator*( )const
+	auto& operator*( ) const noexcept
 	{
 		return *ptr_;
 	}
@@ -54,7 +54,7 @@ class pointer_wrapper<T**>
 {
 	T** ptr_;
 
-	bool _Is_null( )const
+	bool _Is_null( ) const noexcept
 	{
 		return nullptr_check(ptr_);
 	}
@@ -66,39 +66,39 @@ public:
 	{
 	}
 
-	auto operator->( )const
+	auto operator->( ) const noexcept
 	{
 		return deref_ptr(ptr_);
 	}
 
-	auto& operator*( )const
+	auto& operator*( ) const noexcept
 	{
 		return *deref_ptr(ptr_);
 	}
 
-	bool operator==(nullptr_t)const
+	bool operator==(nullptr_t) const noexcept
 	{
 		return _Is_null( );
 	}
 
-	bool operator!=(nullptr_t)const
+	bool operator!=(nullptr_t) const noexcept
 	{
 		return !_Is_null( );
 	}
 
-	operator bool( )const
+	operator bool( ) const noexcept
 	{
 		return !_Is_null( );
 	}
 
-	bool operator!( )const
+	bool operator!( ) const noexcept
 	{
 		return _Is_null( );
 	}
 };
 
 template <typename T>
-void recreate(T& ref)
+void recreate(T& ref) noexcept
 {
 	auto ptr = std::addressof(ref);
 	std::destroy_at(ptr);
@@ -119,19 +119,19 @@ export namespace nstd
 		{
 		}
 
-		reference ref( )
+		reference ref( ) noexcept
 		{
 			return item_;
 		}
 
-		pointer ptr( )
+		pointer ptr( ) noexcept
 		{
 			return std::addressof(item_);
 		}
 
 	private:
 		value_type item_;
-		value_type _Construct( ) const { return {}; }
+		value_type _Construct( ) const noexcept { return {}; }
 	};
 
 	template <typename T>
@@ -149,19 +149,19 @@ export namespace nstd
 		{
 		}
 
-		reference ref( )const
+		reference ref( ) const noexcept
 		{
 			return *deref_ptr(item_);
 		}
 
-		pointer ptr( )const
+		pointer ptr( ) const noexcept
 		{
 			return item_;
 		}
 
 	private:
 		element_type item_;
-		element_type _Construct( ) const;
+		element_type _Construct( ) const noexcept;
 	};
 
 	template <typename T>
@@ -178,19 +178,19 @@ export namespace nstd
 		{
 		}
 
-		reference ref( )
+		reference ref( ) noexcept
 		{
 			return *item_;
 		}
 
-		pointer ptr( )
+		pointer ptr( ) noexcept
 		{
 			return item_.get( );
 		}
 
 	private:
 		element_type item_;
-		element_type _Construct( ) const { return std::make_unique<T>( ); }
+		element_type _Construct( ) const noexcept { return std::make_unique<T>( ); }
 	};
 
 	/*template <typename T>
@@ -227,19 +227,19 @@ public:
 	template <typename T, size_t Instance = 0>
 	class one_instance
 	{
-		static auto& _Get( )
+		static auto& _Get( ) noexcept
 		{
 			static auto g = _Init( );
 			return g;
 		}
 
-		static bool& _Initialized( )
+		static bool& _Initialized( ) noexcept
 		{
 			static bool val = false;
 			return val;
 		}
 
-		static one_instance_getter<T> _Init( )
+		static one_instance_getter<T> _Init( ) noexcept
 		{
 			_Initialized( ) = true;
 			return {};
@@ -252,22 +252,22 @@ public:
 		constexpr one_instance(one_instance&& other) noexcept = delete;
 		constexpr one_instance& operator=(one_instance&& other) noexcept = delete;
 
-		static bool initialized( )
+		static bool initialized( ) noexcept
 		{
 			return _Initialized( );
 		}
 
-		static auto& get( )
+		static auto& get( ) noexcept
 		{
 			return _Get( ).ref( );
 		}
 
-		static auto get_ptr( )
+		static auto get_ptr( ) noexcept
 		{
 			return _Get( ).ptr( );
 		}
 
-		static void _Recreate( )
+		static void _Recreate( ) noexcept
 		{
 			recreate(_Get( ));
 		}
@@ -276,19 +276,19 @@ public:
 	template <typename T, size_t Instance = 0>
 	class one_instance_obj final
 	{
-		static auto& _Get( )
+		static auto& _Get( ) noexcept
 		{
 			static auto g = _Init( );
 			return g;
 		}
 
-		static bool& _Initialized( )
+		static bool& _Initialized( ) noexcept
 		{
 			static bool val = false;
 			return val;
 		}
 
-		static one_instance_getter<T> _Init( )
+		static one_instance_getter<T> _Init( ) noexcept
 		{
 			_Initialized( ) = true;
 			return {};
@@ -301,22 +301,22 @@ public:
 		constexpr one_instance_obj(one_instance_obj&& other) noexcept = delete;
 		constexpr one_instance_obj& operator=(one_instance_obj&& other) noexcept = delete;
 
-		bool initialized( ) const
+		bool initialized( ) const noexcept
 		{
 			return _Initialized( );
 		}
 
-		auto& operator*( )const
+		auto& operator*( ) const noexcept
 		{
 			return _Get( ).ref( );
 		}
 
-		auto operator->( )const
+		auto operator->( ) const noexcept
 		{
 			return _Get( ).ptr( );
 		}
 
-		void _Recreate( )const
+		void _Recreate( ) const noexcept
 		{
 			recreate(_Get( ));
 		}

@@ -5,7 +5,7 @@ module;
 
 export module nstd.text.chars_cache;
 
-template <size_t Size, typename Chr>
+template <typename Chr, size_t Size>
 struct chars_cache_impl
 {
 	std::array<Chr, Size> _Data;
@@ -14,21 +14,6 @@ struct chars_cache_impl
 	{
 		std::char_traits<Chr>::copy(_Data.data( ), str_source, Size);
 	}
-
-	/*constexpr size_t size( ) const noexcept
-	{
-		return Size;
-	}
-
-	constexpr auto begin( ) const noexcept
-	{
-		return _Data.data( );
-	}
-
-	constexpr auto end( ) const noexcept
-	{
-		return _Data.data( ) + Size;
-	}*/
 
 	constexpr std::basic_string_view<Chr> view( ) const noexcept
 	{
@@ -40,14 +25,14 @@ export namespace nstd::inline text
 {
 	//use it for as template parameter
 
-	template <size_t Size, typename Chr>
+	template <typename Chr,size_t Size>
 	struct chars_cache;
 
 #define PROVIDE_CHARS_CACHE(_TYPE_)\
 	template <size_t Size>\
-	struct chars_cache<Size,_TYPE_> : chars_cache_impl<Size,_TYPE_>\
+	struct chars_cache<_TYPE_, Size> : chars_cache_impl<_TYPE_, Size>\
 	{\
-		using chars_cache_impl<Size,_TYPE_>::chars_cache_impl;\
+		using chars_cache_impl<_TYPE_, Size>::chars_cache_impl;\
 	};
 
 #ifdef __cpp_lib_char8_t
@@ -59,5 +44,5 @@ export namespace nstd::inline text
 	PROVIDE_CHARS_CACHE(char32_t);
 
 	template <typename Chr,size_t Size>
-	chars_cache(const Chr(&arr)[Size])->chars_cache<Size,Chr>;
+	chars_cache(const Chr(&arr)[Size])->chars_cache<Chr, Size>;
 }
