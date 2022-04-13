@@ -26,6 +26,35 @@ constexpr bool check_whole_path(const std::basic_string_view<T> name) noexcept
 LDR_DATA_TABLE_ENTRY* find_module_impl(const std::string_view name, const bool check_whole_path) noexcept;
 LDR_DATA_TABLE_ENTRY* find_module_impl(const std::wstring_view name, const bool check_whole_path) noexcept;
 
+class current_module_data
+{
+public:
+	using pointer = LDR_DATA_TABLE_ENTRY*;
+	using reference = LDR_DATA_TABLE_ENTRY&;
+
+	current_module_data(pointer const entry);
+
+	pointer operator->( ) const noexcept;
+	reference operator*( ) const noexcept;
+	reference operator[](ptrdiff_t offset) const noexcept;
+
+	//---
+
+	operator std::wstring_view( ) const noexcept;
+	operator std::string_view( ) const noexcept;
+
+private:
+	pointer entry_;
+};
+
+using module_name_str =
+#ifdef _UNICODE
+std::string
+#else
+std::string_view
+#endif
+;
+
 export namespace nstd::winapi
 {
 	template<typename Msg = void*, typename T>
@@ -47,5 +76,6 @@ export namespace nstd::winapi
 		return found;
 	}
 
-	LDR_DATA_TABLE_ENTRY* current_module( ) noexcept;
+	current_module_data current_module( ) noexcept;
+	module_name_str get_module_name(LDR_DATA_TABLE_ENTRY* const ldr_entry) noexcept;
 }
