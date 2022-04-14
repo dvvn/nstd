@@ -1,5 +1,7 @@
 module;
 
+#include <nstd/winapi/msg_invoke.h>
+
 #include <windows.h>
 #include <winternl.h>
 
@@ -12,7 +14,7 @@ import nstd.text.chars_cache;
 
 export namespace nstd::winapi
 {
-	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept;
+	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv name) noexcept;
 
 	template<typename T>
 	struct found_vtable
@@ -27,15 +29,11 @@ export namespace nstd::winapi
 		}
 	};
 
-	template<typename Msg = void*, typename T>
-	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::basic_string_view<T> module_name, const std::string_view vtable_name) noexcept
+	template<typename Msg = void*>
+	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv module_name, const _Strv vtable_name) noexcept
 	{
 		const auto found = find_vtable(ldr_entry, vtable_name);
-		if constexpr (std::invocable<Msg, found_vtable<void*>, std::basic_string_view<T>, std::string_view>)
-		{
-			Msg msg;
-			msg(found_vtable<void*>(found), module_name, vtable_name);
-		}
+		_Invoke_msg<Msg, found_vtable<void*>>(found, module_name, vtable_name);
 		return found;
 	}
 

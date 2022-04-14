@@ -1,8 +1,11 @@
 module;
 
 #include <nstd/runtime_assert.h>
+#include <nstd/winapi/convert_string.h>
+
 #include <windows.h>
 #include <winternl.h>
+
 #include <string_view>
 #include <functional>
 
@@ -94,20 +97,26 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 	return nullptr;
 }
 
-static std::string _Make_vtable_name(const std::string_view name) noexcept
+template<typename T, typename ...Args>
+static auto _Construct_string(const Args...args) noexcept
+{
+	std::basic_string<T> buff;
+	buff.reserve((args.size( ) + ...));
+	(buff.append(args.begin( ), args.end( )), ...);
+	return buff;
+}
+
+using winapi::_Strv;
+
+static auto _Make_vtable_name(const _Strv name) noexcept
 {
 	constexpr std::string_view prefix = ".?AV";
 	constexpr std::string_view suffix = "@@";
 
-	std::string buff;
-	buff.reserve(prefix.size( ) + name.size( ) + suffix.size( ));
-	buff += prefix;
-	buff += name;
-	buff += suffix;
-	return buff;
+	return _Construct_string<uint8_t>(prefix, _To_bytes(name), suffix);
 }
 
-void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
+void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv name) noexcept
 {
 	//base address
 	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;

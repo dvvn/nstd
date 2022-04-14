@@ -1,5 +1,7 @@
 module;
 
+#include <nstd/winapi/msg_invoke.h>
+
 #include <windows.h>
 #include <winternl.h>
 
@@ -29,15 +31,11 @@ export namespace nstd::winapi
 		}
 	};
 
-	template<typename Msg = void*, typename T>
-	void* find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::basic_string_view<T> module_name, const std::string_view export_name) noexcept
+	template<typename Msg = void*>
+	void* find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::basic_string_view<WCHAR> module_name, const std::string_view export_name) noexcept
 	{
 		const auto found = find_export(ldr_entry, export_name);
-		if constexpr (std::invocable<Msg, found_export<void*>, std::basic_string_view<T>, std::string_view>)
-		{
-			Msg msg;
-			msg(found_export<void*>(found), module_name, export_name);
-		}
+		_Invoke_msg<Msg, found_export<void*>>(found, module_name, export_name);
 		return found;
 	}
 

@@ -1,5 +1,7 @@
 module;
 
+#include <nstd/winapi/msg_invoke.h>
+
 #include <windows.h>
 #include <winternl.h>
 
@@ -14,15 +16,11 @@ export namespace nstd::winapi
 {
 	IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept;
 
-	template<typename Msg, typename T>
-	IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::basic_string_view<T> module_name, const std::string_view section_name) noexcept
+	template<typename Msg>
+	IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv module_name, const std::string_view section_name) noexcept
 	{
 		const auto found = find_section(ldr_entry, section_name);
-		if constexpr (std::invocable<Msg, decltype(found), decltype(module_name), decltype(section_name)>)
-		{
-			Msg msg;
-			msg(found, module_name, section_name);
-		}
+		_Invoke_msg<MSG>(found, module_name, section_name);
 		return found;
 	}
 
