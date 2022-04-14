@@ -10,7 +10,6 @@ module;
 
 export module nstd.winapi.vtables;
 export import nstd.winapi.modules;
-import nstd.text.chars_cache;
 
 export namespace nstd::winapi
 {

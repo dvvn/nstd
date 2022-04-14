@@ -6,11 +6,10 @@ module;
 #include <winternl.h>
 
 #include <string_view>
-//#include <functional>
 #include <concepts>
 
 export module nstd.winapi.modules;
-import nstd.text.chars_cache;
+export import nstd.text.chars_cache;
 
 #ifndef __cpp_lib_string_contains
 #define contains(_X_) find(_X_) != static_cast<size_t>(-1)
