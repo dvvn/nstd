@@ -321,4 +321,14 @@ public:
 			recreate(_Get( ));
 		}
 	};
+
+	template <typename T, size_t Instance = 0>
+	decltype(auto) get_instance( ) noexcept
+	{
+		constexpr one_instance_obj<T, Instance> obj;
+		if constexpr (std::is_pointer_v<T>)
+			return obj.operator->( );
+		else
+			return *obj;
+	}
 }
