@@ -10,7 +10,7 @@ module;
 
 module nstd.mem.signature;
 
-known_bytes::known_bytes( ) = default;
+known_bytes::known_bytes() = default;
 
 known_bytes::known_bytes(buffer_type && data)
 	:data_(std::move(data))
@@ -21,27 +21,27 @@ known_bytes::known_bytes(const range_type data)
 {
 }
 
-auto known_bytes::begin( ) const noexcept -> pointer
+auto known_bytes::begin() const noexcept -> pointer
 {
 	return std::visit([]<class T>(const T & mem) noexcept
 	{
-		return mem.data( );
+		return mem.data();
 	}, data_);
 }
 
-auto known_bytes::end( ) const noexcept -> pointer
+auto known_bytes::end() const noexcept -> pointer
 {
 	return std::visit([]<class T>(const T & mem) noexcept
 	{
-		return mem.data( ) + mem.size( );
+		return mem.data() + mem.size();
 	}, data_);
 }
 
-size_t known_bytes::size( )const noexcept
+size_t known_bytes::size()const noexcept
 {
 	return std::visit([]<class T>(const T & mem) noexcept
 	{
-		return mem.size( );
+		return mem.size();
 	}, data_);
 }
 
@@ -52,19 +52,19 @@ void unknown_bytes::push_back(unknown_bytes_data && val) noexcept
 	data_.push_back(std::move(val));
 }
 
-auto unknown_bytes::begin( ) const noexcept -> pointer
+auto unknown_bytes::begin() const noexcept -> pointer
 {
-	return data_.data( );
+	return data_.data();
 }
 
-auto unknown_bytes::end( ) const noexcept -> pointer
+auto unknown_bytes::end() const noexcept -> pointer
 {
-	return data_.data( ) + data_.size( );
+	return data_.data() + data_.size();
 }
 
-size_t unknown_bytes::size( ) const noexcept
+size_t unknown_bytes::size() const noexcept
 {
-	return data_.size( );
+	return data_.size();
 }
 
 const unknown_bytes_data& unknown_bytes::operator[](const size_t index) const noexcept
@@ -72,12 +72,12 @@ const unknown_bytes_data& unknown_bytes::operator[](const size_t index) const no
 	return data_[index];
 }
 
-size_t unknown_bytes::bytes_count( ) const noexcept
+size_t unknown_bytes::bytes_count() const noexcept
 {
 	size_t ret = 0;
 	for (auto& [buff, skip] : data_)
 	{
-		ret += buff.size( );
+		ret += buff.size();
 		ret += skip;
 	}
 
@@ -86,7 +86,7 @@ size_t unknown_bytes::bytes_count( ) const noexcept
 
 //---------------
 
-static bool validate_signature(const std::string_view rng) noexcept
+static bool _Validate_signature(const std::string_view rng) noexcept
 {
 	if (rng.starts_with('?'))
 		return false;
@@ -161,12 +161,14 @@ static bool validate_signature(const std::string_view rng) noexcept
 
 class unknown_bytes_writer
 {
+	using size_type = unknown_bytes_data::skip_type;
+
 	unknown_bytes source_;
 	known_bytes::buffer_type buff_;
-	unknown_bytes_data::skip_type skip_ = 0;
+	size_type skip_ = 0;
 
 	template<bool Move>
-	void dump_impl( ) noexcept(Move)
+	void dump_impl() noexcept(Move)
 	{
 		unknown_bytes_data tmp;
 		known_bytes::buffer_type buff;
@@ -181,17 +183,17 @@ class unknown_bytes_writer
 		source_.push_back(std::move(tmp));
 	}
 
-	void reset( )noexcept
+	void reset() noexcept
 	{
-		buff_.clear( );
+		buff_.clear();
 		skip_ = 0;
 	}
 
 public:
-	operator unknown_bytes( ) && noexcept
+	operator unknown_bytes() && noexcept
 	{
-		if (!buff_.empty( ) || skip_ > 0)
-			dump_impl<true>( );
+		if (!buff_.empty() || skip_ > 0)
+			dump_impl<true>();
 		return std::move(source_);
 	}
 
@@ -200,11 +202,11 @@ public:
 		//write previous part
 		if (skip_ > 0)
 		{
-			dump_impl<true>( );
-			reset( );
+			dump_impl<true>();
+			reset();
 		}
 
-		constexpr auto to_num = []<typename T>(T chr) noexcept
+		constexpr auto to_num = []<typename T>(T chr) noexcept -> uint8_t
 		{
 			switch (chr)
 			{
@@ -251,7 +253,7 @@ public:
 			}
 		};
 
-		switch (rng.size( ))
+		switch (rng.size())
 		{
 		case 1:
 			buff_.push_back(to_num(rng[0]));
@@ -264,32 +266,35 @@ public:
 		}
 	}
 
-	void skip(size_t step = 1) noexcept
+	void skip(const size_type step = 1) noexcept
 	{
-		++skip_;
+		skip_ += step;
 	}
 };
 
-static unknown_bytes text_to_bytes(const char* begin, const char* end) noexcept
+static /*unknown_bytes*/auto _Text_to_bytes(const char* begin, const char* end) noexcept
 {
-	runtime_assert(validate_signature({begin,end}));
+	const std::string_view text_src = { begin, end };
+	runtime_assert(_Validate_signature(text_src));
 
 	unknown_bytes_writer writer;
 
-	constexpr auto unwrap_shit = []<class T>(T rng) noexcept
+	constexpr auto unwrap_shit = []<class T>(T rng) noexcept -> std::string_view
 	{
-		return std::string_view(&*rng.begin( ), ranges::distance(rng));
+		const auto raw_begin = std::addressof(*rng.begin());
+		const size_t size = std::ranges::distance(rng);
+		return { raw_begin, size };
 	};
 
-	for (const auto b : std::views::split(std::span(begin, end), ' ') | std::views::transform(unwrap_shit))
+	for (const auto b : std::views::split(text_src, ' ') | std::views::transform(unwrap_shit))
 	{
 		if (b[0] == '?')
-			writer.skip( );
+			writer.skip();
 		else
 			writer.write(b);
 	}
 
-	return std::move(writer);
+	return writer;
 }
 
 //----
@@ -298,16 +303,16 @@ using namespace nstd;
 
 auto mem::make_signature(const std::string_view str) noexcept -> signature_unknown_bytes
 {
-	return text_to_bytes(str.data( ), str.data( ) + str.size( ));
+	return _Text_to_bytes(str.data(), str.data() + str.size());
 }
 
 auto mem::make_signature(const char* begin, const size_t mem_size) noexcept -> signature_unknown_bytes
 {
-	return text_to_bytes(begin, begin + mem_size);
+	return _Text_to_bytes(begin, begin + mem_size);
 }
 
 auto mem::make_signature_known(const uint8_t * begin, const size_t mem_size) noexcept -> signature_known_bytes
 {
-	const known_bytes::range_type mem = {begin,begin + mem_size};
+	const known_bytes::range_type mem = { begin,begin + mem_size };
 	return mem;
 }
