@@ -13,6 +13,10 @@ export namespace nstd::text
 template<typename To>
 struct converter;
 
+#define CVT_HINT(_FROM_) \
+using string_type = std::basic_string<_FROM_>;\
+using string_view_type = std::basic_string_view<_FROM_>;
+
 #define CVT_OP(_FROM_) string_type operator()(const std::basic_string_view<_FROM_> from) const noexcept;
 #define CVT_OP_SELF \
 string_view_type operator()(const string_view_type from) const noexcept;\
