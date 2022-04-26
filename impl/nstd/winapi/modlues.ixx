@@ -12,21 +12,15 @@ export module nstd.winapi.modules;
 export import nstd.text.chars_cache;
 
 #ifndef __cpp_lib_string_contains
-#define contains(_X_) find(_X_) != static_cast<size_t>(-1)
+#define contains(_X_) find(_X_) != std::wstring_view::npos
 #endif
 
-using _Str = std::basic_string<WCHAR>;
-using _Strv = std::basic_string_view<WCHAR>;
-
-LDR_DATA_TABLE_ENTRY* find_module_impl(const _Strv name, const bool check_whole_path) noexcept;
+LDR_DATA_TABLE_ENTRY* find_module_impl(const std::wstring_view name, const bool check_whole_path) noexcept;
 
 export namespace nstd::winapi
 {
-	using ::_Str;
-	using ::_Strv;
-
 	template<typename Msg = void*>
-	LDR_DATA_TABLE_ENTRY* find_module(const _Strv name) noexcept
+	LDR_DATA_TABLE_ENTRY* find_module(const std::wstring_view name) noexcept
 	{
 		const auto found = find_module_impl(name, name.contains(':'));
 		_Invoke_msg<Msg>(found, name);
@@ -36,7 +30,7 @@ export namespace nstd::winapi
 	template<text::chars_cache Name, typename Msg = void*>
 	auto find_module( ) noexcept
 	{
-		static const auto found = find_module<Msg>(Name.view( ));
+		static const auto found = find_module<Msg>(Name);
 		return found;
 	}
 

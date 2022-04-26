@@ -13,7 +13,7 @@ export import nstd.winapi.modules;
 
 export namespace nstd::winapi
 {
-	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv name) noexcept;
+	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept;
 
 	template<typename T>
 	struct found_vtable
@@ -29,7 +29,7 @@ export namespace nstd::winapi
 	};
 
 	template<typename Msg = void*>
-	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv module_name, const _Strv vtable_name) noexcept
+	void* find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::wstring_view module_name, const std::string_view vtable_name) noexcept
 	{
 		const auto found = find_vtable(ldr_entry, vtable_name);
 		_Invoke_msg<Msg, found_vtable<void*>>(found, module_name, vtable_name);
@@ -37,9 +37,9 @@ export namespace nstd::winapi
 	}
 
 	template<typename T, text::chars_cache Module, text::chars_cache Class, typename Msg = void*>
-	T* find_vtable( ) noexcept
+	T* find_vtable() noexcept
 	{
-		static const found_vtable<T> found = find_vtable<Msg>(find_module<Module, Msg>( ), Module.view( ), Class.view( ));
+		static const found_vtable<T> found = find_vtable<Msg>(find_module<Module, Msg>(), Module, Class);
 		return found.ptr;
 	}
 }

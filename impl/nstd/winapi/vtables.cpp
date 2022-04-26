@@ -13,7 +13,6 @@ import nstd.winapi.sections;
 import nstd.mem.block;
 import nstd.mem.address;
 import nstd.mem.signature;
-import nstd.text.convert;
 
 using namespace nstd;
 using namespace mem;
@@ -106,17 +105,15 @@ static auto _Construct_string(const Args...args) noexcept
 	return buff;
 }
 
-using winapi::_Strv;
-
-static auto _Make_vtable_name(const _Strv name) noexcept
+static auto _Make_vtable_name(const std::string_view name) noexcept
 {
 	constexpr std::string_view prefix = ".?AV";
 	constexpr std::string_view suffix = "@@";
 
-	return _Construct_string<uint8_t>(prefix, text::convert_to<char>(name), suffix);
+	return _Construct_string<uint8_t>(prefix, name, suffix);
 }
 
-void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const _Strv name) noexcept
+void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
 {
 	//base address
 	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;

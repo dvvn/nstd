@@ -26,12 +26,12 @@ auto module_info::operator*( ) const noexcept -> reference
 	return *entry_;
 }
 
-auto module_info::path( ) const noexcept -> _Strv
+auto module_info::path( ) const noexcept -> std::wstring_view
 {
 	return {entry_->FullDllName.Buffer, entry_->FullDllName.Length / sizeof(WCHAR)};
 }
 
-auto module_info::name( ) const noexcept -> _Strv
+auto module_info::name( ) const noexcept -> std::wstring_view
 {
 	const auto full_path = this->path( );
 	const auto name_start = full_path.rfind('\\');

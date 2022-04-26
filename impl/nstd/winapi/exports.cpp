@@ -38,6 +38,7 @@ void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 		const char* export_name = dos + names[i];
 		if (!export_name)
 			continue;
+		auto a= export_name == name;
 		if (std::memcmp(export_name, name.data( ), name.size( )) != 0)
 			continue;
 		if (export_name[name.size( )] != '\0')

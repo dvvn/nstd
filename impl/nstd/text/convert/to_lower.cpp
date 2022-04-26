@@ -14,7 +14,7 @@ static auto _To_lower_chr(const char chr) noexcept
 
 static auto _To_lower_chr(const wchar_t chr) noexcept
 {
-	const auto lchr = std::towlower(static_cast<std::wint_t>(chr));
+	const auto lchr = std::towlower(static_cast<wint_t>(chr));
 	return static_cast<wchar_t>(lchr);
 }
 

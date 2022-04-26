@@ -24,11 +24,16 @@ static auto _Conv(const std::basic_string_view<From> from) noexcept
 	return buff;
 }
 
+#ifdef _DEBUG
 static void _Direct_trap() noexcept
 {
 	[[maybe_unused]]
 	const char dummy = 1;
 }
+#define DIRECT_TRAP _Direct_trap()
+#else
+#define DIRECT_TRAP (void)0
+#endif
 
 #define OP(_TO_)\
 auto converter<_TO_>::operator()
@@ -40,9 +45,9 @@ OP(_TO_)(const std::basic_string_view<_FROM_> from) const noexcept -> string_typ
 }
 
 #define CVT_OP_SELF_IMPL(_TO_) \
-OP(_TO_)(const string_view_type from) const noexcept -> string_view_type { _Direct_trap(); return from; }\
-OP(_TO_)(string_type& from) const noexcept -> string_type& { _Direct_trap(); return from; }\
-OP(_TO_)(string_type&& from) const noexcept -> string_type { _Direct_trap(); return std::move(from); }\
+OP(_TO_)(const string_view_type from) const noexcept -> string_view_type { DIRECT_TRAP; return from; }\
+OP(_TO_)(string_type& from) const noexcept -> string_type& { DIRECT_TRAP; return from; }\
+OP(_TO_)(string_type&& from) const noexcept -> string_type { DIRECT_TRAP; return std::move(from); }\
 
 #ifdef __cpp_lib_char8_t
 template < >

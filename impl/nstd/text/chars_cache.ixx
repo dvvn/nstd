@@ -1,6 +1,5 @@
 module;
 
-#include <array>
 #include <string_view>
 
 export module nstd.text.chars_cache;
@@ -8,24 +7,30 @@ export module nstd.text.chars_cache;
 template <typename Chr, size_t Size>
 struct chars_cache_impl
 {
-	std::array<Chr, Size> _Data;
+	Chr _Data[Size];
 
 	constexpr chars_cache_impl(const Chr* str_source)
 	{
-		std::char_traits<Chr>::copy(_Data.data( ), str_source, Size);
+		std::char_traits<Chr>::copy(_Data, str_source, Size);
 	}
 
-	constexpr std::basic_string_view<Chr> view( ) const noexcept
+	/*[[deprecated]]
+	constexpr std::basic_string_view<Chr> view() const noexcept
 	{
-		return {_Data.data( ), Size - 1};
+		return { _Data, Size - 1 };
+	}*/
+
+	constexpr operator std::basic_string_view<Chr>() const noexcept
+	{
+		return { _Data, Size - 1 };
 	}
 };
 
-export namespace nstd::inline text
+export namespace nstd::text
 {
 	//use it for as template parameter
 
-	template <typename Chr,size_t Size>
+	template <typename Chr, size_t Size>
 	struct chars_cache;
 
 #define PROVIDE_CHARS_CACHE(_TYPE_)\
@@ -43,6 +48,6 @@ export namespace nstd::inline text
 	PROVIDE_CHARS_CACHE(char16_t);
 	PROVIDE_CHARS_CACHE(char32_t);
 
-	template <typename Chr,size_t Size>
+	template <typename Chr, size_t Size>
 	chars_cache(const Chr(&arr)[Size])->chars_cache<Chr, Size>;
 }

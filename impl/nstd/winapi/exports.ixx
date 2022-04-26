@@ -31,7 +31,7 @@ export namespace nstd::winapi
 	};
 
 	template<typename Msg = void*>
-	void* find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::basic_string_view<WCHAR> module_name, const std::string_view export_name) noexcept
+	void* find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::wstring_view module_name, const std::string_view export_name) noexcept
 	{
 		const auto found = find_export(ldr_entry, export_name);
 		_Invoke_msg<Msg, found_export<void*>>(found, module_name, export_name);
@@ -39,9 +39,9 @@ export namespace nstd::winapi
 	}
 
 	template<typename FnT, text::chars_cache Module, text::chars_cache Export, typename Msg = void*>
-	FnT find_export( ) noexcept
+	FnT find_export() noexcept
 	{
-		static const found_export<FnT> found = find_export<Msg>(find_module<Module, Msg>( ), Module.view( ), Export.view( ));
+		static const found_export<FnT> found = find_export<Msg>(find_module<Module, Msg>(), Module, Export);
 		return found.known;
 	}
 }
