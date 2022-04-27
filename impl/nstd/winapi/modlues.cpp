@@ -13,6 +13,7 @@ import nstd.winapi.module_info;
 import nstd.mem.address;
 
 using namespace nstd;
+using mem::basic_address;
 
 static auto _Get_ldr( ) noexcept
 {

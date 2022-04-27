@@ -33,15 +33,14 @@ void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 	uint16_t* const ords = dos + export_dir->AddressOfNameOrdinals;
 
 	// iterate names array.
-	for (auto i = 0u; i < export_dir->NumberOfNames; ++i)
+	for(auto i = 0u; i < export_dir->NumberOfNames; ++i)
 	{
 		const char* export_name = dos + names[i];
-		if (!export_name)
+		if(!export_name)
 			continue;
-		auto a= export_name == name;
-		if (std::memcmp(export_name, name.data( ), name.size( )) != 0)
+		if(std::memcmp(export_name, name.data( ), name.size( )) != 0)
 			continue;
-		if (export_name[name.size( )] != '\0')
+		if(export_name[name.size( )] != '\0')
 			continue;
 
 		/*
@@ -51,7 +50,7 @@ void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 
 		 //if (export_ptr < export_dir || export_ptr >= memory_block(export_dir, data_dir.Size).addr( ))
 		const auto export_ptr = dos + funcs[ords[i]];
-		if (export_ptr < export_dir || export_ptr >= export_dir + data_dir.Size)
+		if(export_ptr < export_dir || export_ptr >= export_dir + data_dir.Size)
 			return export_ptr;
 
 		runtime_assert("Forwarded export detected");
@@ -62,7 +61,7 @@ void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 
 		// forwarders have a period as the delimiter.
 		const auto delim = fwd_str.find_last_of('.');
-		if (delim == fwd_str.npos)
+		if(delim == fwd_str.npos)
 			continue;
 
 		using namespace std::string_view_literals;
@@ -74,7 +73,7 @@ void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 		{
 			return i.name == fwd_module_str;
 		});
-		if (target_module == all_modules->end( ))
+		if(target_module == all_modules->end( ))
 			continue;
 
 		// get forwarder export name.
@@ -87,7 +86,7 @@ void* winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 
 			this->emplace(export_name, fwd_export_ptr);
 		}
-		catch (std::exception)
+		catch(std::exception)
 		{
 		}
 #endif

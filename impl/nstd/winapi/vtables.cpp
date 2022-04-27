@@ -22,7 +22,7 @@ using namespace mem;
 static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* const section) noexcept
 {
 	uint8_t* const ptr = dos + section->VirtualAddress;
-	return { ptr, section->SizeOfRawData };
+	return {ptr, section->SizeOfRawData};
 }
 
 //template<typename T>
@@ -40,7 +40,7 @@ namespace nstd::mem
 	block make_signature(const basic_address<T>& addr) noexcept
 	{
 		//return {addr.get<uint8_t*>( ), sizeof(uintptr_t)};
-		return { (uint8_t*)std::addressof(addr), sizeof(uintptr_t) };
+		return {(uint8_t*)std::addressof(addr), sizeof(uintptr_t)};
 	}
 }
 
@@ -50,19 +50,19 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 	auto from = dot_rdata;
 	const auto search = make_signature(type_descriptor);
 
-	for (;;)
+	for(;;)
 	{
 		auto block = from.find_block(search);
-		if (block.empty())
+		if(block.empty( ))
 			break;
-		from = from.shift_to(block.data() + block.size());
+		from = from.shift_to(block.data( ) + block.size( ));
 
 		//-------------
 
-		const basic_address<void> xr = block.data();
+		const basic_address<void> xr = block.data( );
 
 		// so if it's 0 it means it's the class we need, and not some class it inherits from
-		if (const uintptr_t vtable_offset = xr.minus(sizeof(uintptr_t) * 2).deref<1>(); vtable_offset != 0)
+		if(const uintptr_t vtable_offset = xr.minus(sizeof(uintptr_t) * 2).deref<1>( ); vtable_offset != 0)
 			continue;
 
 		// get the object locator
@@ -72,12 +72,12 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 			const auto object_locator = xr.minus(sizeof(uintptr_t) * 3);
 			const auto sig = make_signature(object_locator);
 			const auto found = dot_rdata.find_block(sig);
-			const basic_address<void> addr = found.data();
+			const basic_address<void> addr = found.data( );
 			return addr + sizeof(uintptr_t);
 		}();
 
 		// check is valid offset
-		if (vtable_address.value <= sizeof(uintptr_t))
+		if(vtable_address.value <= sizeof(uintptr_t))
 			continue;
 
 		// get a pointer to the vtable
@@ -89,8 +89,8 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 			return dot_text.find_block(sig);
 		}();
 
-		if (!temp_result.empty())
-			return temp_result.data();
+		if(!temp_result.empty( ))
+			return temp_result.data( );
 	}
 
 	return nullptr;
@@ -100,8 +100,8 @@ template<typename T, typename ...Args>
 static auto _Construct_string(const Args...args) noexcept
 {
 	std::basic_string<T> buff;
-	buff.reserve((args.size() + ...));
-	(buff.append(args.begin(), args.end()), ...);
+	buff.reserve((args.size( ) + ...));
+	(buff.append(args.begin( ), args.end( )), ...);
 	return buff;
 }
 
@@ -121,13 +121,13 @@ void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::stri
 
 	const auto real_name = _Make_vtable_name(name);
 
-	const block bytes = { dos.get<uint8_t*>(), nt->OptionalHeader.SizeOfImage };
-	const auto target_block = bytes.find_block({ real_name.data(), real_name.size() });
+	const block bytes = {dos.get<uint8_t*>( ), nt->OptionalHeader.SizeOfImage};
+	const auto target_block = bytes.find_block({real_name.data( ), real_name.size( )});
 	//class descriptor
-	runtime_assert(!target_block.empty());
+	runtime_assert(!target_block.empty( ));
 
 	// get rtti type descriptor
-	basic_address<void> type_descriptor = target_block.data();
+	basic_address<void> type_descriptor = target_block.data( );
 	// we're doing - 0x8 here, because the location of the rtti typedescriptor is 0x8 bytes before the string
 	type_descriptor -= sizeof(uintptr_t) * 2;
 

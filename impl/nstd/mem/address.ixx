@@ -1,5 +1,7 @@
 module;
 
+#include <nstd/core.h>
+
 #include <concepts>
 
 export module nstd.mem.address;
@@ -17,9 +19,9 @@ concept static_convertible_to = requires(From val)
 };
 
 template<typename Out, typename In>
-Out force_cast(In in) noexcept
+Out _Force_cast(In in) noexcept
 {
-	if constexpr (reinterpret_convertible_to<In, Out>)
+	if constexpr(reinterpret_convertible_to<In, Out>)
 	{
 		return reinterpret_cast<Out>(in);
 	}
@@ -34,20 +36,45 @@ Out force_cast(In in) noexcept
 	}
 }
 
-export namespace nstd::inline mem
+template<typename T>
+decltype(auto) _Deref(T* const ptr) noexcept
 {
-	struct address_tag { };
+	if constexpr(std::is_pointer_v<T>)
+		return *ptr;
+	else
+		return *_Force_cast<std::conditional_t<std::is_class_v<T> || std::is_member_function_pointer_v<T> || std::is_function_v<T>, void, T>**>(ptr);
+}
 
-	template<class T>
-	concept have_address_tag = std::derived_from<T, address_tag>;
+template<size_t Count, typename T>
+decltype(auto) _Deref(T* const ptr) noexcept
+{
+	const auto ptr1 = _Deref(ptr);
+	if constexpr(Count == 1)
+		return ptr1;
+	else
+		return _Deref<Count - 1>(ptr1);
+}
 
+template<typename From, typename T>
+concept constructible_from = std::constructible_from<T, From>;
+
+template<typename T>
+constexpr size_t _Array_step( )noexcept
+{
+	if constexpr(std::is_void_v<T>)
+		return sizeof(uintptr_t);
+	else
+		return sizeof(T);
+}
+
+export namespace nstd::mem
+{
 	template<typename T>
-	struct basic_address : address_tag
+	struct basic_address
 	{
-		// class size is only 4 bytes on x86-32 and 8 bytes on x86-64.
-
 		using value_type = /*std::remove_const_t<T>*/T;
 		using pointer_type = std::add_pointer_t<T>;
+		using safe_out_type = std::conditional_t<std::is_class_v<T>, void, T>;
 
 		union
 		{
@@ -56,293 +83,169 @@ export namespace nstd::inline mem
 		};
 
 		basic_address( )
+			:pointer(nullptr)
+		{
+		}
+
+		basic_address(std::nullptr_t)
 			:value(0)
 		{
 		}
-		explicit basic_address(uintptr_t val)
-			: value(val)
-		{
-		}
-		basic_address(std::nullptr_t)
-			: pointer(nullptr)
-		{
-		}
-		basic_address(pointer_type ptr)
-			: pointer(ptr)
+
+		template<std::integral Q>
+		basic_address(const Q val)
+			: value(static_cast<uintptr_t>(val))
 		{
 		}
 
 		template<typename Q>
 		basic_address(Q* ptr)
-			: pointer(force_cast<pointer_type>(ptr))
+			: pointer(_Force_cast<pointer_type>(ptr))
+		{
+			static_assert(!std::is_class_v<value_type> || std::convertible_to<pointer_type, Q*>, __FUNCSIG__": unable to construct from pointer!");
+		}
+
+		template<typename Q>
+		basic_address(const basic_address<Q> other)
+			: basic_address(other.pointer)
 		{
 		}
 
+		//----
 
-		template<have_address_tag Q>
-		basic_address(Q&& other) noexcept
-			: value(other.value)
+		bool operator!( ) const noexcept
 		{
+			return this->pointer == nullptr;
 		}
 
-		template<have_address_tag Q>
-		basic_address& operator=(Q&& other) noexcept
+		explicit operator bool( ) const noexcept
 		{
-			value = other.value;
-			return *this;
+			return this->pointer != nullptr;
 		}
 
-		template<size_t Count>
-		basic_address deref( ) const noexcept
-		{
-			const basic_address addr = *force_cast<pointer_type*>(pointer);
-			if constexpr (Count == 1)
-				return addr;
-			else
-				return addr.deref<Count - 1>( );
+		//----
+
+#define ADDR_EQ_OP(_OP_)\
+		template<constructible_from<basic_address> Q>\
+		auto NSTD_CONCAT(operator,_OP_)(const Q other) const noexcept\
+		{\
+			return this->value _OP_ basic_address(other).value;\
 		}
 
-		/*[[deprecated]]
-		basic_address deref(size_t count) const noexcept
-		{
-			runtime_assert(count > 0, "Count must be larger than zero!");
+#define ADDR_MATH_OP(_OP_,_NAME_)\
+		template<constructible_from<basic_address> Q>\
+		basic_address& NSTD_CONCAT(operator,NSTD_CONCAT(_OP_,=))(const Q other) noexcept\
+		{\
+			static_assert(!std::is_class_v<value_type>, __FUNCSIG__": unable to change the class type!");\
+			this->value NSTD_CONCAT(_OP_,=) basic_address<void>(other).value;\
+			return *this;\
+		}\
+		template<constructible_from<basic_address> Q>\
+		basic_address<safe_out_type> NSTD_CONCAT(operator,_OP_)(const Q other) const noexcept\
+		{\
+			return this->value _OP_ basic_address<void>(other).value;\
+		}\
+		template<constructible_from<basic_address> Q>\
+		basic_address<safe_out_type> _NAME_(const Q other) const noexcept\
+		{\
+			return this->value _OP_ basic_address<void>(other).value;\
+		}
 
-			auto ret = *this;
-			while (count-- > 0)
-			{
-				ret = ret.deref<1>( );
-			}
-			return ret;
-		}*/
+		ADDR_EQ_OP(<=> );
+		ADDR_EQ_OP(== );
+
+		ADDR_MATH_OP(+, plus);
+		ADDR_MATH_OP(-, minus);
+		ADDR_MATH_OP(*, multiply);
+		ADDR_MATH_OP(/ , divide);
+
+		//----
+
+		auto operator[](const ptrdiff_t index) const noexcept
+		{
+			auto tmp = *this;
+			tmp.value += index * _Array_step<value_type>( );
+			return tmp.deref<1>( );
+		}
 
 		pointer_type operator->( ) const noexcept
 		{
-			return pointer;
+			return this->pointer;
 		}
+
+		//----
 
 		template <typename Q>
 			requires(std::is_reference_v<Q>)
 		operator Q( ) const noexcept
 		{
-			return *force_cast<std::remove_reference_t<Q>*>(value);
+			using ref_t = std::remove_reference_t<Q>;
+			static_assert(!std::is_class_v<ref_t> || std::convertible_to<value_type, ref_t>);
+			return *_Force_cast<ref_t*>(this->value);
 		}
 
 		template <typename Q>
 			requires(std::is_pointer_v<Q> || std::is_member_function_pointer_v<Q> || std::is_function_v<Q>)
 		operator Q( ) const noexcept
 		{
-			return force_cast<Q>(value);
+			if constexpr(std::is_pointer_v<Q>)
+				static_assert(std::constructible_from<basic_address, Q>, __FUNCSIG__": unable to convert to pointer!");
+			else
+				static_assert(!std::is_class_v<value_type>, __FUNCSIG__": unable to convert to function pointer!");
+			return _Force_cast<Q>(this->value);
 		}
 
 		template <typename Q>
 			requires(std::is_integral_v<Q>)
-		operator Q( ) const noexcept
+		/*explicit*/ operator Q( ) const noexcept
 		{
-			return static_cast<Q>(value);
+			return static_cast<Q>(this->value);
 		}
 
-		basic_address operator*( ) const noexcept
-		{
-			return deref<1>( );
-		}
+		//----
 
-#if 0
-		template <typename Q>
-		auto cast( ) const
+		template<size_t Count>
+		auto deref( ) const noexcept
 		{
-			if constexpr (reinterpret_convertible_to<uintptr_t, Q>)
-			{
-				return reinterpret_cast<Q>(value);
-			}
-			else if constexpr (std::is_member_pointer_v<Q>)
-			{
-				Q ret;
-				reinterpret_cast<pointer&>(ret) = pointer;
-				return ret;
-			}
-		}
-#endif
-
-#if 0
-		template <typename Q>
-		auto ptr( ) const
-		{
-			//return cast<Q*>( );
-			//basic_address<Q> tmp = value;
-			//return tmp.pointer;
-			return pointer.get<Q>( );
-		}
-
-		/*ptr_auto_cast<uintptr_t> ptr( ) const
-		{
-			return value;
-		}*/
-
-		template <typename Q>
-		auto& ref( ) const
-		{
-			return *ptr<Q>( );
-		}
-
-		ref_auto_cast<uintptr_t> ref( ) const
-		{
-			return value;
-		}
-#endif
-
-		bool operator!( ) const noexcept
-		{
-			return pointer == nullptr;
-		}
-
-		explicit operator bool( ) const noexcept
-		{
-			return pointer != nullptr;
-		}
-
-		//-----
-
-		template<typename Q>
-		[[deprecated]] basic_address<Q> as( ) const noexcept
-		{
-			return value;
+			const auto ptr = _Deref<Count>(this->pointer);
+			return basic_address<decltype(ptr)>(ptr);
 		}
 
 		template<typename Q>
 		/*[[deprecated]]*/ Q get( ) const noexcept
 		{
-			return force_cast<Q>(value);
+			return _Force_cast<Q>(value);
 		}
 
-		basic_address operator[](ptrdiff_t index) const noexcept;
+		//----
 
-		basic_address<void> jmp(ptrdiff_t offset = 0x1) const noexcept;
-		basic_address<void> plus(ptrdiff_t offset) const noexcept;
-		basic_address<void> minus(ptrdiff_t offset) const noexcept;
-		basic_address<void> multiply(ptrdiff_t value) const noexcept;
-		basic_address<void> divide(ptrdiff_t value) const noexcept;
+		basic_address<safe_out_type> jmp(const ptrdiff_t offset) const noexcept
+		{
+			// Example:
+			// E9 ? ? ? ?
+			// The offset has to skip the E9 (JMP) instruction
+			// Then deref the address coming after that to get to the function
+			// Since the relative JMP is based on the next instruction after the basic_address it has to be skipped
+
+			// Base address is the address that follows JMP ( 0xE9 ) instruction
+			basic_address<void> base = this->value + offset;
+
+			// Store the displacement
+			// Note: Displacement address can be signed
+			int32_t displacement = base.deref<1>( );
+
+			// The JMP is based on the instruction after the basic_address
+			// so the basic_address size has to be added
+			// Note: This is always 4 bytes, regardless of architecture
+			base += sizeof(uint32_t);
+
+			// Now finally do the JMP by adding the function basic_address
+			base += displacement;
+
+			return base;
+		}
 	};
 
 	template<typename T>
-	basic_address(T*)->basic_address</*std::remove_cv_t<T>*/T>;
-
-	using address = basic_address<void>;
-
-	//---
-
-	template<typename T, typename Addr>
-	concept address_constructible = std::constructible_from<Addr, T>;
-
-	template<typename T>
-	auto& _Unwrap_address_value(T& obj)
-	{
-		if constexpr (have_address_tag<std::remove_cv_t<T>>)
-			return obj.value;
-		else
-			return reinterpret_cast<basic_address<void>&>(obj).value;
-	}
-
-#define NSTD_ADDRESS_OPERATOR_HEAD\
-	template<typename L, typename R>\
-	requires(have_address_tag<L> && address_constructible<R, L> || have_address_tag<R> && address_constructible<L, R>)
-
-#define NSTD_ADDRESS_OPERATOR_MATH(_OP_)\
-	NSTD_ADDRESS_OPERATOR_HEAD\
-	L& operator##_OP_##=(L& left, R right) noexcept\
-	{\
-		_Unwrap_address_value(left) _OP_##= _Unwrap_address_value(right);\
-		return left;\
-	}\
-	NSTD_ADDRESS_OPERATOR_HEAD\
-	L operator##_OP_##(L left, R right) noexcept\
-	{\
-		_Unwrap_address_value(left) _OP_##= _Unwrap_address_value(right);\
-		return left;\
-	}
-
-#define NSTD_ADDRESS_OPERATOR_EQUALITY(_OP_)\
-	NSTD_ADDRESS_OPERATOR_HEAD\
-	bool operator##_OP_##(L left, R right) noexcept\
-	{\
-		return _Unwrap_address_value(left) _OP_ _Unwrap_address_value(right);\
-	}
-
-	NSTD_ADDRESS_OPERATOR_MATH(+);
-	NSTD_ADDRESS_OPERATOR_MATH(-);
-	NSTD_ADDRESS_OPERATOR_MATH(*);
-	NSTD_ADDRESS_OPERATOR_MATH(/ );
-	NSTD_ADDRESS_OPERATOR_EQUALITY(< );
-	NSTD_ADDRESS_OPERATOR_EQUALITY(<= );
-	NSTD_ADDRESS_OPERATOR_EQUALITY(> );
-	NSTD_ADDRESS_OPERATOR_EQUALITY(>= );
-	NSTD_ADDRESS_OPERATOR_EQUALITY(== );
-
-	template<typename T>
-	basic_address<T> basic_address<T>::operator[](ptrdiff_t index) const noexcept
-	{
-		constexpr auto step = []
-		{
-			if constexpr (std::is_void_v<T>)
-				return sizeof(uintptr_t);
-			else
-				return sizeof(T);
-		}();
-
-		const auto element = *this + index * step;
-		return *element;
-	}
-
-
-	template<typename T>
-	basic_address<void> basic_address<T>::jmp(ptrdiff_t offset) const noexcept
-	{
-		//same as rel 32
-
-		// Example:
-		// E9 ? ? ? ?
-		// The offset has to skip the E9 (JMP) instruction
-		// Then deref the address coming after that to get to the function
-		// Since the relative JMP is based on the next instruction after the basic_address it has to be skipped
-
-		// Base address is the address that follows JMP ( 0xE9 ) instruction
-		basic_address<void> base = *this + offset;
-
-		// Store the displacement
-		// Note: Displacement address can be signed
-		int32_t displacement = *base;
-
-		// The JMP is based on the instruction after the basic_address
-		// so the basic_address size has to be added
-		// Note: This is always 4 bytes, regardless of architecture
-		base += sizeof(uint32_t);
-
-		// Now finally do the JMP by adding the function basic_address
-		base += displacement;
-
-		return base;
-	}
-
-	template<typename T>
-	basic_address<void> basic_address<T>::plus(ptrdiff_t offset) const noexcept
-	{
-		return *this + offset;
-	}
-
-	template<typename T>
-	basic_address<void> basic_address<T>::minus(ptrdiff_t offset) const noexcept
-	{
-		return *this - offset;
-	}
-
-	template<typename T>
-	basic_address<void> basic_address<T>::multiply(ptrdiff_t val) const noexcept
-	{
-		return *this * val;
-	}
-
-	template<typename T>
-	basic_address<void> basic_address<T>::divide(ptrdiff_t val) const noexcept
-	{
-		return *this / val;
-	}
+	basic_address(T*)->basic_address<T>;
 }
