@@ -80,6 +80,11 @@ export namespace nstd
 			return _Get_ptr(source_->data( )[index_]);
 		}
 
+		bool _Valid( ) const noexcept
+		{
+			return source_ && index_ < source_->size( );
+		}
+
 		auto operator->( ) const noexcept
 		{
 			return _Unwrapped( );
@@ -92,12 +97,12 @@ export namespace nstd
 
 		bool operator!( ) const noexcept
 		{
-			return source_ == nullptr;
+			return !_Valid( );
 		}
 
 		explicit operator bool( ) const noexcept
 		{
-			return source_ != nullptr;
+			return _Valid( );
 		}
 
 		bool operator==(const indexed_iterator other) const noexcept
