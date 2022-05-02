@@ -13,7 +13,7 @@
 #endif
 
 #ifdef _DEBUG
-#include "runtime_assert_impl.h"
+#include <nstd/runtime_assert_impl.h>
 #undef runtime_assert_noexcept
 #define runtime_assert runtime_assert_call
 #define runtime_assert_add_handler runtime_assert_add_handler_impl

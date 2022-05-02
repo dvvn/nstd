@@ -1,50 +1,53 @@
-module;
+#pragma once
 
-#include "comptr_includes.h"
+#include <wrl/client.h>
 
-export module nstd.winapi.comptr;
+#include <concepts>
 
-export namespace nstd::winapi
+namespace nstd::winapi
 {
-	template <typename T, typename Base = Microsoft::WRL::ComPtr<T>>
-	struct comptr : Base
+	template <typename T>
+	class comptr : public Microsoft::WRL::ComPtr<T>
 	{
-		using Base::Base;
-		using Base::operator=;
+		using _Base = Microsoft::WRL::ComPtr<T>;
+
+	public:
+		using _Base::_Base;
+		using _Base::operator=;
 
 		//it calls unwanted addref method
 		comptr(T* ptr) = delete;
 		comptr& operator=(T* ptr) = delete;
-		
+
 		template <typename T1>
 			requires(std::derived_from<T, T1>)
 		operator T1* () const noexcept
 		{
-			return Base::Get( );
+			return _Base::Get( );
 		}
 
 		template <typename T1>
 			requires(std::derived_from<T, T1>)
 		operator T1** () noexcept
 		{
-			return Base::ReleaseAndGetAddressOf( );
+			return _Base::ReleaseAndGetAddressOf( );
 		}
 
 		template <typename T1>
 			requires(std::derived_from<T, T1>)
 		operator T1* const* () const noexcept
 		{
-			return Base::GetAddressOf( );
+			return _Base::GetAddressOf( );
 		}
 
 		explicit operator bool( ) const
 		{
-			return !!Base::Get( );
+			return !!_Base::Get( );
 		}
 
 		bool operator!( ) const
 		{
-			return !Base::Get( );
+			return !_Base::Get( );
 		}
 	};
 }

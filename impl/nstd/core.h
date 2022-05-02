@@ -2,14 +2,14 @@
 
 #ifndef _CONCAT
 #define NSTD_CONCATX(x, y) x##y
-#define NSTD_CONCAT(x, y)  NSTD_CONCATX(x, y)
+#define NSTD_CONCAT(x, y) NSTD_CONCATX(x, y)
 #else
 #define NSTD_CONCAT _CONCAT
 #endif
 
 #ifndef _STRINGIZE
-#define NSTD_STRINGIZEX(x)  #x
-#define NSTD_STRINGIZE(x)   NSTD_STRINGIZEX(x)
+#define NSTD_STRINGIZEX(x) #x
+#define NSTD_STRINGIZE(x) NSTD_STRINGIZEX(x)
 #else
 #define NSTD_STRINGIZE _STRINGIZE
 #endif
