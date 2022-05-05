@@ -7,7 +7,7 @@ export module nstd.text.convert:unicode;
 export namespace nstd::text
 {
 	template<typename To>
-	inline constexpr void* convert_to = nullptr;
+	constexpr void* convert_to = nullptr;
 }
 
 template<typename To>
@@ -28,7 +28,7 @@ struct converter<_TO_>\
 	CVT_##_TO_;\
 };\
 template<>\
-inline constexpr converter<_TO_> nstd::text::convert_to<_TO_>;
+constexpr converter<_TO_> nstd::text::convert_to<_TO_>;
 
 #ifdef __cpp_lib_char8_t
 CVT(char8_t);
