@@ -1,15 +1,10 @@
 #pragma once
 
+#include <nstd/runtime_assert_core.h>
 #include <nstd/core.h>
 
 #include <memory>
 #include <source_location>
-
-#ifdef _DEBUG
-#define runtime_assert_noexcept
-#else
-#define runtime_assert_noexcept noexcept
-#endif
 
 namespace nstd
 {

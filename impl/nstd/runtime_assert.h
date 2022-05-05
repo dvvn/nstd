@@ -14,11 +14,11 @@
 
 #ifdef _DEBUG
 #include <nstd/runtime_assert_impl.h>
-#undef runtime_assert_noexcept
 #define runtime_assert runtime_assert_call
 #define runtime_assert_add_handler runtime_assert_add_handler_impl
 #define runtime_assert_remove_handler runtime_assert_remove_handler_impl
 #else
+#include <nstd/runtime_assert_core.h>
 #define runtime_assert(...) (void)0
 #define runtime_assert_add_handler(...) (void)0
 #define runtime_assert_remove_handler(...) (void)0
