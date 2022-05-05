@@ -105,6 +105,13 @@ void recreate(T& ref) noexcept
 	std::construct_at(ptr);
 }
 
+template<size_t Instance>
+auto _Init_helper(bool& init_tag)
+{
+	init_tag = true;
+	return std::in_place_index<Instance>;
+}
+
 export namespace nstd
 {
 	template <typename T>
@@ -114,8 +121,9 @@ export namespace nstd
 		using reference = value_type&;
 		using pointer = value_type*;
 
-		one_instance_getter( )
-			:item_(_Construct( ))
+		template<size_t Instance>
+		one_instance_getter(const std::in_place_index_t<Instance>)
+			:item_( )
 		{
 		}
 
@@ -131,10 +139,6 @@ export namespace nstd
 
 	private:
 		value_type item_;
-		value_type _Construct( ) const noexcept
-		{
-			return {};
-		}
 	};
 
 	template <typename T>
@@ -147,10 +151,8 @@ export namespace nstd
 		using real_pointer = value_type*;
 		using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
 
-		one_instance_getter( )
-			:item_(_Construct( ))
-		{
-		}
+		template<size_t Instance>
+		one_instance_getter(const std::in_place_index_t<Instance>);
 
 		reference ref( ) const noexcept
 		{
@@ -164,7 +166,6 @@ export namespace nstd
 
 	private:
 		element_type item_;
-		element_type _Construct( ) const noexcept;
 	};
 
 	template <typename T, typename D>
@@ -179,8 +180,9 @@ export namespace nstd
 		using pointer = value_type::pointer;
 		using reference = std::remove_pointer_t<pointer>;
 
-		one_instance_getter( )
-			:item_(_Construct( ))
+		template<size_t Instance>
+		one_instance_getter(const std::in_place_index_t<Instance>)
+			:item_(std::make_unique<T>( ))
 		{
 		}
 
@@ -196,10 +198,6 @@ export namespace nstd
 
 	private:
 		value_type item_;
-		value_type _Construct( ) const noexcept
-		{
-			return std::make_unique<T>( );
-		}
 	};
 
 	template <typename T, size_t Instance = 0>
@@ -211,7 +209,7 @@ export namespace nstd
 	private:
 		static auto& _Get( ) noexcept
 		{
-			static auto g = _Init( );
+			static getter_type g = _Init_helper<Instance>(_Initialized( ));
 			return g;
 		}
 
@@ -219,12 +217,6 @@ export namespace nstd
 		{
 			static bool val = false;
 			return val;
-		}
-
-		static getter_type _Init( ) noexcept
-		{
-			_Initialized( ) = true;
-			return {};
 		}
 
 	public:
@@ -249,47 +241,44 @@ export namespace nstd
 			return _Get( ).ptr( );
 		}
 
+		[[deprecated]]
 		static void _Recreate( ) noexcept
 		{
 			recreate(_Get( ));
 		}
 	};
 
-	template <typename T, size_t Instance = 0>
-	class instance_of_t final : public one_instance<T, Instance>
+	template <typename T, size_t Instance = 0, class Base = one_instance<std::conditional_t<std::is_abstract_v<T>, T*, T>, Instance>>
+	class instance_of_t
 	{
-		using _Base = one_instance<T, Instance>;
-		using _Base::get;
-		using _Base::get_ptr;
-
 	public:
-		using _Base::getter_type;
-
 		/*constexpr instance_of_t( ) = default;
-		constexpr instance_of_t(const instance_of_t & other)
+		constexpr instance_of_t(const instance_of_t& other) = delete;
+		constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
+		constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
+		constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
+
+		bool initialized( ) const noexcept
 		{
+			return Base::initialized( );
 		}
-		constexpr instance_of_t& operator=(const instance_of_t & other)
-		{
-		}*/
 
 		auto& operator*( ) const noexcept
 		{
-			return _Base::get( );
+			return Base::get( );
 		}
 
 		auto operator->( ) const noexcept
 		{
-			return _Base::get_ptr( );
+			return Base::get_ptr( );
 		}
 
 		auto operator&( ) const noexcept
 		{
-			return _Base::get_ptr( );
+			return Base::get_ptr( );
 		}
 	};
 
-	export
-		template <typename T, size_t Instance = 0>
+	template <typename T, size_t Instance = 0>
 	constexpr instance_of_t<T, Instance> instance_of;
 }
