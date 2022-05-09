@@ -1,32 +1,34 @@
 module;
 
-#include <nstd/mem/block_includes.h>
-#ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
+#if 0
 #include <nstd/runtime_assert.h>
 #endif
 #include <Windows.h>
+
 #include <optional>
+#include <memory>
+#include <string_view>
 
 module nstd.mem.protect;
-#ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
+#if 0
 import nstd.mem.block;
 #endif
 
 using namespace nstd::mem;
 
-struct local_free_deleter
+struct local_free
 {
-	void operator()(LPSTR ptr)const
+	void operator()(LPSTR ptr) const noexcept
 	{
 		LocalFree(ptr);
 	}
 };
 
-using local_free_buffer_base = std::unique_ptr<char, local_free_deleter>;
-struct local_free_buffer :local_free_buffer_base
+using local_buffer_base = std::unique_ptr<char, local_free>;
+struct local_buffer :local_buffer_base
 {
-	local_free_buffer( ) = default;
-	local_free_buffer(LPSTR msg) :local_free_buffer_base(msg)
+	local_buffer( ) = default;
+	local_buffer(LPSTR msg) :local_buffer_base(msg)
 	{
 	}
 };
@@ -34,7 +36,7 @@ struct local_free_buffer :local_free_buffer_base
 class last_error_string
 {
 	DWORD id;
-	local_free_buffer buffer;
+	local_buffer buffer;
 	size_t msg_size;
 
 public:
@@ -53,7 +55,7 @@ public:
 		buffer = msg;
 	}
 
-	std::string_view view( )const
+	std::string_view view( ) const noexcept
 	{
 		return {buffer.get( ),msg_size};
 	}
@@ -61,8 +63,7 @@ public:
 
 static DWORD _Set_flags(const LPVOID addr, const SIZE_T size, const DWORD new_flags)
 {
-#ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
-	
+#if 0	
 	const nstd::mem::block block = {static_cast<uint8_t*>(addr),size};
 	const auto old_flags = block.get_flags( );
 	runtime_assert(old_flags != 0);

@@ -1,6 +1,6 @@
 module;
 
-#include <nstd/type_traits.h>
+#include <nstd/core_utils.h>
 #include <memory>
 
 export module nstd.one_instance;
@@ -15,7 +15,7 @@ auto deref_ptr(T ptr) noexcept
 }
 
 template<typename T>
-bool nullptr_check(T ptr) noexcept
+bool _Nullptr_check(T ptr) noexcept
 {
 	if(ptr == nullptr)
 		return true;
@@ -23,7 +23,7 @@ bool nullptr_check(T ptr) noexcept
 	if constexpr(!std::is_pointer_v<std::remove_pointer_t<T>>)
 		return false;
 	else
-		return nullptr_check(*ptr);
+		return _Nullptr_check(*ptr);
 }
 
 template <typename T>
@@ -54,9 +54,9 @@ class pointer_wrapper<T**>
 {
 	T** ptr_;
 
-	bool _Is_null( ) const noexcept
+	bool is_null( ) const noexcept
 	{
-		return nullptr_check(ptr_);
+		return _Nullptr_check(ptr_);
 	}
 
 public:
@@ -78,32 +78,24 @@ public:
 
 	bool operator==(nullptr_t) const noexcept
 	{
-		return _Is_null( );
+		return is_null( );
 	}
 
 	bool operator!=(nullptr_t) const noexcept
 	{
-		return !_Is_null( );
+		return !is_null( );
 	}
 
 	operator bool( ) const noexcept
 	{
-		return !_Is_null( );
+		return !is_null( );
 	}
 
 	bool operator!( ) const noexcept
 	{
-		return _Is_null( );
+		return is_null( );
 	}
 };
-
-template <typename T>
-void recreate(T& ref) noexcept
-{
-	auto ptr = std::addressof(ref);
-	std::destroy_at(ptr);
-	std::construct_at(ptr);
-}
 
 template<size_t Instance>
 auto _Init_helper(bool& init_tag)
@@ -242,9 +234,13 @@ export namespace nstd
 		}
 
 		[[deprecated]]
-		static void _Recreate( ) noexcept
+		static void recreate( ) noexcept
 		{
-			recreate(_Get( ));
+			_Initialized( ) = false;
+			const auto ptr = std::addressof(_Get( ));
+			std::destroy_at(ptr);
+			std::construct_at(ptr);
+			_Initialized( ) = true;
 		}
 	};
 

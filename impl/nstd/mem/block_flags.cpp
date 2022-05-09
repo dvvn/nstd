@@ -1,7 +1,8 @@
 module;
 
-#include "block_includes.h"
 #include <windows.h>
+
+#include <span>
 #include <stdexcept>
 
 module nstd.mem.block;
@@ -14,9 +15,18 @@ class MEMORY_BASIC_INFORMATION_UPDATER : protected MEMORY_BASIC_INFORMATION
 	static constexpr SIZE_T class_size = sizeof(MEMORY_BASIC_INFORMATION);
 
 public:
-	DWORD flags( ) const noexcept { return reinterpret_cast<const DWORD&>(Protect); }
-	SIZE_T size( ) const noexcept { return this->RegionSize; }
-	DWORD state( ) const noexcept { return this->State; }
+	DWORD flags( ) const noexcept
+	{
+		return reinterpret_cast<const DWORD&>(Protect);
+	}
+	SIZE_T size( ) const noexcept
+	{
+		return this->RegionSize;
+	}
+	DWORD state( ) const noexcept
+	{
+		return this->State;
+	}
 
 	bool valid;
 
@@ -31,23 +41,21 @@ public:
 	}
 };
 
-static constexpr DWORD _Page_read_flags = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE;
-static constexpr DWORD _Page_write_flags = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | PAGE_WRITECOMBINE;
-static constexpr DWORD _Page_execute_flags = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+
 
 template <typename Fn>
 static bool _Flags_iterator(std::span<uint8_t> mblock, Fn func = {}) noexcept
 {
-	for (;;)
+	for(;;)
 	{
 		const MEMORY_BASIC_INFORMATION_UPDATER info = mblock.data( );
-		if (!info.valid)
+		if(!info.valid)
 			return false;
 		//memory isn't commit!
-		if (info.state( ) != MEM_COMMIT)
+		if(info.state( ) != MEM_COMMIT)
 			return false;
 		using ret_t = std::invoke_result_t<Fn, DWORD>;
-		if constexpr (std::is_void_v<ret_t>)
+		if constexpr(std::is_void_v<ret_t>)
 		{
 			std::invoke(func, info.flags( ));
 		}
@@ -55,11 +63,11 @@ static bool _Flags_iterator(std::span<uint8_t> mblock, Fn func = {}) noexcept
 		{
 			static_assert(std::same_as<bool, ret_t>);
 			//flags check isn't passed!
-			if (!std::invoke(func, info.flags( )))
+			if(!std::invoke(func, info.flags( )))
 				return false;
 		}
 		//found good result
-		if (info.size( ) >= mblock.size( ))
+		if(info.size( ) >= mblock.size( ))
 			return true;
 		//check next block
 		mblock = mblock.subspan(info.size( ));
@@ -82,7 +90,6 @@ static bool _Dont_have_flags(const block* mblock, DWORD flags) noexcept
 	});
 }
 
-#ifdef NSTD_MEM_BLOCK_CHECK_CUSTOM_FLAGS
 bool block::have_flags(DWORD flags) const noexcept
 {
 	return _Have_flags(this, flags);
@@ -102,7 +109,10 @@ DWORD block::get_flags( ) const noexcept
 	});
 	return result ? flags : 0;
 }
-#endif
+
+constexpr DWORD _Page_read_flags = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE;
+constexpr DWORD _Page_write_flags = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | PAGE_WRITECOMBINE;
+constexpr DWORD _Page_execute_flags = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
 
 bool block::readable( ) const noexcept
 {
@@ -128,11 +138,11 @@ bool block::code_padding( ) const noexcept
 {
 	//todo: move outside
 	const auto first = this->front( );
-	if (first != 0x00 && first != 0x90 && first != 0xCC)
+	if(first != 0x00 && first != 0x90 && first != 0xCC)
 		return false;
-	for (const auto val : std::span(this->begin( ) + 1, this->end( )))
+	for(const auto val : std::span(this->begin( ) + 1, this->end( )))
 	{
-		if (val != first)
+		if(val != first)
 			return false;
 	}
 	return true;

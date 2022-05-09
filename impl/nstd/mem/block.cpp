@@ -1,10 +1,9 @@
 module;
 
-#include <nstd/mem/block_includes.h>
-
 #include <nstd/runtime_assert.h>
 #include <nstd/ranges.h>
 
+#include <span>
 #include <algorithm>
 
 module nstd.mem.block;
@@ -13,8 +12,8 @@ import nstd.mem.protect;
 using namespace nstd;
 using namespace nstd::mem;
 
-block::block(const block_base span)
-	: block_base(span)
+block::block(const _Base span)
+	: _Base(span)
 {
 }
 

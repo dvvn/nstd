@@ -1,6 +1,6 @@
 module;
 
-#include <nstd/winapi/msg_invoke.h>
+#include <nstd/winapi/internal/msg_invoke.h>
 
 #include <windows.h>
 #include <winternl.h>

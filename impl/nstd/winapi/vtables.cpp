@@ -10,8 +10,8 @@ module;
 
 module nstd.winapi.vtables;
 import nstd.winapi.sections;
+import nstd.winapi.helpers;
 import nstd.mem.block;
-import nstd.mem.address;
 import nstd.mem.signature;
 
 using namespace nstd;
@@ -96,33 +96,27 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
 	return nullptr;
 }
 
-template<typename T, typename ...Args>
-static auto _Construct_string(const Args...args) noexcept
-{
-	std::basic_string<T> buff;
-	buff.reserve((args.size( ) + ...));
-	(buff.append(args.begin( ), args.end( )), ...);
-	return buff;
-}
-
 static auto _Make_vtable_name(const std::string_view name) noexcept
 {
 	constexpr std::string_view prefix = ".?AV";
 	constexpr std::string_view suffix = "@@";
 
-	return _Construct_string<uint8_t>(prefix, name, suffix);
+	std::basic_string<uint8_t> buff;
+	buff.reserve(prefix.size( ) + name.size( ) + suffix.size( ));
+	buff.append(prefix.begin( ), prefix.end( ));
+	buff.append(name.begin( ), name.end( ));
+	buff.append(suffix.begin( ), suffix.end( ));
+	return buff;
 }
 
 void* winapi::find_vtable(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
 {
-	//base address
-	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
-	const basic_address<IMAGE_NT_HEADERS> nt = dos + dos->e_lfanew;
+	const auto [dos, nt] = dos_nt(ldr_entry);
 
 	const auto real_name = _Make_vtable_name(name);
 
 	const block bytes = {dos.get<uint8_t*>( ), nt->OptionalHeader.SizeOfImage};
-	const auto target_block = bytes.find_block({real_name.data( ), real_name.size( )});
+	const block target_block = bytes.find_block({real_name.data( ), real_name.size( )});
 	//class descriptor
 	runtime_assert(!target_block.empty( ));
 

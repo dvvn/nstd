@@ -8,17 +8,13 @@ module;
 #include <string_view>
 
 module nstd.winapi.sections;
-import nstd.mem.address;
+import nstd.winapi.helpers;
 
 using namespace nstd;
 
 IMAGE_SECTION_HEADER* winapi::find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
 {
-	using mem::basic_address;
-
-	//base address
-	const basic_address<IMAGE_DOS_HEADER> dos = ldr_entry->DllBase;
-	const basic_address<IMAGE_NT_HEADERS> nt = dos + dos->e_lfanew;
+	const auto [dos, nt] = dos_nt(ldr_entry);
 
 	const auto number_of_sections = nt->FileHeader.NumberOfSections;
 	const auto section_header = IMAGE_FIRST_SECTION(nt);

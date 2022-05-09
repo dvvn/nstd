@@ -1,8 +1,6 @@
 module;
 
-#include <nstd/core.h>
-
-#include <concepts>
+#include <nstd/core_utils.h>
 
 export module nstd.mem.address;
 

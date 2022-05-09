@@ -1,14 +1,18 @@
 module;
 
-#include <nstd/text/provide_string.h>
-
 #include <string>
 #include <variant>
 
 export module nstd.text.string_or_view;
 
 template<typename T>
-inline constexpr size_t small_string_size = std::basic_string<T>( ).capacity( ) - 1;
+constexpr size_t small_string_size =
+#ifdef __cpp_lib_constexpr_string
+std::basic_string<T>( ).capacity( )
+#else
+sizeof(std::basic_string<T>) - sizeof(size_t)
+#endif
+- 1;
 
 template<typename T>
 class basic_string_or_view
@@ -43,11 +47,11 @@ public:
 	}
 	operator string_type( )&&
 	{
-		return std::visit([]<class S>(S & ref)-> string_type
+		return std::visit([ ]<class S>(S & ref)-> string_type
 		{
-			if constexpr (std::is_same_v<S, string_type>)
+			if constexpr(std::is_same_v<S, string_type>)
 			{
-				if (ref.size( ) > small_string_size<T>)
+				if(ref.size( ) > small_string_size<T>)
 					return std::move(ref);
 
 				//if size < small_string_size no memory allocated
@@ -58,7 +62,7 @@ public:
 	}
 	operator view_type( ) const
 	{
-		return std::visit([]<class S>(const S & ref)-> view_type
+		return std::visit([ ]<class S>(const S & ref)-> view_type
 		{
 			return {ref.data( ), ref.size( )};
 		}, str_);
@@ -68,10 +72,16 @@ private:
 	std::variant<string_type, view_type> str_;
 };
 
-#define NSTD_STRING_DECLARE_IMPL(_TYPE_,_PREFIX_,_POSTFIX_)\
-	using _PREFIX_##string_or_view##_POSTFIX_ = basic_string_or_view<_TYPE_>;
+#define SOV_DECLARE(_TYPE_,_PREFIX_)\
+	using _PREFIX_##string_or_view = basic_string_or_view<_TYPE_>;
 
-export namespace nstd::inline text
+export namespace nstd::text
 {
-	NSTD_STRING_DECLARE;
+#ifdef __cpp_lib_char8_t
+	SOV_DECLARE(char8_t, u8);
+#endif
+	SOV_DECLARE(char, );
+	SOV_DECLARE(char16_t, w);
+	SOV_DECLARE(wchar_t, u16);
+	SOV_DECLARE(wchar_t, u32);
 }

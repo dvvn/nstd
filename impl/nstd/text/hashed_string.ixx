@@ -1,13 +1,9 @@
 module;
 
-#include <nstd/text/provide_string.h>
-#include <nstd/type_traits.h>
+#include <nstd/core_utils.h>
 #include <nstd/runtime_assert.h>
-//#include <nstd/type_name.h>
 
 #include <string>
-//#include <functional>
-//#include <optional>
 
 #ifdef _DEBUG
 #include <stdexcept>
@@ -17,12 +13,12 @@ export module nstd.text.hashed_string;
 import nstd.lazy_invoke;
 import nstd.type_name;
 
-#define NSTD_COMMA ,
+#define COMMA ,
 
-#define NSTD_HASHED_STRING_CALL_ORIGINAL(_NAME_)\
+#define CALL_ORIGINAL(_NAME_)\
 	Base::_NAME_(std::forward<Args>(args)...)
 
-#define NSTD_HASHED_STRING_WRAP(_RET_,_NAME_,_PROXY_,...) \
+#define WRAP(_RET_,_NAME_,_PROXY_,...) \
 	private:\
 		using Base::_NAME_;\
 	public:\
@@ -30,20 +26,20 @@ import nstd.type_name;
 		_RET_ _NAME_(Args&&...args)\
 		{\
 			const nstd::lazy_invoke lazy = [=]{this->_Calc_hash();};\
-			_PROXY_ NSTD_HASHED_STRING_CALL_ORIGINAL(_NAME_);\
+			_PROXY_ CALL_ORIGINAL(_NAME_);\
 			__VA_ARGS__;\
 		}
 
-#define NSTD_HASHED_STRING_WRAP_VOID(_NAME_)\
-	NSTD_HASHED_STRING_WRAP(void,_NAME_,)
+#define WRAP_VOID(_NAME_)\
+	WRAP(void,_NAME_,)
 
-#define NSTD_HASHED_STRING_WRAP_THIS(_NAME_)\
-	NSTD_HASHED_STRING_WRAP(auto&,_NAME_,,return *this)
+#define WRAP_THIS(_NAME_)\
+	WRAP(auto&,_NAME_,,return *this)
 
 template<class Base, typename T, typename Q>
-decltype(auto) this_or_iterator(T* thisptr, const Q& proxy_result)
+decltype(auto) this_or_iterator(T* thisptr, const Q& proxy_result) noexcept
 {
-	if constexpr (std::same_as<Q, Base>)
+	if constexpr(std::same_as<Q, Base>)
 	{
 		//return *this instead of *Base
 		return *thisptr;
@@ -55,8 +51,8 @@ decltype(auto) this_or_iterator(T* thisptr, const Q& proxy_result)
 	}
 }
 
-#define NSTD_HASHED_STRING_WRAP_THIS_OR_ITERATOR(_NAME_)\
-	NSTD_HASHED_STRING_WRAP(decltype(auto), _NAME_, decltype(auto) result =, return this_or_iterator<Base>(this NSTD_COMMA result))
+#define WRAP_THIS_OR_ITERATOR(_NAME_)\
+	WRAP(decltype(auto), _NAME_, decltype(auto) result =, return this_or_iterator<Base>(this COMMA result))
 
 template<class Base, template<typename> class Hasher = std::hash>
 struct hashed_string_wrapper : Base
@@ -67,10 +63,11 @@ struct hashed_string_wrapper : Base
 	static_assert(std::is_empty_v<hash_func_type>, "Hasher class must be empty");
 
 private:
-	hash_type hash_;
-	[[no_unique_address]] hash_func_type hasher_;
+	[[no_unique_address]]
+	hash_func_type hasher_;
+	hash_type hash_;	
 
-	constexpr hash_type _Get_hash( ) const
+	constexpr hash_type _Get_hash( ) const noexcept
 	{
 		return std::invoke(hasher_, *static_cast<const Base*>(this));
 	}
@@ -78,18 +75,24 @@ private:
 	constexpr void _Validate_hash(hash_type hash) const
 	{
 #ifdef _DEBUG
-		if (_Get_hash( ) == hash)
+		if(_Get_hash( ) == hash)
 			return;
-		if (std::is_constant_evaluated( ))
+		if(std::is_constant_evaluated( ))
 			throw std::logic_error("Incorrect hash passed");
 		else
 			runtime_assert("Incorrect hash passed");
 #endif
 	}
 
-	constexpr void _Calc_hash( )
+	constexpr void _Calc_hash( ) noexcept
 	{
 		hash_ = _Get_hash( );
+	}
+
+	constexpr void _Write_hash(hash_type hash) runtime_assert_noexcept
+	{
+		_Validate_hash(hash);
+		hash_ = hash;
 	}
 
 	template<class Base2, template<typename> class Hasher2>
@@ -97,7 +100,7 @@ private:
 	{
 		static_assert(std::constructible_from<Base, Base2>);
 
-		if constexpr (!same_template<Hasher, Hasher2>( ))
+		if constexpr(!same_template<Hasher, Hasher2>( ))
 		{
 			_Calc_hash( );
 		}
@@ -106,20 +109,14 @@ private:
 			using val1_t = decltype(std::declval<Base>( )[0]);
 			using val2_t = decltype(std::declval<Base2>( )[0]);
 
-			if constexpr (std::same_as<val1_t, val2_t>)
+			if constexpr(std::same_as<val1_t, val2_t>)
 				hash_ = holder.hash_;
 			else
 				_Write_hash(holder.hash_);
 		}
 	}
 
-	constexpr void _Write_hash(hash_type hash)
-	{
-		_Validate_hash(hash);
-		hash_ = hash;
-	}
 public:
-
 	constexpr hashed_string_wrapper( )
 	{
 		_Calc_hash( );
@@ -165,9 +162,14 @@ public:
 		_Write_hash(hash);
 	}
 
-	constexpr hash_func_type hash_function( ) const { return hasher_; }
-	constexpr hash_type hash( ) const { return hash_; }
-
+	constexpr hash_func_type hash_function( ) const
+	{
+		return hasher_;
+	}
+	constexpr hash_type hash( ) const
+	{
+		return hash_;
+	}
 };
 
 template<typename Chr
@@ -178,10 +180,10 @@ template<typename Chr
 {
 	using Base::Base;
 
-	NSTD_HASHED_STRING_WRAP_THIS(substr);
+	WRAP_THIS(substr);
 
-	NSTD_HASHED_STRING_WRAP_VOID(remove_prefix);
-	NSTD_HASHED_STRING_WRAP_VOID(remove_suffix);
+	WRAP_VOID(remove_prefix);
+	WRAP_VOID(remove_suffix);
 
 private:
 #if __cplusplus > 201703L
@@ -198,38 +200,48 @@ template<typename Chr
 {
 	using Base::Base;
 
-	NSTD_HASHED_STRING_WRAP_THIS(substr);
+	WRAP_THIS(substr);
 
-	NSTD_HASHED_STRING_WRAP_THIS(assign);
-	NSTD_HASHED_STRING_WRAP_VOID(clear);
-	NSTD_HASHED_STRING_WRAP_THIS_OR_ITERATOR(insert);
-	NSTD_HASHED_STRING_WRAP_THIS_OR_ITERATOR(erase);
-	NSTD_HASHED_STRING_WRAP_VOID(push_back);
-	NSTD_HASHED_STRING_WRAP_VOID(pop_back);
-	NSTD_HASHED_STRING_WRAP_THIS(append);
-	NSTD_HASHED_STRING_WRAP_THIS(operator+=);
-	NSTD_HASHED_STRING_WRAP_THIS(replace);
-	NSTD_HASHED_STRING_WRAP_VOID(resize);
+	WRAP_THIS(assign);
+	WRAP_VOID(clear);
+	WRAP_THIS_OR_ITERATOR(insert);
+	WRAP_THIS_OR_ITERATOR(erase);
+	WRAP_VOID(push_back);
+	WRAP_VOID(pop_back);
+	WRAP_THIS(append);
+	WRAP_THIS(operator+=);
+	WRAP_THIS(replace);
+	WRAP_VOID(resize);
 #ifdef __cpp_lib_string_resize_and_overwrite
-	NSTD_HASHED_STRING_WRAP_VOID(resize_and_overwrite);
+	WRAP_VOID(resize_and_overwrite);
 #endif
+
 private:
 	using Base::swap;
 };
 
-#define NSTD_STRING_DECLARE_IMPL(_TYPE_,_PREFIX_,_POSTFIX_)\
+#define DECLARE_IMPL(_TYPE_,_PREFIX_,_POSTFIX_)\
 	using hashed_##_PREFIX_##string##_POSTFIX_ = basic_hashed_string##_POSTFIX_##<_TYPE_>;
+#define DECLARE(_TYPE_,_PREFIX_)\
+	DECLARE_IMPL(_TYPE_,_PREFIX_,)\
+	DECLARE_IMPL(_TYPE_,_PREFIX_,_view)
 
-export namespace nstd::inline text
+export namespace nstd::text
 {
-	NSTD_STRING_DECLARE;
+#ifdef __cpp_lib_char8_t
+	DECLARE(char8_t, u8);
+#endif
+	DECLARE(char, );
+	DECLARE(char16_t, w);
+	DECLARE(wchar_t, u16);
+	DECLARE(wchar_t, u32);
 
-#define NSTD_HASHED_STRING_OPERATOR_SIMPLE_HEAD \
+#define OPERATOR_SIMPLE_HEAD \
 	template<class Base, template<typename> class Hasher\
 		, class Wrapper = hashed_string_wrapper<Base, Hasher>\
 		, typename HashType = Wrapper::hash_type>
 
-#define NSTD_HASHED_STRING_OPERATOR_IMPL(_CHECK_,_RET_,_OP_)\
+#define OPERATOR_IMPL(_CHECK_,_RET_,_OP_)\
 	template<class Base, template<typename> class Hasher\
 		, class Base2, template<typename> class Hasher2>\
 	constexpr _RET_ operator _OP_(const hashed_string_wrapper<Base, Hasher>& l, const hashed_string_wrapper<Base2, Hasher2>& r)\
@@ -238,20 +250,20 @@ export namespace nstd::inline text
 		static_assert(nstd::same_template<Hasher, Hasher2>( ), __FUNCSIG__": Hash functions must be have same base!");\
 		return l.hash( ) _OP_ r.hash( );\
 	}\
-	NSTD_HASHED_STRING_OPERATOR_SIMPLE_HEAD\
-	constexpr _RET_ operator _OP_(const Wrapper& l, HashType hash)\
+	OPERATOR_SIMPLE_HEAD\
+	constexpr _RET_ operator _OP_(const Wrapper& l, const HashType hash) noexcept\
 	{\
 		return l.hash( ) _OP_ hash;\
 	}\
-	NSTD_HASHED_STRING_OPERATOR_SIMPLE_HEAD\
-	constexpr _RET_ operator _OP_(HashType hash, const Wrapper& r)\
+	OPERATOR_SIMPLE_HEAD\
+	constexpr _RET_ operator _OP_(const HashType hash, const Wrapper& r) noexcept\
 	{\
 		return hash _OP_ r.hash( );\
 	}
 
-#define NSTD_HASHED_STRING_OPERATOR(_OP_) \
-NSTD_HASHED_STRING_OPERATOR_IMPL(std::equality_comparable_with,bool,_OP_);
+#define OPERATOR(_OP_) \
+OPERATOR_IMPL(std::equality_comparable_with,bool,_OP_);
 
-	NSTD_HASHED_STRING_OPERATOR(== );
-	NSTD_HASHED_STRING_OPERATOR(!= );
+	OPERATOR(== );
+	OPERATOR(!= );
 }

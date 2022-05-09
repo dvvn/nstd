@@ -10,10 +10,9 @@ module;
 
 module nstd.winapi.modules;
 import nstd.winapi.module_info;
-import nstd.mem.address;
+import nstd.winapi.helpers;
 
 using namespace nstd;
-using mem::basic_address;
 
 static auto _Get_ldr( ) noexcept
 {
@@ -117,18 +116,8 @@ static LDR_DATA_TABLE_ENTRY* _Find_module(Fn comparer) noexcept
 		if(!ldr_entry)
 			continue;
 
-		//base address
-		const basic_address<IMAGE_DOS_HEADER> _dos = ldr_entry->DllBase;
-		// check for invalid DOS / DOS signature.
-		if(!_dos || _dos->e_magic != IMAGE_DOS_SIGNATURE /* 'MZ' */)
-			continue;
-
-		const basic_address<IMAGE_NT_HEADERS> _nt = _dos + _dos->e_lfanew;
-		// check for invalid NT / NT signature.
-		if(!_nt || _nt->Signature != IMAGE_NT_SIGNATURE /* 'PE\0\0' */)
-			continue;
-
-		if(!invoker(ldr_entry, _nt, _dos))
+		const auto [dos, nt] = winapi::dos_nt(ldr_entry);
+		if(!invoker(ldr_entry, nt, dos))
 			continue;
 
 		return ldr_entry;

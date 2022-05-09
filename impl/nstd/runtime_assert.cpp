@@ -11,9 +11,10 @@
 #include <cassert>
 
 import nstd.one_instance;
+import nstd.text.convert;
 
 template<typename C, typename Arg1, typename ...Args>
-static auto _Build_string(Arg1 arg, Args ...args)
+static auto _Build_string(const Arg1& arg, const Args& ...args)
 {
 	std::basic_string_view arg_sv = arg;
 	if constexpr(sizeof...(Args) == 0 && std::is_same_v<decltype(arg_sv)::value_type, C>)
@@ -22,13 +23,13 @@ static auto _Build_string(Arg1 arg, Args ...args)
 	}
 	else
 	{
-		return std::apply([ ]<typename ...S>(const S ...strings) noexcept
+		return std::apply([ ]<typename ...S>(const S& ...strings) noexcept
 		{
 			std::basic_string<C> buff;
 			buff.reserve((strings.size( ) + ...));
 			(buff.append(strings.begin( ), strings.end( )), ...);
 			return buff;
-		}, std::make_tuple(arg_sv, std::basic_string_view(args)...));
+		}, std::make_tuple(arg_sv, nstd::text::convert_to<C>(std::basic_string_view(args))...));
 	}
 }
 

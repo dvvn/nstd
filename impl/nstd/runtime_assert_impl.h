@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nstd/runtime_assert_core.h>
-#include <nstd/core.h>
+#include <nstd/core_utils.h>
 
 #include <memory>
 #include <source_location>

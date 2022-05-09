@@ -1,12 +1,11 @@
 module;
 
-#include <nstd/winapi/msg_invoke.h>
+#include <nstd/winapi/internal/msg_invoke.h>
 
 #include <windows.h>
 #include <winternl.h>
 
 #include <string_view>
-#include <functional>
 
 export module nstd.winapi.sections;
 export import nstd.winapi.modules;

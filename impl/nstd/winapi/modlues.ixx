@@ -1,12 +1,11 @@
 module;
 
-#include <nstd/winapi/msg_invoke.h>
+#include <nstd/winapi/internal/msg_invoke.h>
 
 #include <windows.h>
 #include <winternl.h>
 
 #include <string_view>
-#include <concepts>
 
 export module nstd.winapi.modules;
 export import nstd.text.chars_cache;

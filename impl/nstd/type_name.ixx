@@ -1,5 +1,5 @@
 module;
-#include <nstd/type_traits.h>
+#include <nstd/core_utils.h>
 
 #include <algorithm>
 #include <string>
@@ -7,7 +7,7 @@ module;
 
 export module nstd.type_name;
 
-constexpr size_t count_substring(const std::string_view str, const std::string_view substr)
+constexpr size_t count_substring(const std::string_view str, const std::string_view substr) noexcept
 {
 	size_t found = 0;
 	size_t pos = 0;
@@ -22,7 +22,7 @@ constexpr size_t count_substring(const std::string_view str, const std::string_v
 	return found;
 }
 
-constexpr void erase_substring(std::string& str, const std::string_view substr)
+constexpr void erase_substring(std::string& str, const std::string_view substr) noexcept
 {
 	size_t pos = 0;
 	for(;;)
@@ -34,7 +34,7 @@ constexpr void erase_substring(std::string& str, const std::string_view substr)
 	}
 }
 
-constexpr std::string erase_substring(const std::string_view str, const std::string_view substr, const size_t buffer_size = 0)
+constexpr std::string erase_substring(const std::string_view str, const std::string_view substr, const size_t buffer_size = 0) noexcept
 {
 	std::string result;
 	result.reserve(buffer_size == 0 ? str.size( ) : buffer_size);
@@ -99,7 +99,7 @@ constexpr std::string erase_substring2(const std::string_view str, const std::st
 #endif
 
 template<typename T>
-constexpr T extract_type(const std::string_view raw_name)
+constexpr T extract_type(const std::string_view raw_name) noexcept
 {
 	const auto start = raw_name.find('<') + 1;
 	const auto end = raw_name.rfind('>');
@@ -109,7 +109,7 @@ constexpr T extract_type(const std::string_view raw_name)
 
 constexpr std::array<std::string_view, 4> uselles_words = {"struct ","class ","enum ","union "};
 
-constexpr std::string clean_type_name(const std::string_view raw_name)
+constexpr std::string clean_type_name(const std::string_view raw_name) noexcept
 {
 	auto correct_name = extract_type<std::string>(raw_name);
 #if 1
@@ -125,7 +125,7 @@ constexpr std::string clean_type_name(const std::string_view raw_name)
 }
 
 //returns size without substring
-constexpr size_t clean_type_name_size(const std::string_view raw_name)
+constexpr size_t clean_type_name_size(const std::string_view raw_name) noexcept
 {
 	size_t removed = 0;
 	const auto correct_name = extract_type<std::string_view>(raw_name);
@@ -134,7 +134,7 @@ constexpr size_t clean_type_name_size(const std::string_view raw_name)
 	return correct_name.size( ) - removed;
 }
 
-constexpr bool template_comparer(const char* left, const char* right)
+constexpr bool template_comparer(const char* left, const char* right) noexcept
 {
 	if(left == right)
 		return true;
@@ -162,19 +162,19 @@ constexpr bool template_comparer(const char* left, const char* right)
 }
 
 template <typename T>
-constexpr decltype(auto) type_name_raw( )
+constexpr decltype(auto) type_name_raw( ) noexcept
 {
 	return __FUNCSIG__;
 }
 
 template <template<class...> class T>
-constexpr decltype(auto) type_name_raw( )
+constexpr decltype(auto) type_name_raw( ) noexcept
 {
 	return __FUNCSIG__;
 }
 
 template<size_t Size, bool NullTerminated = false>
-constexpr auto make_string_buffer(const std::string_view str)
+constexpr auto make_string_buffer(const std::string_view str) noexcept
 {
 	auto buff = std::array<char, Size + static_cast<size_t>(NullTerminated)>( );
 	if(buff.size( ) != str.size( ))
@@ -184,7 +184,7 @@ constexpr auto make_string_buffer(const std::string_view str)
 }
 
 template <typename T>
-constexpr auto type_name_impl( )
+constexpr auto type_name_impl( ) noexcept
 {
 	constexpr std::string_view raw_name = type_name_raw<T>( );
 	constexpr auto out_buffer_size = clean_type_name_size(raw_name);
@@ -195,7 +195,7 @@ constexpr auto type_name_impl( )
 }
 
 template <template<class...> class T>
-constexpr auto type_name_partial_impl( )
+constexpr auto type_name_partial_impl( ) noexcept
 {
 	constexpr std::string_view raw_name = type_name_raw<T>( );
 	constexpr auto out_buffer_size = clean_type_name_size(raw_name);
@@ -206,7 +206,7 @@ constexpr auto type_name_partial_impl( )
 }
 
 template <typename T>
-constexpr auto type_name_drop_templates_impl( )
+constexpr auto type_name_drop_templates_impl( ) noexcept
 {
 	constexpr auto name = type_name_impl<T>( );
 	constexpr std::string_view name_sized = {name.data( ),name.size( )};
@@ -232,7 +232,7 @@ template <typename T>
 constexpr auto type_name_holder_drop_templates = type_name_drop_templates_impl<T>( );
 
 template <class T>
-constexpr std::string_view extract_holder(const T& holder)
+constexpr std::string_view extract_holder(const T& holder) noexcept
 {
 	return {holder.data( ),holder.size( )};
 }
@@ -240,19 +240,19 @@ constexpr std::string_view extract_holder(const T& holder)
 export namespace nstd
 {
 	template <typename T>
-	constexpr std::string_view type_name( )
+	constexpr std::string_view type_name( ) noexcept
 	{
 		return extract_holder(type_name_holder<T>);
 	}
 
 	template <template<typename...>class T>
-	constexpr std::string_view type_name( )
+	constexpr std::string_view type_name( ) noexcept
 	{
 		return extract_holder(type_name_holder_partial<T>);
 	}
 
 	template <template<typename, size_t> class T>
-	constexpr std::string_view type_name( )
+	constexpr std::string_view type_name( ) noexcept
 	{
 		return extract_holder(type_name_holder_drop_templates<T<int, 0>>);
 	}
@@ -266,7 +266,7 @@ export namespace nstd
 
 	//------------
 
-	constexpr std::string drop_namespace(const std::string_view str, const std::string_view drop)
+	constexpr std::string drop_namespace(const std::string_view str, const std::string_view drop) noexcept
 	{
 		if(drop.ends_with("::"))
 			return erase_substring(str, drop);
@@ -286,25 +286,25 @@ export namespace nstd
 	//------------
 
 	template <class T1, template<class...> class T2>
-	constexpr bool same_template( )
+	constexpr bool same_template( ) noexcept
 	{
 		return template_comparer(type_name_raw<T1>( ), type_name_raw<T2>( ));
 	}
 
 	template <template<class...> class T1, class T2>
-	constexpr bool same_template( )
+	constexpr bool same_template( ) noexcept
 	{
 		return same_template<T2, T1>( );
 	}
 
 	template <template<class...> class T1, template<class...> class T2>
-	constexpr bool same_template( )
+	constexpr bool same_template( ) noexcept
 	{
 		return template_comparer(type_name_raw<T1>( ), type_name_raw<T2>( ));
 	}
 
 	template <class T1, class T2>
-	constexpr bool same_template( )
+	constexpr bool same_template( ) noexcept
 	{
 		if constexpr(std::is_same_v<T1, T2>)
 			return true;
