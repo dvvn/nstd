@@ -27,7 +27,7 @@
 
 namespace nstd
 {
-	template <typename T>
+	/* template <typename T>
 	concept has_array_access = requires(const T & obj)
 	{
 		obj[0u];
@@ -38,8 +38,8 @@ namespace nstd
 		typename _Ty::allocator_type;
 	};
 
-	// template <class T, typename New>
-	// using rebind_helper = typename std::_Replace_first_parameter<New, T>::type;
+	template <class T, typename New>
+	using rebind_helper = typename std::_Replace_first_parameter<New, T>::type; */
 
 	template <typename T>
 	struct remove_all_pointers : std::conditional_t<

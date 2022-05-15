@@ -1,13 +1,6 @@
 #pragma once
 
 #if __has_include(<veque.hpp>)
-//#include <cstddef>
-// namespace std
-//{
-//	using size_t = ::size_t;
-//	using ptrdiff_t = ::ptrdiff_t;
-//}
-//#include <string>
 #include <veque.hpp>
 #define NSTD_CONTAINERS_DEQUE
 #else
