@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <concepts>
-#include <xutility>
+#include <utility>
 
 #ifndef _CONCAT
 #define NSTD_CONCATX(x, y) x##y
@@ -28,7 +28,7 @@
 namespace nstd
 {
 	template <typename T>
-	concept has_array_access = requires(const T& obj)
+	concept has_array_access = requires(const T & obj)
 	{
 		obj[0u];
 	};
@@ -38,8 +38,8 @@ namespace nstd
 		typename _Ty::allocator_type;
 	};
 
-	template <class T, typename New>
-	using rebind_helper = typename std::_Replace_first_parameter<New, T>::type;
+	// template <class T, typename New>
+	// using rebind_helper = typename std::_Replace_first_parameter<New, T>::type;
 
 	template <typename T>
 	struct remove_all_pointers : std::conditional_t<
@@ -57,4 +57,14 @@ namespace nstd
 
 	template <typename Test, typename T>
 	using add_const_if = add_const_if_v<std::is_const_v<Test>, T>;
+
+#ifdef __cpp_lib_unreachable
+	using std::unreachable;
+#else
+	[[noreturn]]
+	inline void unreachable() noexcept
+	{
+		std::abort();
+	}
+#endif
 }

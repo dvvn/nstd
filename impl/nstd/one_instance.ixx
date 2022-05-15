@@ -8,19 +8,19 @@ export module nstd.one_instance;
 template <typename Last = void, typename T>
 auto deref_ptr(T ptr) noexcept
 {
-	if constexpr(!std::is_pointer_v<std::remove_pointer_t<T>> || std::same_as<Last, T>)
+	if constexpr (!std::is_pointer_v<std::remove_pointer_t<T>> || std::same_as<Last, T>)
 		return ptr;
 	else
 		return deref_ptr<Last>(*ptr);
 }
 
-template<typename T>
+template <typename T>
 bool _Nullptr_check(T ptr) noexcept
 {
-	if(ptr == nullptr)
+	if (ptr == nullptr)
 		return true;
 
-	if constexpr(!std::is_pointer_v<std::remove_pointer_t<T>>)
+	if constexpr (!std::is_pointer_v<std::remove_pointer_t<T>>)
 		return false;
 	else
 		return _Nullptr_check(*ptr);
@@ -32,18 +32,17 @@ class pointer_wrapper
 	T ptr_;
 
 public:
-
 	pointer_wrapper(T ptr)
-		:ptr_(ptr)
+		: ptr_(ptr)
 	{
 	}
 
-	T operator->( ) const noexcept
+	T operator->() const noexcept
 	{
 		return ptr_;
 	}
 
-	auto& operator*( ) const noexcept
+	auto& operator*() const noexcept
 	{
 		return *ptr_;
 	}
@@ -54,55 +53,85 @@ class pointer_wrapper<T**>
 {
 	T** ptr_;
 
-	bool is_null( ) const noexcept
+	bool is_null() const noexcept
 	{
 		return _Nullptr_check(ptr_);
 	}
 
 public:
-
 	pointer_wrapper(T** ptr)
-		:ptr_(ptr)
+		: ptr_(ptr)
 	{
 	}
 
-	auto operator->( ) const noexcept
+	auto operator->() const noexcept
 	{
 		return deref_ptr(ptr_);
 	}
 
-	auto& operator*( ) const noexcept
+	auto& operator*() const noexcept
 	{
 		return *deref_ptr(ptr_);
 	}
 
 	bool operator==(nullptr_t) const noexcept
 	{
-		return is_null( );
+		return is_null();
 	}
 
 	bool operator!=(nullptr_t) const noexcept
 	{
-		return !is_null( );
+		return !is_null();
 	}
 
-	operator bool( ) const noexcept
+	operator bool() const noexcept
 	{
-		return !is_null( );
+		return !is_null();
 	}
 
-	bool operator!( ) const noexcept
+	bool operator!() const noexcept
 	{
-		return is_null( );
+		return is_null();
 	}
 };
 
-template<size_t Instance>
+template <size_t Instance>
 auto _Init_helper(bool& init_tag)
 {
 	init_tag = true;
 	return std::in_place_index<Instance>;
 }
+
+template <typename T, size_t Instance, class Base>
+class instance_of_t
+{
+public:
+	/*constexpr instance_of_t( ) = default;
+	constexpr instance_of_t(const instance_of_t& other) = delete;
+	constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
+	constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
+	constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
+
+	bool initialized() const noexcept
+	{
+		return Base::initialized();
+	}
+
+	auto& operator*() const noexcept
+	{
+		return Base::get();
+	}
+
+	auto operator->() const noexcept
+	{
+		return Base::get_ptr();
+	}
+
+	auto operator&() const noexcept
+	{
+		return Base::get_ptr();
+	}
+};
 
 export namespace nstd
 {
@@ -113,18 +142,18 @@ export namespace nstd
 		using reference = value_type&;
 		using pointer = value_type*;
 
-		template<size_t Instance>
+		template <size_t Instance>
 		one_instance_getter(const std::in_place_index_t<Instance>)
-			:item_( )
+			: item_()
 		{
 		}
 
-		reference ref( ) noexcept
+		reference ref() noexcept
 		{
 			return item_;
 		}
 
-		pointer ptr( ) noexcept
+		pointer ptr() noexcept
 		{
 			return std::addressof(item_);
 		}
@@ -143,15 +172,15 @@ export namespace nstd
 		using real_pointer = value_type*;
 		using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
 
-		template<size_t Instance>
+		template <size_t Instance>
 		one_instance_getter(const std::in_place_index_t<Instance>);
 
-		reference ref( ) const noexcept
+		reference ref() const noexcept
 		{
 			return *deref_ptr(item_);
 		}
 
-		pointer ptr( ) const noexcept
+		pointer ptr() const noexcept
 		{
 			return item_;
 		}
@@ -172,20 +201,20 @@ export namespace nstd
 		using pointer = value_type::pointer;
 		using reference = std::remove_pointer_t<pointer>;
 
-		template<size_t Instance>
+		template <size_t Instance>
 		one_instance_getter(const std::in_place_index_t<Instance>)
-			:item_(std::make_unique<T>( ))
+			: item_(std::make_unique<T>())
 		{
 		}
 
-		reference ref( ) noexcept
+		reference ref() noexcept
 		{
 			return *item_;
 		}
 
-		pointer ptr( ) noexcept
+		pointer ptr() noexcept
 		{
-			return item_.get( );
+			return item_.get();
 		}
 
 	private:
@@ -199,82 +228,50 @@ export namespace nstd
 		using getter_type = one_instance_getter<T>;
 
 	private:
-		static auto& _Get( ) noexcept
+		static auto& _Get() noexcept
 		{
-			static getter_type g = _Init_helper<Instance>(_Initialized( ));
+			static getter_type g = _Init_helper<Instance>(_Initialized());
 			return g;
 		}
 
-		static bool& _Initialized( ) noexcept
+		static bool& _Initialized() noexcept
 		{
 			static bool val = false;
 			return val;
 		}
 
 	public:
-		constexpr one_instance( ) = default;
+		constexpr one_instance() = default;
 		constexpr one_instance(const one_instance& other) = delete;
 		constexpr one_instance& operator=(const one_instance& other) = delete;
 		constexpr one_instance(one_instance&& other) noexcept = delete;
 		constexpr one_instance& operator=(one_instance&& other) noexcept = delete;
 
-		static bool initialized( ) noexcept
+		static bool initialized() noexcept
 		{
-			return _Initialized( );
+			return _Initialized();
 		}
 
-		static auto& get( ) noexcept
+		static auto& get() noexcept
 		{
-			return _Get( ).ref( );
+			return _Get().ref();
 		}
 
-		static auto get_ptr( ) noexcept
+		static auto get_ptr() noexcept
 		{
-			return _Get( ).ptr( );
+			return _Get().ptr();
 		}
 
-		[[deprecated]]
-		static void recreate( ) noexcept
+		[[deprecated]] static void recreate() noexcept
 		{
-			_Initialized( ) = false;
-			const auto ptr = std::addressof(_Get( ));
+			_Initialized() = false;
+			const auto ptr = std::addressof(_Get());
 			std::destroy_at(ptr);
 			std::construct_at(ptr);
-			_Initialized( ) = true;
-		}
-	};
-
-	template <typename T, size_t Instance = 0, class Base = one_instance<std::conditional_t<std::is_abstract_v<T>, T*, T>, Instance>>
-	class instance_of_t
-	{
-	public:
-		/*constexpr instance_of_t( ) = default;
-		constexpr instance_of_t(const instance_of_t& other) = delete;
-		constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
-		constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
-		constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
-
-		bool initialized( ) const noexcept
-		{
-			return Base::initialized( );
-		}
-
-		auto& operator*( ) const noexcept
-		{
-			return Base::get( );
-		}
-
-		auto operator->( ) const noexcept
-		{
-			return Base::get_ptr( );
-		}
-
-		auto operator&( ) const noexcept
-		{
-			return Base::get_ptr( );
+			_Initialized() = true;
 		}
 	};
 
 	template <typename T, size_t Instance = 0>
-	constexpr instance_of_t<T, Instance> instance_of;
+	constexpr instance_of_t<T, Instance, nstd::one_instance<std::conditional_t<std::is_abstract_v<T>, T*, T>, Instance>> instance_of;
 }

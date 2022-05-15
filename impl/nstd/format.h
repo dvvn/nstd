@@ -1,12 +1,10 @@
 #pragma once
 
-#include <type_traits>
+#include <version>
 
 #if defined(__cpp_lib_format)
 #include <format>
-//todo :formatter for ranges
 #elif __has_include(<fmt/format.h>)
-#define FMT_CONSTEVAL
 #include <fmt/format.h>
 #include <fmt/xchar.h>
 #include <fmt/ranges.h>

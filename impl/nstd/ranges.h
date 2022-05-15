@@ -1,13 +1,10 @@
 #pragma once
 
+#include <version>
+
 #ifdef __cpp_lib_ranges
 #include <ranges>
 #else
-#include <cstddef>
-namespace std
-{
-	using ::size_t;
-}
 #include <range/v3/all.hpp>
 namespace std
 {

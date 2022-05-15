@@ -10,7 +10,7 @@ module;
 
 module nstd.mem.signature;
 
-known_bytes::known_bytes( ) = default;
+known_bytes::known_bytes() = default;
 
 known_bytes::known_bytes(buffer_type && data)
 	:data_(std::move(data))
@@ -21,27 +21,27 @@ known_bytes::known_bytes(const range_type data)
 {
 }
 
-auto known_bytes::begin( ) const noexcept -> pointer
+auto known_bytes::begin() const noexcept -> pointer
 {
-	return std::visit([ ]<class T>(const T & mem) noexcept
+	return std::visit([]<class T>(const T & mem) noexcept
 	{
-		return mem.data( );
+		return mem.data();
 	}, data_);
 }
 
-auto known_bytes::end( ) const noexcept -> pointer
+auto known_bytes::end() const noexcept -> pointer
 {
-	return std::visit([ ]<class T>(const T & mem) noexcept
+	return std::visit([]<class T>(const T & mem) noexcept
 	{
-		return mem.data( ) + mem.size( );
+		return mem.data() + mem.size();
 	}, data_);
 }
 
-size_t known_bytes::size( )const noexcept
+size_t known_bytes::size()const noexcept
 {
-	return std::visit([ ]<class T>(const T & mem) noexcept
+	return std::visit([]<class T>(const T & mem) noexcept
 	{
-		return mem.size( );
+		return mem.size();
 	}, data_);
 }
 
@@ -52,19 +52,19 @@ void unknown_bytes::push_back(unknown_bytes_data && val) noexcept
 	data_.push_back(std::move(val));
 }
 
-auto unknown_bytes::begin( ) const noexcept -> pointer
+auto unknown_bytes::begin() const noexcept -> pointer
 {
-	return data_.data( );
+	return data_.data();
 }
 
-auto unknown_bytes::end( ) const noexcept -> pointer
+auto unknown_bytes::end() const noexcept -> pointer
 {
-	return data_.data( ) + data_.size( );
+	return data_.data() + data_.size();
 }
 
-size_t unknown_bytes::size( ) const noexcept
+size_t unknown_bytes::size() const noexcept
 {
-	return data_.size( );
+	return data_.size();
 }
 
 const unknown_bytes_data& unknown_bytes::operator[](const size_t index) const noexcept
@@ -72,12 +72,12 @@ const unknown_bytes_data& unknown_bytes::operator[](const size_t index) const no
 	return data_[index];
 }
 
-size_t unknown_bytes::bytes_count( ) const noexcept
+size_t unknown_bytes::bytes_count() const noexcept
 {
 	size_t ret = 0;
-	for(auto& [buff, skip] : data_)
+	for (auto& [buff, skip] : data_)
 	{
-		ret += buff.size( );
+		ret += buff.size();
 		ret += skip;
 	}
 
@@ -88,71 +88,71 @@ size_t unknown_bytes::bytes_count( ) const noexcept
 
 static bool _Validate_signature(const std::string_view rng) noexcept
 {
-	if(rng.starts_with('?'))
+	if (rng.starts_with('?'))
 		return false;
-	if(rng.starts_with(' '))
+	if (rng.starts_with(' '))
 		return false;
-	if(rng.ends_with(' '))
+	if (rng.ends_with(' '))
 		return false;
 
 	uint8_t qmarks = 0;
 	uint8_t spaces = 0;
 	uint8_t counter = 0;
-	for(const auto c : rng)
+	for (const auto c : rng)
 	{
-		switch(c)
+		switch (c)
 		{
-			case '0':
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
-			case '9':
-			case 'a':
-			case 'b':
-			case 'c':
-			case 'd':
-			case 'e':
-			case 'f':
-			case 'A':
-			case 'B':
-			case 'C':
-			case 'D':
-			case 'E':
-			case 'F':
-			{
-				if(qmarks > 0)
-					return false;
-				++counter;
-				if(counter > 2)
-					return false;
-				qmarks = spaces = 0;
-				break;
-			}
-			case '?':
-			{
-				++qmarks;
-				if(qmarks > 2)
-					return false;
-				counter = spaces = 0;
-				break;
-			}
-			case ' ':
-			{
-				++spaces;
-				if(spaces > 1)
-					return false;
-				counter = qmarks = 0;
-				break;
-			}
-			default:
-			{
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		case 'a':
+		case 'b':
+		case 'c':
+		case 'd':
+		case 'e':
+		case 'f':
+		case 'A':
+		case 'B':
+		case 'C':
+		case 'D':
+		case 'E':
+		case 'F':
+		{
+			if (qmarks > 0)
 				return false;
-			}
+			++counter;
+			if (counter > 2)
+				return false;
+			qmarks = spaces = 0;
+			break;
+		}
+		case '?':
+		{
+			++qmarks;
+			if (qmarks > 2)
+				return false;
+			counter = spaces = 0;
+			break;
+		}
+		case ' ':
+		{
+			++spaces;
+			if (spaces > 1)
+				return false;
+			counter = qmarks = 0;
+			break;
+		}
+		default:
+		{
+			return false;
+		}
 		}
 	}
 
@@ -168,11 +168,11 @@ class unknown_bytes_writer
 	size_type skip_ = 0;
 
 	template<bool Move>
-	void dump_impl( ) noexcept(Move)
+	void dump_impl() noexcept(Move)
 	{
 		unknown_bytes_data tmp;
 		known_bytes::buffer_type buff;
-		if constexpr(Move)
+		if constexpr (Move)
 			buff = std::move(buff_);
 		else
 			buff = buff_;
@@ -183,86 +183,86 @@ class unknown_bytes_writer
 		source_.push_back(std::move(tmp));
 	}
 
-	void reset( ) noexcept
+	void reset() noexcept
 	{
-		buff_.clear( );
+		buff_.clear();
 		skip_ = 0;
 	}
 
 public:
-	operator unknown_bytes( ) && noexcept
+	operator unknown_bytes() && noexcept
 	{
-		if(!buff_.empty( ) || skip_ > 0)
-			dump_impl<true>( );
+		if (!buff_.empty() || skip_ > 0)
+			dump_impl<true>();
 		return std::move(source_);
 	}
 
-	void write(const std::string_view rng) noexcept
+	void write(const std::string_view rng) runtime_assert_noexcept
 	{
 		//write previous part
-		if(skip_ > 0)
+		if (skip_ > 0)
 		{
-			dump_impl<true>( );
-			reset( );
+			dump_impl<true>();
+			reset();
 		}
 
-		constexpr auto to_num = [ ]<typename T>(T chr) noexcept -> uint8_t
+		constexpr auto to_num = []<typename T>(T chr) runtime_assert_noexcept -> uint8_t
 		{
-			switch(chr)
+			switch (chr)
 			{
-				case '0':
-					return 0x0;
-				case '1':
-					return 0x1;
-				case '2':
-					return 0x2;
-				case '3':
-					return 0x3;
-				case '4':
-					return 0x4;
-				case '5':
-					return 0x5;
-				case '6':
-					return 0x6;
-				case '7':
-					return 0x7;
-				case '8':
-					return 0x8;
-				case '9':
-					return 0x9;
-				case 'a':
-				case 'A':
-					return 0xA;
-				case 'b':
-				case 'B':
-					return 0xB;
-				case 'c':
-				case 'C':
-					return 0xC;
-				case 'd':
-				case 'D':
-					return 0xD;
-				case 'e':
-				case 'E':
-					return 0xE;
-				case 'f':
-				case 'F':
-					return 0xF;
-				default:
-					runtime_assert("Unsupported character");
+			case '0':
+				return 0x0;
+			case '1':
+				return 0x1;
+			case '2':
+				return 0x2;
+			case '3':
+				return 0x3;
+			case '4':
+				return 0x4;
+			case '5':
+				return 0x5;
+			case '6':
+				return 0x6;
+			case '7':
+				return 0x7;
+			case '8':
+				return 0x8;
+			case '9':
+				return 0x9;
+			case 'a':
+			case 'A':
+				return 0xA;
+			case 'b':
+			case 'B':
+				return 0xB;
+			case 'c':
+			case 'C':
+				return 0xC;
+			case 'd':
+			case 'D':
+				return 0xD;
+			case 'e':
+			case 'E':
+				return 0xE;
+			case 'f':
+			case 'F':
+				return 0xF;
+			default:
+				runtime_assert_unreachable("Unsupported character");
 			}
 		};
 
-		switch(rng.size( ))
+		switch (rng.size())
 		{
-			case 1:
-				buff_.push_back(to_num(rng[0]));
-				break;
-			case 2:
-				buff_.push_back(to_num(rng[0]) * 16 + to_num(rng[1]));
-				break;
-			default:
-				runtime_assert("Incorrect string validation!");
+		case 1:
+			buff_.push_back(to_num(rng[0]));
+			break;
+		case 2:
+			buff_.push_back(to_num(rng[0]) * 16 + to_num(rng[1]));
+			break;
+		default:
+			runtime_assert_unreachable("Incorrect string validation!");
 		}
 	}
 
@@ -272,24 +272,24 @@ public:
 	}
 };
 
-static /*unknown_bytes*/auto _Text_to_bytes(const char* begin, const char* end) noexcept
+static auto _Text_to_bytes(const char* begin, const char* end) runtime_assert_noexcept
 {
-	const std::string_view text_src = {begin, end};
+	const std::string_view text_src = { begin, end };
 	runtime_assert(_Validate_signature(text_src));
 
 	unknown_bytes_writer writer;
 
-	constexpr auto unwrap_shit = [ ]<class T>(T rng) noexcept -> std::string_view
+	constexpr auto unwrap_shit = []<class T>(T rng) noexcept -> std::string_view
 	{
-		const auto raw_begin = std::addressof(*rng.begin( ));
+		const auto raw_begin = std::addressof(*rng.begin());
 		const size_t size = std::ranges::distance(rng);
-		return {raw_begin, size};
+		return { raw_begin, size };
 	};
 
-	for(const auto b : std::views::split(text_src, ' ') | std::views::transform(unwrap_shit))
+	for (const auto b : std::views::split(text_src, ' ') | std::views::transform(unwrap_shit))
 	{
-		if(b[0] == '?')
-			writer.skip( );
+		if (b[0] == '?')
+			writer.skip();
 		else
 			writer.write(b);
 	}
@@ -301,18 +301,18 @@ static /*unknown_bytes*/auto _Text_to_bytes(const char* begin, const char* end) 
 
 using namespace nstd;
 
-auto mem::make_signature(const std::string_view str) noexcept -> signature_unknown_bytes
+auto mem::make_signature(const std::string_view str) runtime_assert_noexcept -> signature_unknown_bytes
 {
-	return _Text_to_bytes(str.data( ), str.data( ) + str.size( ));
+	return _Text_to_bytes(str.data(), str.data() + str.size());
 }
 
-auto mem::make_signature(const char* begin, const size_t mem_size) noexcept -> signature_unknown_bytes
+auto mem::make_signature(const char* begin, const size_t mem_size) runtime_assert_noexcept -> signature_unknown_bytes
 {
 	return _Text_to_bytes(begin, begin + mem_size);
 }
 
-auto mem::make_signature_known(const uint8_t * begin, const size_t mem_size) noexcept -> signature_known_bytes
+auto mem::make_signature_known(const uint8_t * begin, const size_t mem_size) runtime_assert_noexcept -> signature_known_bytes
 {
-	const known_bytes::range_type mem = {begin,begin + mem_size};
+	const known_bytes::range_type mem = { begin,begin + mem_size };
 	return mem;
 }
