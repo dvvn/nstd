@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(nstd CXX)
 
-set(NSTD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/impl)
+set(NSTD_DIR ${PROJECT_SOURCE_DIR}/impl)
 set(NSTD_WORK_DIR ${NSTD_DIR}/nstd)
 
 file(GLOB_RECURSE NSTD_FILES ${NSTD_WORK_DIR}/*.cpp ${NSTD_WORK_DIR}/*.ixx ${NSTD_WORK_DIR}/*.h)
@@ -10,6 +10,7 @@ file(GLOB_RECURSE NSTD_FILES ${NSTD_WORK_DIR}/*.cpp ${NSTD_WORK_DIR}/*.ixx ${NST
 add_library(nstd ${NSTD_FILES})
 add_library(nstd::nstd ALIAS nstd)
 target_include_directories(nstd PUBLIC ${NSTD_DIR})
+
 include(FetchContent)
 
 FetchContent_Declare(utf8_conv GIT_REPOSITORY https://github.com/ww898/utf-cpp.git)
@@ -20,7 +21,7 @@ FetchContent_Declare(veque GIT_REPOSITORY https://github.com/Shmoopty/veque.git)
 FetchContent_Populate(veque)
 target_include_directories(nstd PUBLIC ${veque_SOURCE_DIR}/include)
 
-set(FMT_MODULE ON)
+set(FMT_MODULE OFF)
 FetchContent_Declare(fmtlib GIT_REPOSITORY https://github.com/fmtlib/fmt.git)
 FetchContent_MakeAvailable(fmtlib)
 target_link_libraries(nstd fmt::fmt)
