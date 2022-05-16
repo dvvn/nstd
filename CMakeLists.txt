@@ -33,6 +33,6 @@ include_directories(impl ${NSTD_DIR})
 
 file(GLOB_RECURSE nstd_sources ${NSTD_WORK_DIR}/*.cpp ${NSTD_WORK_DIR}/*.ixx)
 
-add_library(${PROJECT_NAME} ${nstd_sources})
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_${CMAKE_CXX_STANDARD})
-target_link_libraries(${PROJECT_NAME} fmt::fmt)
+add_library(nstd ${nstd_sources})
+target_compile_features(nstd PUBLIC cxx_std_${CMAKE_CXX_STANDARD})
+target_link_libraries(nstd fmt::fmt)
