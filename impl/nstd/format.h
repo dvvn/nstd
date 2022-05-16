@@ -1,10 +1,8 @@
 #pragma once
 
-#include <version>
-
-#if defined(__cpp_lib_format)
+#ifndef NSTD_CUSTOM_FORMAT
 #include <format>
-#elif __has_include(<fmt/format.h>)
+#else
 #include <fmt/format.h>
 #include <fmt/xchar.h>
 #include <fmt/ranges.h>

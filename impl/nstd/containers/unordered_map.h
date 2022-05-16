@@ -1,26 +1,21 @@
 #pragma once
 
-#if __has_include(<robin_hood.h>)
+#ifdef NSTD_CUSTOM_UNORDERED_MAP
 #include <robin_hood.h>
-#define NSTD_CONTAINERS_UNORDERED_MAP
 #else
 #include <unordered_map>
 #endif
 
-namespace nstd
+namespace nstd::containers
 {
-#ifdef NSTD_CONTAINERS_UNORDERED_MAP
-	namespace containers
-	{
-		using robin_hood::unordered_map;
-	}
+#ifdef NSTD_CUSTOM_UNORDERED_MAP
+
+	using robin_hood::unordered_map;
+
 	using robin_hood::hash;
 	using robin_hood::swap;
 #else
-	namespace containers
-	{
-		using std::unordered_map
-	};
+	using std::unordered_map;
 	using std::hash;
 	using std::swap;
 #endif

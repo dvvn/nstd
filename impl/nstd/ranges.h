@@ -1,8 +1,6 @@
 #pragma once
 
-#include <version>
-
-#ifdef __cpp_lib_ranges
+#ifndef NSTD_CUSTOM_RANGES
 #include <ranges>
 #else
 #include <range/v3/all.hpp>
