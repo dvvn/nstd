@@ -2,7 +2,7 @@ module;
 
 #include <string>
 
-export module nstd.text.convert:to_lower;
+export module nstd.text.convert.to_lower;
 
 struct to_lower_obj
 {
@@ -15,5 +15,5 @@ struct to_lower_obj
 
 export namespace nstd::text
 {
-	inline constexpr to_lower_obj to_lower;
+    constexpr to_lower_obj to_lower;
 }

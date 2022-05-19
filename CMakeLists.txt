@@ -1,55 +1,68 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(nstd CXX)
+include(FetchContent)
 
-include(CheckSymbolExists)
-
-#unset(HAVE_STD_FORMAT CACHE)
-check_symbol_exists(__cpp_lib_format "version" HAVE_STD_FORMAT)
-add_compile_definitions()
-#unset(HAVE_STD_RANGES CACHE)
-check_symbol_exists(__cpp_lib_ranges "version" HAVE_STD_RANGES)
-
-set(NSTD_DIR ${PROJECT_SOURCE_DIR}/impl)
+set(NSTD_DIR ${CMAKE_CURRENT_LIST_DIR}/impl)
 set(NSTD_WORK_DIR ${NSTD_DIR}/nstd)
 
-file(GLOB_RECURSE NSTD_FILES ${NSTD_WORK_DIR}/*.cpp ${NSTD_WORK_DIR}/*.ixx ${NSTD_WORK_DIR}/*.h)
+project(nstd_format) # fmt::format or std::format if exists
 
-add_library(nstd ${NSTD_FILES})
-add_library(nstd::nstd ALIAS nstd)
-target_include_directories(nstd PUBLIC ${NSTD_DIR})
+add_library(nstd_format ${NSTD_WORK_DIR}/format.ixx)
+add_library(nstd::format ALIAS nstd_format)
 
-include(FetchContent)
+set(FMT_MODULE OFF)
+FetchContent_Declare(fmtlib GIT_REPOSITORY https://github.com/fmtlib/fmt.git)
+FetchContent_MakeAvailable(fmtlib)
+target_link_libraries(nstd_format PUBLIC fmt::fmt)
+target_include_directories(nstd_format PRIVATE fmt::fmt)
+
+project(nstd_ranges CXX) # std::ranges or ::ranges if exists
+
+add_library(nstd_ranges INTERFACE)
+add_library(nstd::ranges ALIAS nstd_ranges)
+target_compile_definitions(nstd_ranges INTERFACE NSTD_LIB_RANGES)
+target_include_directories(nstd_ranges INTERFACE ${NSTD_DIR}) #todo: include only the ranges file
+
+set(RANGES_DEEP_STL_INTEGRATION ON)
+FetchContent_Declare(ranges GIT_REPOSITORY https://github.com/ericniebler/range-v3.git)
+FetchContent_MakeAvailable(ranges)
+target_link_libraries(nstd_ranges INTERFACE range-v3)
+target_include_directories(nstd_ranges INTERFACE range-v3)
+
+project(nstd_core) #------------
+
+add_library(nstd_core ${NSTD_WORK_DIR}/lazy_invoke.ixx ${NSTD_WORK_DIR}/one_instance.ixx ${NSTD_WORK_DIR}/runtime_assert.cpp ${NSTD_WORK_DIR}/type_name.ixx)
+add_library(nstd::core ALIAS nstd_core)
+target_include_directories(nstd_core PUBLIC ${NSTD_DIR})
+
+project(nstd_mem) # memory leated tools
+
+file(GLOB NSTD_MEM_FILES ${NSTD_WORK_DIR}/mem/*.*)
+
+add_library(nstd_mem ${NSTD_MEM_FILES})
+add_library(nstd::mem ALIAS nstd_mem)
+target_include_directories(nstd_mem PRIVATE ${NSTD_DIR}) #only core_utils file used
+target_link_libraries(nstd_mem PRIVATE nstd_format PRIVATE nstd_ranges)
+#target_include_directories(nstd_mem PRIVATE nstd_format)
+
+project(nstd_text) #--------------------
+
+file(GLOB_RECURSE NSTD_TEXT_FILES ${NSTD_WORK_DIR}/text/*.*)
+
+add_library(nstd_text ${NSTD_TEXT_FILES})
+add_library(nstd::text ALIAS nstd_text)
+target_link_libraries(nstd_text PUBLIC nstd::core)
+target_include_directories(nstd_text PUBLIC nstd::core)
 
 FetchContent_Declare(utf8_conv GIT_REPOSITORY https://github.com/ww898/utf-cpp.git)
 FetchContent_Populate(utf8_conv) #no cmakelist inside
-target_include_directories(nstd PUBLIC ${utf8_conv_SOURCE_DIR}/include)
+target_include_directories(nstd_text PRIVATE ${utf8_conv_SOURCE_DIR}/include)
 
-FetchContent_Declare(veque GIT_REPOSITORY https://github.com/Shmoopty/veque.git)
-FetchContent_Populate(veque) #no cmakelist inside
-target_include_directories(nstd PUBLIC ${veque_SOURCE_DIR}/include)
-target_compile_definitions(nstd PUBLIC NSTD_CUSTOM_DEQUE)
+project(nstd_winapi) #-----------
 
-FetchContent_Declare(robin_hood GIT_REPOSITORY https://github.com/martinus/robin-hood-hashing.git)
-FetchContent_MakeAvailable(robin_hood)
-target_include_directories(nstd PUBLIC ${robin_hood_SOURCE_DIR}/src/include)
-target_compile_definitions(nstd PUBLIC NSTD_CUSTOM_UNORDERED_MAP NSTD_CUSTOM_UNORDERED_SET)
-target_link_libraries(nstd PUBLIC robin_hood::robin_hood)
+file(GLOB_RECURSE NSTD_WIN_FILES ${NSTD_WORK_DIR}/winapi/*)
 
-if(NOT ${HAVE_STD_FORMAT})
-  set(FMT_MODULE OFF)
-  FetchContent_Declare(fmtlib GIT_REPOSITORY https://github.com/fmtlib/fmt.git)
-  FetchContent_MakeAvailable(fmtlib)
-  target_link_libraries(nstd fmt::fmt)
-  target_include_directories(nstd PUBLIC ${fmtlib_SOURCE_DIR}/include)
-  target_compile_definitions(nstd PUBLIC NSTD_CUSTOM_FORMAT)
-endif()
-
-if(NOT ${HAVE_STD_RANGES})
-  set(RANGES_DEEP_STL_INTEGRATION ON)
-  FetchContent_Declare(rangev3 GIT_REPOSITORY https://github.com/ericniebler/range-v3.git)
-  FetchContent_MakeAvailable(rangev3)
-  target_link_libraries(nstd range-v3)
-  target_include_directories(nstd PUBLIC ${rangev3_SOURCE_DIR}/include)
-  target_compile_definitions(nstd PUBLIC NSTD_CUSTOM_RANGES)
-endif()
+add_library(nstd_winapi ${NSTD_WIN_FILES})
+add_library(nstd::winapi ALIAS nstd_winapi)
+target_link_libraries(nstd_winapi PUBLIC nstd::mem PUBLIC nstd::text)
+target_include_directories(nstd_mem PUBLIC nstd::text)

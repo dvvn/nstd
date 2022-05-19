@@ -1,10 +1,10 @@
 module;
 
-#include <nstd/text/convert/unicode.h>
+#include "unicode.h"
 
 #include <ww898/utf_converters.hpp>
 
-module nstd.text.convert:unicode;
+module nstd.text.convert.unicode;
 
 using ww898::utf::detail::utf_selector;
 

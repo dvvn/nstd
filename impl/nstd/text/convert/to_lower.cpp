@@ -4,7 +4,7 @@ module;
 #include <cwctype>
 #include <string>
 
-module nstd.text.convert:to_lower;
+module nstd.text.convert.to_lower;
 
 static auto _To_lower_chr(const char chr) noexcept
 {

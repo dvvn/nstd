@@ -1,7 +1,7 @@
 module;
 
-#include <nstd/runtime_assert.h>
 #include <nstd/ranges.h>
+#include <nstd/runtime_assert.h>
 
 #include <variant>
 #include <vector>
@@ -282,19 +282,19 @@ static auto _Text_to_bytes(const char* begin, const char* end) runtime_assert_no
 	constexpr auto unwrap_shit = []<class T>(T rng) noexcept -> std::string_view
 	{
 		const auto raw_begin = std::addressof(*rng.begin());
-		const size_t size = std::ranges::distance(rng);
-		return { raw_begin, size };
+        const size_t size = nstd::ranges::distance(rng);
+        return {raw_begin, size};
 	};
 
-	for (const auto b : std::views::split(text_src, ' ') | std::views::transform(unwrap_shit))
-	{
-		if (b[0] == '?')
-			writer.skip();
-		else
+    for (const auto b : nstd::views::split(text_src, ' ') | nstd::views::transform(unwrap_shit))
+    {
+        if (b[0] == '?')
+            writer.skip();
+        else
 			writer.write(b);
-	}
+    }
 
-	return writer;
+    return writer;
 }
 
 //----
