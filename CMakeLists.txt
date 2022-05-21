@@ -5,11 +5,13 @@ include(FetchContent)
 set(NSTD_DIR ${CMAKE_CURRENT_LIST_DIR}/impl)
 set(NSTD_WORK_DIR ${NSTD_DIR}/nstd)
 
+set(_EMPTY_CPP ${NSTD_WORK_DIR}/_empty.cpp)
+
 project(nstd_format) # fmt::format or std::format if exists
 
-add_library(nstd_format ${NSTD_WORK_DIR}/_empty.cpp)
+add_library(nstd_format ${_EMPTY_CPP})
 add_library(nstd::format ALIAS nstd_format)
-target_compile_definitions(nstd_format INTERFACE NSTD_LIB_FORMAT)
+target_compile_definitions(nstd_format PUBLIC NSTD_LIB_FORMAT)
 
 set(FMT_MODULE OFF)
 set(FMT_DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
@@ -20,10 +22,10 @@ target_include_directories(nstd_format PRIVATE fmt::fmt)
 
 project(nstd_ranges CXX) # std::ranges or ::ranges if exists
 
-add_library(nstd_ranges INTERFACE)
+add_library(nstd_ranges ${_EMPTY_CPP})
 add_library(nstd::ranges ALIAS nstd_ranges)
-target_compile_definitions(nstd_ranges INTERFACE NSTD_LIB_RANGES)
-target_include_directories(nstd_ranges INTERFACE ${NSTD_DIR}) #todo: include only the ranges file
+target_compile_definitions(nstd_ranges PUBLIC NSTD_LIB_RANGES)
+target_include_directories(nstd_ranges PUBLIC ${NSTD_DIR}) #todo: include only the ranges file
 
 set(RANGES_DEEP_STL_INTEGRATION ON)
 FetchContent_Declare(ranges GIT_REPOSITORY https://github.com/ericniebler/range-v3.git)
