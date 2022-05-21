@@ -7,8 +7,9 @@ set(NSTD_WORK_DIR ${NSTD_DIR}/nstd)
 
 project(nstd_format) # fmt::format or std::format if exists
 
-add_library(nstd_format ${NSTD_WORK_DIR}/format.ixx)
+add_library(nstd_format ${NSTD_WORK_DIR}/_empty.cpp)
 add_library(nstd::format ALIAS nstd_format)
+target_compile_definitions(nstd_format INTERFACE NSTD_LIB_FORMAT)
 
 set(FMT_MODULE OFF)
 FetchContent_Declare(fmtlib GIT_REPOSITORY https://github.com/fmtlib/fmt.git)
@@ -37,7 +38,7 @@ target_include_directories(nstd_core PUBLIC ${NSTD_DIR})
 
 project(nstd_mem) # memory leated tools
 
-file(GLOB NSTD_MEM_FILES ${NSTD_WORK_DIR}/mem/*.*)
+file(GLOB NSTD_MEM_FILES ${NSTD_WORK_DIR}/mem/*)
 
 add_library(nstd_mem ${NSTD_MEM_FILES})
 add_library(nstd::mem ALIAS nstd_mem)
@@ -47,7 +48,7 @@ target_link_libraries(nstd_mem PRIVATE nstd_format PRIVATE nstd_ranges)
 
 project(nstd_text) #--------------------
 
-file(GLOB_RECURSE NSTD_TEXT_FILES ${NSTD_WORK_DIR}/text/*.*)
+file(GLOB_RECURSE NSTD_TEXT_FILES ${NSTD_WORK_DIR}/text/*)
 
 add_library(nstd_text ${NSTD_TEXT_FILES})
 add_library(nstd::text ALIAS nstd_text)
