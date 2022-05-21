@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef NSTD_LIB_FORMAT
-#warning "NSTD_LIB_FORMAT not found"
+#error NSTD_LIB_FORMAT not found
 #else
 #include <version>
 

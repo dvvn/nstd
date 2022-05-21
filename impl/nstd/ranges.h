@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef NSTD_LIB_RANGES
-#warning "NSTD_LIB_RANGES not found"
+#error NSTD_LIB_RANGES not found
 #else
 #include <version>
 
