@@ -12,6 +12,7 @@ add_library(nstd::format ALIAS nstd_format)
 target_compile_definitions(nstd_format INTERFACE NSTD_LIB_FORMAT)
 
 set(FMT_MODULE OFF)
+set(FMT_DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
 FetchContent_Declare(fmtlib GIT_REPOSITORY https://github.com/fmtlib/fmt.git)
 FetchContent_MakeAvailable(fmtlib)
 target_link_libraries(nstd_format PUBLIC fmt::fmt)
