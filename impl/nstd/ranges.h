@@ -1,25 +1,20 @@
 #pragma once
 
-#ifndef NSTD_LIB_RANGES
-#error NSTD_LIB_RANGES not found
-#else
 #include <version>
 
 #ifdef __cpp_lib_ranges
 #include <ranges>
+#define _RNG std::ranges
 #else
 #include <range/v3/all.hpp>
+#define _RNG ::ranges
 #endif
 
 namespace nstd
 {
-#ifdef __cpp_lib_ranges
-    namespace ranges = std::ranges;
-    namespace views = std::ranges::views;
-#else
-    namespace ranges = ::ranges;
-    namespace views = ::ranges::views;
-#endif
+    namespace ranges = _RNG;
+    namespace views = _RNG::views;
+
 } // namespace nstd
 
-#endif
+#undef _RNG

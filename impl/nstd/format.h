@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef NSTD_LIB_FORMAT
-#error NSTD_LIB_FORMAT not found
-#else
 #include <version>
 
 #ifdef __cpp_lib_format
@@ -30,4 +27,3 @@ namespace nstd
 } // namespace nstd
 
 #undef _FMT
-#endif
