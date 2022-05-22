@@ -317,5 +317,5 @@ export namespace nstd
     using ::one_instance_getter;
 
     template <typename T, size_t Instance = 0>
-    constexpr instance_of_t<T /* std::conditional_t<std::is_abstract_v<T>, T*, T> */, Instance> instance_of;
+    constexpr instance_of_t<std::conditional_t<std::is_abstract_v<T>, T*, T>, Instance> instance_of;
 } // namespace nstd
