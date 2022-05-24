@@ -313,7 +313,7 @@ class instance_of_t
     }
 
     template <typename... Args>
-    auto& construct(Args&&... args)
+    auto& construct(Args&&... args) const noexcept
     {
         return _Base::construct(std::forward<Args>(args)...);
     }
