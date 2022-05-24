@@ -224,11 +224,9 @@ constexpr uint8_t time_offsets[] = {0, 3, 6};
 template <typename T, size_t Instance = 0>
 class one_instance
 {
-    using getter_type = one_instance_getter<T>;
-
     static auto& _Buff() noexcept
     {
-        static std::optional<getter_type> buff;
+        static std::optional<one_instance_getter<T>> buff;
         return buff;
     }
 
@@ -291,6 +289,10 @@ class instance_of_t
     constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
     constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
     constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
+
+    static constexpr bool _Test 0 = std::is_constructible_v<one_instance_getter<T>, std::in_place_index_t<Instance>>;
+    static constexpr bool _Test = std::constructible_from<one_instance_getter<T>, std::in_place_index_t<Instance>>;
+    static constexpr bool _Test2 = std::destructible<one_instance_getter<T>>;
 
     bool initialized() const noexcept
     {
