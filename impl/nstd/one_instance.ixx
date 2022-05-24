@@ -63,7 +63,8 @@ class pointer_wrapper
     T ptr_;
 
   public:
-    pointer_wrapper(T ptr) : ptr_(ptr)
+    pointer_wrapper(T ptr)
+        : ptr_(ptr)
     {
     }
 
@@ -94,7 +95,8 @@ class pointer_wrapper<T**>
     }
 
   public:
-    pointer_wrapper(T** ptr) : ptr_(ptr)
+    pointer_wrapper(T** ptr)
+        : ptr_(ptr)
     {
     }
 
@@ -139,7 +141,8 @@ struct one_instance_getter
     using pointer = value_type*;
 
     template <size_t Instance, typename... Args>
-    one_instance_getter(const std::in_place_index_t<Instance>, Args&&... args) : item_(std::forward<Args>(args)...)
+    one_instance_getter(const std::in_place_index_t<Instance>, Args&&... args)
+        : item_(std::forward<Args>(args)...)
     {
     }
 
@@ -170,7 +173,8 @@ class one_instance_getter<std::unique_ptr<T, D>>
     using reference = std::remove_pointer_t<pointer>;
 
     template <size_t Instance, typename... Args>
-    one_instance_getter(const std::in_place_index_t<Instance>, Args&&... args) : item_(std::make_unique<T>(std::forward<Args>(args)...))
+    one_instance_getter(const std::in_place_index_t<Instance>, Args&&... args)
+        : item_(std::make_unique<T>(std::forward<Args>(args)...))
     {
     }
 
@@ -230,21 +234,22 @@ class one_instance
 
     static auto& _Get() noexcept
     {
-        // if constexpr (std::default_initializable<getter_type>) // otherwise call construct manually before get
-        {
-            static const auto once = [] {
-                if (!initialized())
-                    construct();
-                constexpr size_t src = time_offsets[Instance % 3];
-                return __TIME__[src] ^ __TIME__[7]; // XX:XX:XX 01 2 34 5 67
-            }();
-        };
+        static const auto once = [] {
+            if (!initialized())
+                construct();
+            constexpr size_t src = time_offsets[Instance % 3];
+            return __TIME__[src] ^ __TIME__[7]; // XX:XX:XX 01 2 34 5 67
+        }();
 
         return *_Buff();
     }
 
   public:
-    constexpr one_instance() = default;
+    constexpr one_instance()
+    {
+        static_assert(std::constructible_from<getter_type, std::in_place_index_t<Instance>>, "No default constructor detected. Put assert there if you dont use them");
+    }
+
     constexpr one_instance(const one_instance& other) = delete;
     constexpr one_instance& operator=(const one_instance& other) = delete;
     constexpr one_instance(one_instance&& other) noexcept = delete;
