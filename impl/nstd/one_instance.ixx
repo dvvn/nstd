@@ -244,8 +244,6 @@ class one_instance
     }
 
   public:
-    static constexpr size_t index = Instance;
-
     constexpr one_instance() = default;
     constexpr one_instance(const one_instance& other) = delete;
     constexpr one_instance& operator=(const one_instance& other) = delete;
@@ -280,12 +278,17 @@ class instance_of_t
     using _Base = one_instance<T, Instance>;
 
   public:
-    static constexpr size_t index = Instance;
     /*constexpr instance_of_t( ) = default;
     constexpr instance_of_t(const instance_of_t& other) = delete;
     constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
     constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
     constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
+
+    template <std::same_as<size_t> T> // fake explicit
+    consteval operator T() const noexcept
+    {
+        return Instance;
+    }
 
     template <typename... Args>
     auto& construct(Args&&... args)
