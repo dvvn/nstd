@@ -203,10 +203,7 @@ class one_instance_getter<T*>
     using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
 
     template <size_t Instance>
-    one_instance_getter(const std::in_place_index_t<Instance>)
-    {
-        static_assert(std::is_void_v<T>, "Provide constructor manually!");
-    }
+    one_instance_getter(const std::in_place_index_t<Instance>) = delete;
 
     reference ref() const noexcept
     {
@@ -248,11 +245,7 @@ class one_instance
     }
 
   public:
-    constexpr one_instance()
-    {
-        static_assert(std::constructible_from<getter_type, std::in_place_index_t<Instance>>, "No default constructor detected. Put assert there if you dont use them");
-    }
-
+    constexpr one_instance() = default;
     constexpr one_instance(const one_instance& other) = delete;
     constexpr one_instance& operator=(const one_instance& other) = delete;
     constexpr one_instance(one_instance&& other) noexcept = delete;
