@@ -232,11 +232,17 @@ class one_instance
         return buff;
     }
 
+    template <typename... Args>
+    static auto& _Construct(Args&&... args)
+    {
+        return _Buff().emplace(std::in_place_index<Instance>, std::forward<Args>(args)...);
+    }
+
     static auto& _Get() noexcept
     {
         static const auto once = [] {
             if (!initialized())
-                construct();
+                _Construct();
             constexpr size_t src = time_offsets[Instance % 3];
             return __TIME__[src] ^ __TIME__[7]; // XX:XX:XX 01 2 34 5 67
         }();
@@ -250,12 +256,6 @@ class one_instance
     constexpr one_instance& operator=(const one_instance& other) = delete;
     constexpr one_instance(one_instance&& other) noexcept = delete;
     constexpr one_instance& operator=(one_instance&& other) noexcept = delete;
-
-    template <typename... Args>
-    static auto& construct(Args&&... args)
-    {
-        return _Buff().emplace(std::in_place_index<Instance>, std::forward<Args>(args)...);
-    }
 
     static bool initialized() noexcept
     {
@@ -271,6 +271,13 @@ class one_instance
     {
         return _Get().ptr();
     }
+
+    template <typename... Args>
+    static auto& construct(Args&&... args)
+    {
+        _Construct(std::forward<Args>(args)...);
+        return get();
+    }
 };
 
 template <typename T, size_t Instance>
@@ -284,18 +291,6 @@ class instance_of_t
     constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
     constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
     constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
-
-    template <std::same_as<size_t> T> // fake explicit
-    consteval operator T() const noexcept
-    {
-        return Instance;
-    }
-
-    template <typename... Args>
-    auto& construct(Args&&... args)
-    {
-        return _Base::construct(std::forward<Args>(args)...);
-    }
 
     bool initialized() const noexcept
     {
@@ -315,6 +310,18 @@ class instance_of_t
     auto operator&() const noexcept
     {
         return _Base::get_ptr();
+    }
+
+    template <typename... Args>
+    auto& construct(Args&&... args)
+    {
+        return _Base::construct(std::forward<Args>(args)...);
+    }
+
+    template <std::same_as<size_t> T> // fake explicit
+    consteval operator T() const noexcept
+    {
+        return Instance;
     }
 };
 
