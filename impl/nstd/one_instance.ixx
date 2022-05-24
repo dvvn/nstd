@@ -230,7 +230,7 @@ class one_instance
 
     static auto& _Get() noexcept
     {
-        if constexpr (std::default_initializable<getter_type>) // otherwise call construct manually before get
+        // if constexpr (std::default_initializable<getter_type>) // otherwise call construct manually before get
         {
             static const auto once = [] {
                 if (!initialized())
@@ -244,6 +244,8 @@ class one_instance
     }
 
   public:
+    static constexpr size_t index = Instance;
+
     constexpr one_instance() = default;
     constexpr one_instance(const one_instance& other) = delete;
     constexpr one_instance& operator=(const one_instance& other) = delete;
@@ -278,6 +280,7 @@ class instance_of_t
     using _Base = one_instance<T, Instance>;
 
   public:
+    static constexpr size_t index = Instance;
     /*constexpr instance_of_t( ) = default;
     constexpr instance_of_t(const instance_of_t& other) = delete;
     constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
