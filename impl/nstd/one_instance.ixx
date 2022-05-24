@@ -203,7 +203,7 @@ class one_instance_getter<T*>
     using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
 
     template <size_t Instance>
-    one_instance_getter(const std::in_place_index_t<Instance>) = delete;
+    one_instance_getter(const std::in_place_index_t<Instance>);
 
     reference ref() const noexcept
     {
