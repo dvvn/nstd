@@ -191,10 +191,7 @@ class one_instance_getter<T*>
     using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
 
     template <size_t Instance>
-    one_instance_getter(const std::in_place_index_t<Instance>)
-    {
-        throw std::logic_error("Provide constructor monually!");
-    }
+    one_instance_getter(const std::in_place_index_t<Instance>);
 
     reference ref() const
     {
@@ -231,7 +228,7 @@ class one_instance
 
     static auto& _Get()
     {
-        // throw from one_instance_getter<T*> because partial initialization not known at compile time (always true, but fails later)
+        // WARNING: one_instance_getter<T*> always true (but fails later) because partial initialization not known at compile time (always true, but fails later)
         if constexpr (std::constructible_from<t_getter, std::in_place_index_t<Instance>>)
         {
             static const auto once = [] {
