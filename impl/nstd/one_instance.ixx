@@ -117,7 +117,7 @@ class pointer_wrapper<T**>
     }
 };
 
-//---
+//--------
 
 template <typename T>
 struct one_instance_getter
@@ -127,7 +127,7 @@ struct one_instance_getter
     using pointer = value_type*;
 
     template <size_t Instance, typename... Args>
-    one_instance_getter(const std::in_place_index_t<Instance>, Args&&... args)
+    one_instance_getter(const std::in_place_index_t<Instance>, Args&&... args) requires(std::constructible_from<T, decltype(args)...>)
         : item_(std::forward<Args>(args)...)
     {
     }
@@ -146,6 +146,7 @@ struct one_instance_getter
     value_type item_;
 };
 
+#if 0
 template <typename T, typename D>
 class one_instance_getter<std::unique_ptr<T, D>>
 {
@@ -177,6 +178,7 @@ class one_instance_getter<std::unique_ptr<T, D>>
   private:
     value_type item_;
 };
+#endif
 
 template <typename T>
 class one_instance_getter<T*>

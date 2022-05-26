@@ -23,7 +23,7 @@ namespace nstd
         return true;
     }
 
-    bool _Rt_assert_can_invoke(const bool val)
+    inline bool _Rt_assert_can_invoke(const bool val)
     {
         return val == false;
     }
