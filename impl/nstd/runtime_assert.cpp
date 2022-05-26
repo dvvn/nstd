@@ -44,10 +44,13 @@ class msg_packed
 
     msg_packed() = default;
 
-    msg_packed(string_type&& str) : data_(std::move(str))
+    msg_packed(string_type&& str)
+        : data_(std::move(str))
     {
     }
-    msg_packed(pointer_type ptr) : data_(ptr)
+
+    msg_packed(pointer_type ptr)
+        : data_(ptr)
     {
     }
 
@@ -100,7 +103,6 @@ static void _Assert(const char* expression, const char* message, const std::sour
 }
 
 using nstd::rt_assert_handler;
-
 struct rt_assert_handler_default final : rt_assert_handler
 {
     void handle(const char* expression, const char* message, const std::source_location& location) override
@@ -114,63 +116,14 @@ struct rt_assert_handler_default final : rt_assert_handler
     }
 };
 
-class rt_assert_entry
-{
-    using value_type = std::variant<rt_assert_handler::unique, rt_assert_handler::shared, rt_assert_handler::raw>;
-    value_type data_;
-
-  public:
-    rt_assert_entry(rt_assert_handler::unique&& data) : data_(std::move(data))
-    {
-    }
-
-    rt_assert_entry(const rt_assert_handler::shared& data) : data_(data)
-    {
-    }
-
-    rt_assert_entry(rt_assert_handler::raw data) : data_(data)
-    {
-    }
-
-    rt_assert_entry(rt_assert_entry&& other)
-    {
-        *this = std::move(other);
-    }
-
-    rt_assert_entry& operator=(rt_assert_entry&& other)
-    {
-        using std::swap;
-        swap(data_, other.data_);
-
-        return *this;
-    }
-
-    rt_assert_handler* get() const
-    {
-        return std::visit(
-            []<typename T>(const T& obj) {
-                if constexpr (std::is_class_v<T>)
-                    return obj.get();
-                else
-                    return obj;
-            },
-            data_);
-    }
-
-    rt_assert_handler* operator->() const
-    {
-        return get();
-    }
-};
-
 class rt_assert_data
 {
     std::mutex mtx_;
-    std::vector<rt_assert_entry> storage_;
+    std::vector<rt_assert_handler*> storage_;
 
   public:
     template <bool Lock = true>
-    void add(rt_assert_entry&& entry) runtime_assert_noexcept
+    void add(rt_assert_handler* const handler)
     {
         if constexpr (Lock)
             mtx_.lock();
@@ -178,27 +131,26 @@ class rt_assert_data
 #ifdef _DEBUG
         if (!storage_.empty())
         {
-            const size_t id = entry->id();
             for (const auto& el : storage_)
             {
-                if (el->id() == id)
-                    throw std::logic_error("Handler with given id already exists!");
+                if (el == handler)
+                    throw std::logic_error("Handler already added!");
             }
         }
 #endif
-        storage_.push_back(std::move(entry));
+        storage_.push_back(handler);
 
         if constexpr (Lock)
             mtx_.unlock();
     }
 
-    void remove(const size_t id)
+    void remove(rt_assert_handler* const handler)
     {
         const auto lock = std::scoped_lock(mtx_);
         const auto end = storage_.end();
         for (auto itr = storage_.begin(); itr != end; ++itr)
         {
-            if (id == (*itr)->id())
+            if (handler == *itr)
             {
                 storage_.erase(itr);
                 break;
@@ -214,44 +166,26 @@ class rt_assert_data
             el->handle(args...);
     }
 
-    rt_assert_data()
-    {
-        rt_assert_handler::unique ptr = std::make_unique<rt_assert_handler_default>();
-        this->add<false>(std::move(ptr));
-    }
+    rt_assert_data() = default;
 };
 
-constexpr auto _Rt = nstd::instance_of<rt_assert_data>;
-
-void nstd::_Rt_assert_add(rt_assert_handler::unique&& handler) runtime_assert_noexcept
+namespace nstd
 {
-    _Rt->add(std::move(handler));
-}
+    constexpr auto _Rt = instance_of<rt_assert_data>;
 
-void nstd::_Rt_assert_add(const rt_assert_handler::shared& handler) runtime_assert_noexcept
-{
-    _Rt->add(handler);
-}
+    void _Rt_assert_add(rt_assert_handler* const handler)
+    {
+        _Rt->add(handler);
+    }
 
-void nstd::_Rt_assert_add(rt_assert_handler::raw handler) runtime_assert_noexcept
-{
-    _Rt->add(handler);
-}
+    void _Rt_assert_remove(rt_assert_handler* const handler)
+    {
+        _Rt->remove(handler);
+    }
 
-void nstd::_Rt_assert_remove(const size_t id)
-{
-    _Rt->remove(id);
-}
-
-void nstd::_Rt_assert_handle(bool expression_result, const char* expression, const char* message, const std::source_location& location)
-{
-    if (expression_result)
-        return;
-    _Rt->handle(expression, message, location);
-}
-
-void nstd::_Rt_assert_handle(const char* message, [[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2, const std::source_location& location)
-{
-    _Rt->handle(message, location);
-    std::terminate();
-}
+    void _Rt_assert_invoke(const char* expression, const char* message, const std::source_location& location)
+    {
+        _Rt->handle(expression, message, location);
+        std::terminate();
+    }
+} // namespace nstd

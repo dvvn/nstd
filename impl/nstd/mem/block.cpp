@@ -12,7 +12,8 @@ import nstd.mem.protect;
 using namespace nstd;
 using namespace nstd::mem;
 
-block::block(const _Base span) : _Base(span)
+block::block(const _Base span)
+    : _Base(span)
 {
 }
 
@@ -29,7 +30,8 @@ static uint8_t* _Find_block_memchr(const size_t rng_size, const size_t limit, ui
             return start1;
 
         offset = std::distance(start0, start1) + 1;
-    } while (offset <= limit);
+    }
+    while (offset <= limit);
 
     return nullptr;
 }
@@ -99,15 +101,15 @@ block block::find_block(const block other) const
 }
 
 //~5x slower than modern version (debug)
-static block _Find_unk_block(const block from, const signature_unknown_bytes& unkbytes)
+static block _Find_unk_block(const block from, const unknown_signature& unkbytes)
 {
-    const auto _last_pos = from.data() + from.size() - unkbytes.bytes_count();
+    const auto _last_pos = from.data() + from.size() - unkbytes->bytes_count();
     for (auto _pos = from.data(); _pos <= _last_pos;)
     {
         auto inner_pos = _pos;
-        for (const auto& [buff, skip] : unkbytes)
+        for (const auto& [buff, skip] : *unkbytes)
         {
-            for (const auto chr : buff)
+            for (const auto chr : *buff)
             {
                 if (chr != *inner_pos++)
                     goto _NO_RETURN;
@@ -127,16 +129,17 @@ static block _Find_unk_block(const block from, const signature_unknown_bytes& un
     return {};
 }
 
-static block _Find_unk_block_modern(const block from, const signature_unknown_bytes& unkbytes)
+static block _Find_unk_block_modern(const block from, const unknown_signature& unkbytes)
 {
-    const auto unkbytes_count = unkbytes.bytes_count();
+    const auto unkbytes_count = unkbytes->bytes_count();
     if (from.size() < unkbytes_count)
         return {};
 
-    const block unkbytes_first_block = {unkbytes[0].buff.begin(), unkbytes[0].buff.end()};
-    const auto unkbytes_first_skip = unkbytes[0].skip;
+    const auto unkbytes_0 = unkbytes->begin();
+    const block unkbytes_first_block = {unkbytes_0->buff->begin(), unkbytes_0->buff->end()};
+    const auto unkbytes_first_skip = unkbytes_0->skip;
 
-    if (unkbytes.size() == 1)
+    if (unkbytes->size() == 1)
     {
         const auto found = from.find_block(unkbytes_first_block);
         if (!found.empty() && unkbytes_first_skip > 0)
@@ -149,7 +152,7 @@ static block _Find_unk_block_modern(const block from, const signature_unknown_by
     }
     else
     {
-        const std::span unkbytes_except_first = {unkbytes.begin() + 1, unkbytes.end()};
+        const std::span unkbytes_except_first = {unkbytes_0 + 1, unkbytes->end()};
 
         auto current_pos = from.data();
         const auto last_pos = current_pos + from.size();
@@ -167,8 +170,8 @@ static block _Find_unk_block_modern(const block from, const signature_unknown_by
             bool found = true;
             for (const auto& [buff, skip] : unkbytes_except_first)
             {
-                const auto buff_size = buff.size();
-                if (std::memcmp(tmp_pos, buff.begin(), buff_size) != 0)
+                const auto buff_size = buff->size();
+                if (std::memcmp(tmp_pos, buff->begin(), buff_size) != 0)
                 {
                     found = false;
                     break;
@@ -180,13 +183,14 @@ static block _Find_unk_block_modern(const block from, const signature_unknown_by
 
             if (found)
                 return {found0.data(), unkbytes_count};
-        } while (current_pos <= last_readable_pos);
+        }
+        while (current_pos <= last_readable_pos);
 
         return {};
     }
 }
 
-block block::find_block(const signature_unknown_bytes& unkbytes) const
+block block::find_block(const unknown_signature& unkbytes) const
 {
     return _Find_unk_block_modern(*this, unkbytes);
 }

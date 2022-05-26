@@ -4,6 +4,7 @@ module;
 
 #include <memory>
 #include <optional>
+#include <stdexcept>
 
 export module nstd.one_instance;
 
@@ -110,21 +111,6 @@ class pointer_wrapper<T**>
         return *get();
     }
 
-    /*  bool operator==(nullptr_t) const
-     {
-         return is_null();
-     }
-
-     bool operator!=(nullptr_t) const
-     {
-         return !is_null();
-     }
-
-    bool operator!() const
-     {
-         return is_null();
-     } */
-
     explicit operator bool() const
     {
         return !is_null();
@@ -203,7 +189,10 @@ class one_instance_getter<T*>
     using pointer = std::conditional_t<std::is_pointer_v<T>, pointer_wrapper<element_type>, real_pointer>;
 
     template <size_t Instance>
-    one_instance_getter(const std::in_place_index_t<Instance>);
+    one_instance_getter(const std::in_place_index_t<Instance>)
+    {
+        throw std::logic_error("Provide constructor monually!");
+    }
 
     reference ref() const
     {

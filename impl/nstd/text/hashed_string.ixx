@@ -85,7 +85,7 @@ struct hashed_string_wrapper : Base
         hash_ = _Get_hash();
     }
 
-    constexpr void _Write_hash(hash_type hash) runtime_assert_noexcept
+    constexpr void _Write_hash(hash_type hash)
     {
         _Validate_hash(hash);
         hash_ = hash;

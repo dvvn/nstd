@@ -1,54 +1,60 @@
 module;
 
-#include <nstd/runtime_assert_core.h>
-
-#include <variant>
-#include <vector>
-#include <string_view>
+#include <memory>
 #include <span>
+#include <string_view>
 
 export module nstd.mem.signature;
 
-class known_bytes
+/* class known_bytes
 {
 public:
-	using buffer_type = std::vector<uint8_t>;
-	using range_type = std::span<const uint8_t>;
+    using buffer_type = std::vector<uint8_t>;
+    using range_type = std::span<const uint8_t>;
 
-	known_bytes();
+    known_bytes();
 
-	known_bytes(buffer_type&& data);
-	known_bytes(const range_type data);
+    known_bytes(buffer_type&& data);
+    known_bytes(const range_type data);
 
-	using pointer = range_type::pointer;
+    using pointer = range_type::pointer;
 
     pointer begin() const;
     pointer end() const;
     size_t size() const;
 
   private:
-	std::variant<buffer_type, range_type> data_;
+    std::variant<buffer_type, range_type> data_;
+}; */
+
+struct known_bytes
+{
+    using pointer = const uint8_t*;
+
+    virtual ~known_bytes() = default;
+
+    virtual pointer begin() const = 0;
+    virtual pointer end() const = 0;
+    virtual size_t size() const = 0;
 };
 
 struct unknown_bytes_data
 {
-	using skip_type = uint16_t;
-
-	known_bytes buff;
-	//unknown bytes after buffer
-	skip_type skip = 0;
-	//?? ?? ? AA 11 22 BB ?? ?? ? CC 11 0F
-	//[  1  ] [         2       ] [  3  ]
-	// 1) buff(empty), skip==3
-	// 2) buff(size==4) skip==3
-	// 3) buff(size==3) skip(empty)
+    std::unique_ptr<known_bytes> buff;
+    // unknown bytes after buffer
+    uint16_t skip = 0;
+    //?? ?? ? AA 11 22 BB ?? ?? ? CC 11 0F
+    //[  1  ] [         2       ] [  3  ]
+    // 1) buff(empty), skip==3
+    // 2) buff(size==4) skip==3
+    // 3) buff(size==3) skip(empty)
 };
 
-class unknown_bytes
+/* class unknown_bytes
 {
 public:
-	using pointer = const unknown_bytes_data*;
-	using value_type = unknown_bytes_data;
+    using pointer = const unknown_bytes_data*;
+    using value_type = unknown_bytes_data;
 
     void push_back(unknown_bytes_data&& val);
 
@@ -60,15 +66,37 @@ public:
     size_t bytes_count() const;
 
   private:
-	std::vector<unknown_bytes_data> data_;
+    std::vector<unknown_bytes_data> data_;
+}; */
+
+struct unknown_bytes
+{
+    using pointer = const unknown_bytes_data*;
+    using value_type = unknown_bytes_data;
+
+    virtual void push_back(value_type&& val) = 0;
+
+    virtual pointer begin() const = 0;
+    virtual pointer end() const = 0;
+    virtual size_t size() const = 0;
+
+    const value_type& operator[](const size_t index) const;
+    size_t bytes_count() const;
 };
 
-export namespace nstd::/*inline*/ mem
+struct known_signature : std::unique_ptr<known_bytes>
 {
-	using signature_unknown_bytes = unknown_bytes;
-	signature_unknown_bytes make_signature(const std::string_view str) runtime_assert_noexcept;
-	signature_unknown_bytes make_signature(const char* begin, const size_t mem_size) runtime_assert_noexcept;
+    known_signature(const uint8_t* begin, const size_t mem_size);
+};
 
-	using signature_known_bytes = known_bytes;
-	signature_known_bytes make_signature_known(const uint8_t* begin, const size_t mem_size) runtime_assert_noexcept;
-}
+struct unknown_signature : std::unique_ptr<unknown_bytes>
+{
+    unknown_signature(const std::string_view str);
+    unknown_signature(const char* begin, const size_t mem_size);
+};
+
+export namespace nstd::mem
+{
+    using ::known_signature;
+    using ::unknown_signature;
+} // namespace nstd::mem

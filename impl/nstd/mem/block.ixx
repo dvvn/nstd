@@ -30,7 +30,7 @@ export namespace nstd::mem
         explicit block(const _Base span);
 
         block find_block(const block other) const;
-        block find_block(const signature_unknown_bytes& unkbytes) const;
+        block find_block(const unknown_signature& unkbytes) const;
 
         /*template <class StorageType>
         block find_block(const signature_known_bytes<StorageType>& rng) const
