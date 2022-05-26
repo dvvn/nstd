@@ -229,7 +229,8 @@ class one_instance
 
     static auto& _Get()
     {
-        if constexpr (std::default_initializable<t_getter>) // throw from one_instance_getter<T*> because partial initialization not known at compile time (always default_initializable, but fails later)
+        // throw from one_instance_getter<T*> because partial initialization not known at compile time (always true, but fails later)
+        if constexpr (std::constructible_from<t_getter, std::in_place_index_t<Instance>>)
         {
             static const auto once = [] {
                 if (!initialized())
