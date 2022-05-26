@@ -213,9 +213,11 @@ constexpr uint8_t time_offsets[] = {0, 3, 6};
 template <typename T, size_t Instance = 0>
 class one_instance
 {
+    using t_getter = one_instance_getter<T>;
+
     static auto& _Buff()
     {
-        static std::optional<one_instance_getter<T>> buff;
+        static std::optional<t_getter> buff;
         return buff;
     }
 
@@ -227,13 +229,15 @@ class one_instance
 
     static auto& _Get()
     {
-        static const auto once = [] {
-            if (!initialized())
-                _Construct();
-            constexpr size_t src = time_offsets[Instance % 3];
-            return __TIME__[src] ^ __TIME__[7]; // XX:XX:XX 01 2 34 5 67
-        }();
-
+        if constexpr (std::default_initializable<t_getter>) // throw from one_instance_getter<T*> because partial initialization not known at compile time (always default_initializable, but fails later)
+        {
+            static const auto once = [] {
+                if (!initialized())
+                    _Construct();
+                constexpr size_t src = time_offsets[Instance % 3];
+                return __TIME__[src] ^ __TIME__[7]; // XX:XX:XX 01 2 34 5 67
+            }();
+        }
         return *_Buff();
     }
 
