@@ -8,8 +8,8 @@ module nstd.text.convert.unicode;
 
 using ww898::utf::detail::utf_selector;
 
-template<typename To, typename From>
-static auto _Conv(const std::basic_string_view<From> from) noexcept
+template <typename To, typename From>
+static auto _Conv(const std::basic_string_view<From> from)
 {
 	const auto bg = from.data();
 	const auto size = from.size();
@@ -25,7 +25,7 @@ static auto _Conv(const std::basic_string_view<From> from) noexcept
 }
 
 #ifdef _DEBUG
-static void _Direct_trap() noexcept
+static void _Direct_trap()
 {
 	[[maybe_unused]]
 	const char dummy = 1;
@@ -38,16 +38,28 @@ static void _Direct_trap() noexcept
 #define OP(_TO_)\
 auto converter<_TO_>::operator()
 
-#define CVT_OP_IMPL(_TO_,_FROM_)\
-OP(_TO_)(const std::basic_string_view<_FROM_> from) const noexcept -> string_type\
-{\
-	return _Conv<_TO_>(from);\
-}
+#define CVT_OP_IMPL(_TO_, _FROM_)                                          \
+    OP(_TO_)(const std::basic_string_view<_FROM_> from) const->string_type \
+    {                                                                      \
+        return _Conv<_TO_>(from);                                          \
+    }
 
-#define CVT_OP_SELF_IMPL(_TO_) \
-OP(_TO_)(const string_view_type from) const noexcept -> string_view_type { DIRECT_TRAP; return from; }\
-OP(_TO_)(string_type& from) const noexcept -> string_type& { DIRECT_TRAP; return from; }\
-OP(_TO_)(string_type&& from) const noexcept -> string_type { DIRECT_TRAP; return std::move(from); }\
+#define CVT_OP_SELF_IMPL(_TO_)                                    \
+    OP(_TO_)(const string_view_type from) const->string_view_type \
+    {                                                             \
+        DIRECT_TRAP;                                              \
+        return from;                                              \
+    }                                                             \
+    OP(_TO_)(string_type & from) const->string_type&              \
+    {                                                             \
+        DIRECT_TRAP;                                              \
+        return from;                                              \
+    }                                                             \
+    OP(_TO_)(string_type && from) const->string_type              \
+    {                                                             \
+        DIRECT_TRAP;                                              \
+        return std::move(from);                                   \
+    }
 
 #ifdef __cpp_lib_char8_t
 template < >

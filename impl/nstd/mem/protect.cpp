@@ -18,7 +18,7 @@ using namespace nstd::mem;
 
 struct local_free
 {
-    void operator()(LPSTR ptr) const noexcept
+    void operator()(LPSTR ptr) const
     {
         LocalFree(ptr);
     }
@@ -54,7 +54,7 @@ class last_error_string
         buffer = msg;
     }
 
-    std::string_view view() const noexcept
+    std::string_view view() const
     {
         return {buffer.get(), msg_size};
     }
@@ -86,7 +86,7 @@ static DWORD _Set_flags(const LPVOID addr, const SIZE_T size, const DWORD new_fl
     return 0;
 }
 
-DWORD protect::data::set() const noexcept
+DWORD protect::data::set() const
 {
     return _Set_flags(addr, size, flags);
 }
@@ -100,7 +100,7 @@ protect::protect(const LPVOID addr, const SIZE_T size, const DWORD new_flags)
         info_.emplace(addr, size, old_flags);
 }
 
-protect::protect(protect&& other) noexcept
+protect::protect(protect&& other)
 {
     *this = std::move(other);
 }
@@ -112,14 +112,14 @@ protect::~protect()
     info_->set();
 }
 
-protect& protect::operator=(protect&& other) noexcept
+protect& protect::operator=(protect&& other)
 {
     using std::swap;
     swap(this->info_, other.info_);
     return *this;
 }
 
-bool protect::restore() noexcept
+bool protect::restore()
 {
     if (!info_.has_value())
         return false;
@@ -130,7 +130,7 @@ bool protect::restore() noexcept
     return true;
 }
 
-bool protect::has_value() const noexcept
+bool protect::has_value() const
 {
     return info_.has_value();
 }

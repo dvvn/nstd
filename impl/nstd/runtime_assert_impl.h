@@ -16,27 +16,23 @@ namespace nstd
 
 		virtual ~rt_assert_handler( ) = default;
 
-		virtual void handle(const char* expression, const char* message, const std::source_location& location) noexcept = 0;
-		virtual void handle(const char* message, const std::source_location& location) noexcept = 0;
+        virtual void handle(const char* expression, const char* message, const std::source_location& location) = 0;
+        virtual void handle(const char* message, const std::source_location& location) = 0;
 
-		virtual size_t id( ) const noexcept { return reinterpret_cast<size_t>(this); };
-	};
+        virtual size_t id() const
+        {
+            return reinterpret_cast<size_t>(this);
+        };
+    };
 
 	void _Rt_assert_add(rt_assert_handler::unique&& handler) runtime_assert_noexcept;
 	void _Rt_assert_add(const rt_assert_handler::shared& handler) runtime_assert_noexcept;
 	void _Rt_assert_add(rt_assert_handler::raw handler) runtime_assert_noexcept;
 
-	void _Rt_assert_remove(const size_t id) noexcept;
+    void _Rt_assert_remove(const size_t id);
 
-	void _Rt_assert_handle(bool expression_result,
-						   const char* expression,
-						   const char* message = nullptr
-						   , const std::source_location& location = std::source_location::current( )) noexcept;
-	[[noreturn]]
-	void _Rt_assert_handle(const char* message,
-						   const char* unused1 = nullptr,
-						   const char* unused2 = nullptr
-						   , const std::source_location& location = std::source_location::current( )) noexcept;
+    void _Rt_assert_handle(bool expression_result, const char* expression, const char* message = nullptr, const std::source_location& location = std::source_location::current());
+    [[noreturn]] void _Rt_assert_handle(const char* message, const char* unused1 = nullptr, const char* unused2 = nullptr, const std::source_location& location = std::source_location::current());
 }
 
 // ReSharper disable CppInconsistentNaming

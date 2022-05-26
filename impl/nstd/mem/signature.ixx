@@ -22,11 +22,11 @@ public:
 
 	using pointer = range_type::pointer;
 
-	pointer begin() const noexcept;
-	pointer end() const noexcept;
-	size_t size() const noexcept;
+    pointer begin() const;
+    pointer end() const;
+    size_t size() const;
 
-private:
+  private:
 	std::variant<buffer_type, range_type> data_;
 };
 
@@ -50,16 +50,16 @@ public:
 	using pointer = const unknown_bytes_data*;
 	using value_type = unknown_bytes_data;
 
-	void push_back(unknown_bytes_data&& val) noexcept;
+    void push_back(unknown_bytes_data&& val);
 
-	pointer begin() const noexcept;
-	pointer end() const noexcept;
-	size_t size() const noexcept;
+    pointer begin() const;
+    pointer end() const;
+    size_t size() const;
 
-	const unknown_bytes_data& operator[](const size_t index) const noexcept;
-	size_t bytes_count() const noexcept;
+    const unknown_bytes_data& operator[](const size_t index) const;
+    size_t bytes_count() const;
 
-private:
+  private:
 	std::vector<unknown_bytes_data> data_;
 };
 

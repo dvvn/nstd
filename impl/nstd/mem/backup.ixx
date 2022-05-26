@@ -19,15 +19,15 @@ export namespace nstd::inline mem
 		using value_type = T;
 
 		backup(const backup& other) = delete;
-		backup& operator=(const backup& other) = delete;
+        backup& operator=(const backup& other) = delete;
 
-		backup(backup&& other) noexcept
-		{
+        backup(backup&& other)
+        {
 			*this = std::move(other);
-		}
+        }
 
-		backup& operator=(backup&& other) noexcept
-		{
+        backup& operator=(backup&& other)
+        {
 			std::swap(backup_, other.backup_);
 			return *this;
 		}

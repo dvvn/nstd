@@ -15,12 +15,12 @@ struct chars_cache_impl
     }
 
     /*[[deprecated]]
-    constexpr std::basic_string_view<Chr> view() const noexcept
+    constexpr std::basic_string_view<Chr> view() const
     {
         return { _Data, Size - 1 };
     }*/
 
-    constexpr operator std::basic_string_view<Chr>() const noexcept
+    constexpr operator std::basic_string_view<Chr>() const
     {
         return {_Data, Size - 1};
     }

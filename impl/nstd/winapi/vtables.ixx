@@ -68,7 +68,7 @@ namespace nstd::mem
     block make_signature(basic_address<T>&& addr) = delete;
 
     template <typename T>
-    block make_signature(const basic_address<T>& addr) noexcept
+    block make_signature(const basic_address<T>& addr)
     {
         // return {addr.get<uint8_t*>( ), sizeof(uintptr_t)};
         return {(uint8_t*)std::addressof(addr), sizeof(uintptr_t)};
@@ -76,7 +76,7 @@ namespace nstd::mem
 } // namespace nstd::mem
 
 // todo: add x64 support
-static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const basic_address<void> type_descriptor) noexcept
+static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const basic_address<void> type_descriptor)
 {
     auto from = dot_rdata;
     const auto search = make_signature(type_descriptor);
@@ -125,7 +125,7 @@ static uint8_t* _Load_vtable(const block dot_rdata, const block dot_text, const 
     return nullptr;
 }
 
-static auto _Make_vtable_name(const std::string_view name) noexcept
+static auto _Make_vtable_name(const std::string_view name)
 {
     constexpr std::string_view prefix = ".?AV";
     constexpr std::string_view suffix = "@@";
@@ -138,7 +138,7 @@ static auto _Make_vtable_name(const std::string_view name) noexcept
     return buff;
 }
 
-static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* const section) noexcept
+static block _Section_to_rng(const basic_address<IMAGE_DOS_HEADER> dos, IMAGE_SECTION_HEADER* const section)
 {
     uint8_t* const ptr = dos + section->VirtualAddress;
     return {ptr, section->SizeOfRawData};

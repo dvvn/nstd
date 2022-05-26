@@ -35,7 +35,7 @@ import nstd.type_name;
 #define WRAP_THIS(_NAME_) WRAP(auto&, _NAME_, , return *this)
 
 template <class Base, typename T, typename Q>
-decltype(auto) this_or_iterator(T* thisptr, const Q& proxy_result) noexcept
+decltype(auto) this_or_iterator(T* thisptr, const Q& proxy_result)
 {
     if constexpr (std::same_as<Q, Base>)
     {
@@ -63,7 +63,7 @@ struct hashed_string_wrapper : Base
     [[no_unique_address]] hash_func_type hasher_;
     hash_type hash_;
 
-    constexpr hash_type _Get_hash() const noexcept
+    constexpr hash_type _Get_hash() const
     {
         return std::invoke(hasher_, *static_cast<const Base*>(this));
     }
@@ -80,7 +80,7 @@ struct hashed_string_wrapper : Base
 #endif
     }
 
-    constexpr void _Calc_hash() noexcept
+    constexpr void _Calc_hash()
     {
         hash_ = _Get_hash();
     }
@@ -231,12 +231,12 @@ export namespace nstd::text
         return l.hash() _OP_ r.hash();                                                                                          \
     }                                                                                                                           \
     OPERATOR_SIMPLE_HEAD                                                                                                        \
-    constexpr _RET_ operator _OP_(const Wrapper& l, const HashType hash) noexcept                                               \
+    constexpr _RET_ operator _OP_(const Wrapper& l, const HashType hash)                                                        \
     {                                                                                                                           \
         return l.hash() _OP_ hash;                                                                                              \
     }                                                                                                                           \
     OPERATOR_SIMPLE_HEAD                                                                                                        \
-    constexpr _RET_ operator _OP_(const HashType hash, const Wrapper& r) noexcept                                               \
+    constexpr _RET_ operator _OP_(const HashType hash, const Wrapper& r)                                                        \
     {                                                                                                                           \
         return hash _OP_ r.hash();                                                                                              \
     }

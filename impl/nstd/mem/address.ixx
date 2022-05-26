@@ -16,8 +16,8 @@ concept static_convertible_to = requires(From val)
 	static_cast<To>(val);
 };
 
-template<typename Out, typename In>
-Out _Force_cast(In in) noexcept
+template <typename Out, typename In>
+Out _Force_cast(In in)
 {
 	if constexpr(reinterpret_convertible_to<In, Out>)
 	{
@@ -34,8 +34,8 @@ Out _Force_cast(In in) noexcept
 	}
 }
 
-template<typename T>
-decltype(auto) _Deref(T* const ptr) noexcept
+template <typename T>
+decltype(auto) _Deref(T* const ptr)
 {
 	if constexpr(std::is_pointer_v<T>)
 		return *ptr;
@@ -43,8 +43,8 @@ decltype(auto) _Deref(T* const ptr) noexcept
 		return *_Force_cast<std::conditional_t<std::is_class_v<T> || std::is_member_function_pointer_v<T> || std::is_function_v<T>, void, T>**>(ptr);
 }
 
-template<size_t Count, typename T>
-decltype(auto) _Deref(T* const ptr) noexcept
+template <size_t Count, typename T>
+decltype(auto) _Deref(T* const ptr)
 {
 	const auto ptr1 = _Deref(ptr);
 	if constexpr(Count == 1)
@@ -111,45 +111,45 @@ export namespace nstd::mem
 
 		//----
 
-		bool operator!( ) const noexcept
-		{
+        bool operator!() const
+        {
 			return this->pointer == nullptr;
-		}
+        }
 
-		explicit operator bool( ) const noexcept
-		{
+        explicit operator bool() const
+        {
 			return this->pointer != nullptr;
 		}
 
 		//----
 
-#define ADDR_EQ_OP(_OP_)\
-		template<constructible_from<basic_address> Q>\
-		auto NSTD_CONCAT(operator,_OP_)(const Q other) const noexcept\
-		{\
-			return this->value _OP_ basic_address(other).value;\
-		}
+#define ADDR_EQ_OP(_OP_)                                    \
+    template <constructible_from<basic_address> Q>          \
+    auto NSTD_CONCAT(operator, _OP_)(const Q other) const   \
+    {                                                       \
+        return this->value _OP_ basic_address(other).value; \
+    }
 
-#define ADDR_MATH_OP(_OP_,_NAME_)\
-		template<constructible_from<basic_address> Q>\
-		basic_address& NSTD_CONCAT(operator,NSTD_CONCAT(_OP_,=))(const Q other) noexcept\
-		{\
-			static_assert(!std::is_class_v<value_type>, __FUNCSIG__": unable to change the class type!");\
-			this->value NSTD_CONCAT(_OP_,=) basic_address<void>(other).value;\
-			return *this;\
-		}\
-		template<constructible_from<basic_address> Q>\
-		basic_address<safe_out_type> NSTD_CONCAT(operator,_OP_)(const Q other) const noexcept\
-		{\
-			return this->value _OP_ basic_address<void>(other).value;\
-		}\
-		template<constructible_from<basic_address> Q>\
-		basic_address<safe_out_type> _NAME_(const Q other) const noexcept\
-		{\
-			return this->value _OP_ basic_address<void>(other).value;\
-		}
+#define ADDR_MATH_OP(_OP_, _NAME_)                                                                     \
+    template <constructible_from<basic_address> Q>                                                     \
+    basic_address& NSTD_CONCAT(operator, NSTD_CONCAT(_OP_, =))(const Q other)                          \
+    {                                                                                                  \
+        static_assert(!std::is_class_v<value_type>, __FUNCSIG__ ": unable to change the class type!"); \
+        this->value NSTD_CONCAT(_OP_, =) basic_address<void>(other).value;                             \
+        return *this;                                                                                  \
+    }                                                                                                  \
+    template <constructible_from<basic_address> Q>                                                     \
+    basic_address<safe_out_type> NSTD_CONCAT(operator, _OP_)(const Q other) const                      \
+    {                                                                                                  \
+        return this->value _OP_ basic_address<void>(other).value;                                      \
+    }                                                                                                  \
+    template <constructible_from<basic_address> Q>                                                     \
+    basic_address<safe_out_type> _NAME_(const Q other) const                                           \
+    {                                                                                                  \
+        return this->value _OP_ basic_address<void>(other).value;                                      \
+    }
 
-		ADDR_EQ_OP(<=> );
+        ADDR_EQ_OP(<=> );
 		ADDR_EQ_OP(== );
 
 		ADDR_MATH_OP(+, plus);
@@ -159,33 +159,33 @@ export namespace nstd::mem
 
 		//----
 
-		auto operator[](const ptrdiff_t index) const noexcept
-		{
+        auto operator[](const ptrdiff_t index) const
+        {
 			auto tmp = *this;
 			tmp.value += index * _Array_step<value_type>( );
 			return tmp.deref<1>( );
-		}
+        }
 
-		pointer_type operator->( ) const noexcept
-		{
+        pointer_type operator->() const
+        {
 			return this->pointer;
 		}
 
 		//----
 
-		template <typename Q>
-			requires(std::is_reference_v<Q>)
-		operator Q( ) const noexcept
-		{
+        template <typename Q>
+
+        requires(std::is_reference_v<Q>) operator Q() const
+        {
 			using ref_t = std::remove_reference_t<Q>;
 			static_assert(!std::is_class_v<ref_t> || std::convertible_to<value_type, ref_t>);
 			return *_Force_cast<ref_t*>(this->value);
 		}
 
-		template <typename Q>
-			requires(std::is_pointer_v<Q> || std::is_member_function_pointer_v<Q> || std::is_function_v<Q>)
-		operator Q( ) const noexcept
-		{
+        template <typename Q>
+
+        requires(std::is_pointer_v<Q> || std::is_member_function_pointer_v<Q> || std::is_function_v<Q>) operator Q() const
+        {
 			if constexpr(std::is_pointer_v<Q>)
 				static_assert(std::constructible_from<basic_address, Q>, __FUNCSIG__": unable to convert to pointer!");
 			else
@@ -193,32 +193,34 @@ export namespace nstd::mem
 			return _Force_cast<Q>(this->value);
 		}
 
-		template <typename Q>
-			requires(std::is_integral_v<Q>)
-		/*explicit*/ operator Q( ) const noexcept
-		{
+        template <typename Q>
+
+        requires(std::is_integral_v<Q>)
+        /*explicit*/
+        operator Q() const
+        {
 			return static_cast<Q>(this->value);
 		}
 
 		//----
 
-		template<size_t Count>
-		auto deref( ) const noexcept
-		{
+        template <size_t Count>
+        auto deref() const
+        {
 			const auto ptr = _Deref<Count>(this->pointer);
 			return basic_address<decltype(ptr)>(ptr);
-		}
+        }
 
-		template<typename Q>
-		/*[[deprecated]]*/ Q get( ) const noexcept
-		{
+        template <typename Q>
+        /*[[deprecated]]*/ Q get() const
+        {
 			return _Force_cast<Q>(value);
 		}
 
 		//----
 
-		basic_address<safe_out_type> jmp(const ptrdiff_t offset) const noexcept
-		{
+        basic_address<safe_out_type> jmp(const ptrdiff_t offset) const
+        {
 			// Example:
 			// E9 ? ? ? ?
 			// The offset has to skip the E9 (JMP) instruction

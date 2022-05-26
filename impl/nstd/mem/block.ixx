@@ -29,8 +29,8 @@ export namespace nstd::mem
 
         explicit block(const _Base span);
 
-        block find_block(const block other) const noexcept;
-        block find_block(const signature_unknown_bytes& unkbytes) const noexcept;
+        block find_block(const block other) const;
+        block find_block(const signature_unknown_bytes& unkbytes) const;
 
         /*template <class StorageType>
         block find_block(const signature_known_bytes<StorageType>& rng) const
@@ -38,17 +38,17 @@ export namespace nstd::mem
             return find_block({rng.data( ),rng.size( )});
         }*/
 
-        block shift_to(pointer ptr) const noexcept;
+        block shift_to(pointer ptr) const;
         // block subblock(size_t offset, size_t count = std::dynamic_extent) const;
 
-        bool have_flags(DWORD flags) const noexcept;
-        bool dont_have_flags(DWORD flags) const noexcept;
-        DWORD get_flags() const noexcept;
+        bool have_flags(DWORD flags) const;
+        bool dont_have_flags(DWORD flags) const;
+        DWORD get_flags() const;
 
-        bool readable() const noexcept;
-        bool readable_ex() const noexcept;
-        bool writable() const noexcept;
-        bool executable() const noexcept;
-        bool code_padding() const noexcept;
+        bool readable() const;
+        bool readable_ex() const;
+        bool writable() const;
+        bool executable() const;
+        bool code_padding() const;
     };
 } // namespace nstd::mem

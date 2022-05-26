@@ -61,9 +61,8 @@ namespace nstd
 #ifdef __cpp_lib_unreachable
 	using std::unreachable;
 #else
-	[[noreturn]]
-	inline void unreachable() noexcept
-	{
+    [[noreturn]] inline void unreachable()
+    {
 		std::abort();
 	}
 #endif

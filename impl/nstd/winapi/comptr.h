@@ -20,19 +20,22 @@ namespace nstd::winapi
         comptr& operator=(T* ptr) = delete;
 
         template <typename T1>
-        requires(std::derived_from<T, T1>) operator T1*() const noexcept
+
+        requires(std::derived_from<T, T1>) operator T1*() const
         {
             return _Base::Get();
         }
 
         template <typename T1>
-        requires(std::derived_from<T, T1>) operator T1**() noexcept
+
+        requires(std::derived_from<T, T1>) operator T1**()
         {
             return _Base::ReleaseAndGetAddressOf();
         }
 
         template <typename T1>
-        requires(std::derived_from<T, T1>) operator T1* const*() const noexcept
+
+        requires(std::derived_from<T, T1>) operator T1* const*() const
         {
             return _Base::GetAddressOf();
         }

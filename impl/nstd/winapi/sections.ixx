@@ -13,10 +13,10 @@ export import nstd.winapi.modules;
 
 export namespace nstd::winapi
 {
-    IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept;
+    IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name);
 
     template <typename Msg>
-    IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::wstring_view module_name, const std::string_view section_name) noexcept
+    IMAGE_SECTION_HEADER* find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::wstring_view module_name, const std::string_view section_name)
     {
         const auto found = find_section(ldr_entry, section_name);
         _Invoke_msg<Msg>(found, module_name, section_name);
@@ -35,7 +35,7 @@ export namespace nstd::winapi
 module :private;
 import nstd.winapi.helpers;
 
-IMAGE_SECTION_HEADER* nstd::winapi::find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
+IMAGE_SECTION_HEADER* nstd::winapi::find_section(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name)
 {
     const auto [dos, nt] = dos_nt(ldr_entry);
 

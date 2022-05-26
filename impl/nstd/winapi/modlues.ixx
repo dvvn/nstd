@@ -54,7 +54,7 @@ template <typename Fn>
 class partial_invoke
 {
     template <class Tpl, size_t... I>
-    static constexpr auto _Get_valid_seq(const std::index_sequence<I...> seq) noexcept
+    static constexpr auto _Get_valid_seq(const std::index_sequence<I...> seq)
     {
         if constexpr (std::invocable<Fn, std::tuple_element_t<I, Tpl>...>)
             return seq;
@@ -65,7 +65,7 @@ class partial_invoke
     }
 
     template <class Tpl, size_t I1 = -1, size_t... I>
-    static constexpr auto _Get_valid_seq_reversed(const std::index_sequence<I1, I...> seq = {}) noexcept
+    static constexpr auto _Get_valid_seq_reversed(const std::index_sequence<I1, I...> seq = {})
     {
         if constexpr (I1 == -1)
             return std::false_type();
@@ -76,13 +76,13 @@ class partial_invoke
     }
 
     template <class Tpl, size_t... I>
-    auto apply(Tpl& tpl, const std::index_sequence<I...>) const noexcept
+    auto apply(Tpl& tpl, const std::index_sequence<I...>) const
     {
         return std::invoke(fn_, std::get<I>(tpl)...);
     }
 
     template <class Tpl, class SeqFwd, class SeqBack>
-    auto apply(Tpl& tpl, const SeqFwd seq_fwd, const SeqBack seq_back) const noexcept
+    auto apply(Tpl& tpl, const SeqFwd seq_fwd, const SeqBack seq_back) const
     {
         constexpr auto fwd_ok = !std::same_as<SeqFwd, std::false_type>;
         constexpr auto bk_ok = !std::same_as<SeqBack, std::false_type>;
@@ -102,7 +102,7 @@ class partial_invoke
     }
 
     template <typename... Args>
-    auto operator()(Args&&... args) const noexcept
+    auto operator()(Args&&... args) const
     {
         auto tpl = std::forward_as_tuple(std::forward<Args>(args)...);
         using tpl_t = decltype(tpl);
@@ -162,7 +162,7 @@ static LDR_DATA_TABLE_ENTRY* _Find_module(Fn comparer) runtime_assert_noexcept
 
 static LDR_DATA_TABLE_ENTRY* _Find_module(const std::wstring_view name, const bool check_whole_path) runtime_assert_noexcept
 {
-    return _Find_module([=](const nstd::winapi::module_info info) noexcept {
+    return _Find_module([=](const nstd::winapi::module_info info) {
         const auto full_path = info.path();
         if (check_whole_path)
             return full_path == name;
@@ -177,7 +177,7 @@ LDR_DATA_TABLE_ENTRY* find_module_impl(const std::wstring_view name, const bool 
     return _Find_module(name, check_whole_path);
 }
 
-static DECLSPEC_NOINLINE HMODULE _Get_current_module_handle() noexcept
+static DECLSPEC_NOINLINE HMODULE _Get_current_module_handle()
 {
     MEMORY_BASIC_INFORMATION info;
     constexpr SIZE_T info_size = sizeof(MEMORY_BASIC_INFORMATION);
@@ -190,6 +190,8 @@ static DECLSPEC_NOINLINE HMODULE _Get_current_module_handle() noexcept
 
 LDR_DATA_TABLE_ENTRY* nstd::winapi::current_module() runtime_assert_noexcept
 {
-    static const auto ret = _Find_module([base_address = _Get_current_module_handle()](IMAGE_DOS_HEADER* const dos) noexcept { return base_address == reinterpret_cast<HMODULE>(dos); });
+    static const auto ret = _Find_module([base_address = _Get_current_module_handle()](IMAGE_DOS_HEADER* const dos) {
+        return base_address == reinterpret_cast<HMODULE>(dos);
+    });
     return ret;
 }

@@ -14,7 +14,7 @@ export import nstd.winapi.modules;
 
 export namespace nstd::winapi
 {
-    void* find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept;
+    void* find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name);
 
     template <typename FnT>
     struct found_export
@@ -27,7 +27,7 @@ export namespace nstd::winapi
     };
 
     template <typename FnT = void*, typename Msg = void*>
-    FnT find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::wstring_view module_name, const std::string_view export_name) noexcept
+    FnT find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::wstring_view module_name, const std::string_view export_name)
     {
         const auto found = find_export(ldr_entry, export_name);
         _Invoke_msg<Msg, found_export<FnT>>(found, module_name, export_name);
@@ -46,7 +46,7 @@ export namespace nstd::winapi
 module :private;
 import nstd.mem.address;
 
-void* nstd::winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name) noexcept
+void* nstd::winapi::find_export(LDR_DATA_TABLE_ENTRY* const ldr_entry, const std::string_view name)
 {
     using mem::basic_address;
 

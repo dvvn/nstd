@@ -16,7 +16,7 @@ block::block(const _Base span) : _Base(span)
 {
 }
 
-static uint8_t* _Find_block_memchr(const size_t rng_size, const size_t limit, uint8_t* const start0, uint8_t* const start2) noexcept
+static uint8_t* _Find_block_memchr(const size_t rng_size, const size_t limit, uint8_t* const start0, uint8_t* const start2)
 {
     size_t offset = 0;
     do
@@ -35,7 +35,7 @@ static uint8_t* _Find_block_memchr(const size_t rng_size, const size_t limit, ui
 }
 
 // 10-100x slower than memchr version (debug)
-static uint8_t* _Find_block_memcmp(const size_t rng_size, const size_t limit, uint8_t* const start0, uint8_t* const start2) noexcept
+static uint8_t* _Find_block_memcmp(const size_t rng_size, const size_t limit, uint8_t* const start0, uint8_t* const start2)
 {
     for (size_t offset = 0; offset < limit; ++offset)
     {
@@ -49,7 +49,7 @@ static uint8_t* _Find_block_memcmp(const size_t rng_size, const size_t limit, ui
 
 //---
 
-static block _Find_block_handmade(const block from, const block other) noexcept
+static block _Find_block_handmade(const block from, const block other)
 {
     const auto rng_size = other.size();
     const auto limit = from.size() - rng_size;
@@ -74,7 +74,7 @@ static block _Find_block_handmade(const block from, const block other) noexcept
 }
 
 // 2x slower than iters version (debug)
-static block _Find_block_ranges(const block from, const block other) noexcept
+static block _Find_block_ranges(const block from, const block other)
 {
     const auto found = std::ranges::search(from, other);
     if (!found.empty())
@@ -83,7 +83,7 @@ static block _Find_block_ranges(const block from, const block other) noexcept
 }
 
 // 3x slower than handmade verison (debug)
-static block _Find_block_iters(const block from, const block other) noexcept
+static block _Find_block_iters(const block from, const block other)
 {
     const auto found = std::search(from.begin(), from.end(), other.begin(), other.end());
     if (found != from.end())
@@ -93,13 +93,13 @@ static block _Find_block_iters(const block from, const block other) noexcept
 
 //---
 
-block block::find_block(const block other) const noexcept
+block block::find_block(const block other) const
 {
     return _Find_block_handmade(*this, other);
 }
 
 //~5x slower than modern version (debug)
-static block _Find_unk_block(const block from, const signature_unknown_bytes& unkbytes) noexcept
+static block _Find_unk_block(const block from, const signature_unknown_bytes& unkbytes)
 {
     const auto _last_pos = from.data() + from.size() - unkbytes.bytes_count();
     for (auto _pos = from.data(); _pos <= _last_pos;)
@@ -127,7 +127,7 @@ static block _Find_unk_block(const block from, const signature_unknown_bytes& un
     return {};
 }
 
-static block _Find_unk_block_modern(const block from, const signature_unknown_bytes& unkbytes) noexcept
+static block _Find_unk_block_modern(const block from, const signature_unknown_bytes& unkbytes)
 {
     const auto unkbytes_count = unkbytes.bytes_count();
     if (from.size() < unkbytes_count)
@@ -186,12 +186,12 @@ static block _Find_unk_block_modern(const block from, const signature_unknown_by
     }
 }
 
-block block::find_block(const signature_unknown_bytes& unkbytes) const noexcept
+block block::find_block(const signature_unknown_bytes& unkbytes) const
 {
     return _Find_unk_block_modern(*this, unkbytes);
 }
 
-block block::shift_to(pointer ptr) const noexcept
+block block::shift_to(pointer ptr) const
 {
     const auto offset = std::distance(this->data(), ptr);
     const auto tmp = this->subspan(offset);

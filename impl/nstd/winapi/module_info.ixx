@@ -17,11 +17,11 @@ class module_info
 
     module_info(pointer const entry);
 
-    pointer operator->() const noexcept;
-    reference operator*() const noexcept;
+    pointer operator->() const;
+    reference operator*() const;
 
-    std::wstring_view path() const noexcept;
-    std::wstring_view name() const noexcept;
+    std::wstring_view path() const;
+    std::wstring_view name() const;
 
   private:
     pointer entry_;
@@ -38,22 +38,22 @@ module_info::module_info(LDR_DATA_TABLE_ENTRY* const entry) : entry_(entry)
 {
 }
 
-auto module_info::operator->() const noexcept -> pointer
+auto module_info::operator->() const -> pointer
 {
     return entry_;
 }
 
-auto module_info::operator*() const noexcept -> reference
+auto module_info::operator*() const -> reference
 {
     return *entry_;
 }
 
-std::wstring_view module_info::path() const noexcept
+std::wstring_view module_info::path() const
 {
     return {entry_->FullDllName.Buffer, entry_->FullDllName.Length / sizeof(WCHAR)};
 }
 
-std::wstring_view module_info::name() const noexcept
+std::wstring_view module_info::name() const
 {
     const auto full_path = this->path();
     const auto name_start = full_path.rfind('\\');

@@ -24,7 +24,7 @@ static auto _Build_string(const Arg1& arg, const Args&... args)
     else
     {
         return std::apply(
-            []<typename... S>(const S&... strings) noexcept {
+            []<typename... S>(const S&... strings) {
                 std::basic_string<C> buff;
                 buff.reserve((strings.size() + ...));
                 (buff.append(strings.begin(), strings.end()), ...);
@@ -59,10 +59,10 @@ class msg_packed
         data_.emplace<string_type>(tmp.begin(), tmp.end());
     }
 
-    operator pointer_type() const noexcept
+    operator pointer_type() const
     {
         return std::visit(
-            []<typename T>(const T& obj) noexcept {
+            []<typename T>(const T& obj) {
                 if constexpr (std::is_class_v<T>)
                     return obj.data();
                 else
@@ -79,7 +79,7 @@ template <typename C>
 msg_packed(const C*) -> msg_packed<C>;
 
 template <typename C>
-static msg_packed<C> _Assert_msg(const char* expression, const char* message) noexcept
+static msg_packed<C> _Assert_msg(const char* expression, const char* message)
 {
     if (!expression)
         return message;
@@ -88,7 +88,7 @@ static msg_packed<C> _Assert_msg(const char* expression, const char* message) no
     return _Build_string<C>(message, "( ", expression, ")");
 }
 
-static void _Assert(const char* expression, const char* message, const std::source_location& location) noexcept
+static void _Assert(const char* expression, const char* message, const std::source_location& location)
 {
 #if defined(_MSC_VER)
     _wassert(_Assert_msg<wchar_t>(expression, message), msg_packed<wchar_t>(location.file_name()), location.line());
@@ -103,12 +103,12 @@ using nstd::rt_assert_handler;
 
 struct rt_assert_handler_default final : rt_assert_handler
 {
-    void handle(const char* expression, const char* message, const std::source_location& location) noexcept override
+    void handle(const char* expression, const char* message, const std::source_location& location) override
     {
         _Assert(expression, message, location);
     }
 
-    void handle(const char* message, const std::source_location& location) noexcept override
+    void handle(const char* message, const std::source_location& location) override
     {
         _Assert(nullptr, message, location);
     }
@@ -132,12 +132,12 @@ class rt_assert_entry
     {
     }
 
-    rt_assert_entry(rt_assert_entry&& other) noexcept
+    rt_assert_entry(rt_assert_entry&& other)
     {
         *this = std::move(other);
     }
 
-    rt_assert_entry& operator=(rt_assert_entry&& other) noexcept
+    rt_assert_entry& operator=(rt_assert_entry&& other)
     {
         using std::swap;
         swap(data_, other.data_);
@@ -145,10 +145,10 @@ class rt_assert_entry
         return *this;
     }
 
-    rt_assert_handler* get() const noexcept
+    rt_assert_handler* get() const
     {
         return std::visit(
-            []<typename T>(const T& obj) noexcept {
+            []<typename T>(const T& obj) {
                 if constexpr (std::is_class_v<T>)
                     return obj.get();
                 else
@@ -157,7 +157,7 @@ class rt_assert_entry
             data_);
     }
 
-    rt_assert_handler* operator->() const noexcept
+    rt_assert_handler* operator->() const
     {
         return get();
     }
@@ -192,7 +192,7 @@ class rt_assert_data
             mtx_.unlock();
     }
 
-    void remove(const size_t id) noexcept
+    void remove(const size_t id)
     {
         const auto lock = std::scoped_lock(mtx_);
         const auto end = storage_.end();
@@ -207,7 +207,7 @@ class rt_assert_data
     }
 
     template <typename... Args>
-    void handle(const Args&... args) noexcept
+    void handle(const Args&... args)
     {
         const auto lock = std::scoped_lock(mtx_);
         for (const auto& el : storage_)
@@ -238,19 +238,19 @@ void nstd::_Rt_assert_add(rt_assert_handler::raw handler) runtime_assert_noexcep
     _Rt->add(handler);
 }
 
-void nstd::_Rt_assert_remove(const size_t id) noexcept
+void nstd::_Rt_assert_remove(const size_t id)
 {
     _Rt->remove(id);
 }
 
-void nstd::_Rt_assert_handle(bool expression_result, const char* expression, const char* message, const std::source_location& location) noexcept
+void nstd::_Rt_assert_handle(bool expression_result, const char* expression, const char* message, const std::source_location& location)
 {
     if (expression_result)
         return;
     _Rt->handle(expression, message, location);
 }
 
-void nstd::_Rt_assert_handle(const char* message, [[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2, const std::source_location& location) noexcept
+void nstd::_Rt_assert_handle(const char* message, [[maybe_unused]] const char* unused1, [[maybe_unused]] const char* unused2, const std::source_location& location)
 {
     _Rt->handle(message, location);
     std::terminate();

@@ -17,24 +17,24 @@ export namespace nstd::mem
 			SIZE_T size;
 			DWORD flags;
 
-			DWORD set( ) const noexcept;
-		};
+            DWORD set() const;
+        };
 
 		using value_type = std::optional<data>;
 
 		protect( );
 		protect(const LPVOID addr, const SIZE_T size, const DWORD new_flags);
-		protect(protect&& other) noexcept;
-		~protect( );
+        protect(protect&& other);
+        ~protect( );
 
 		protect(const protect&) = delete;
 		protect& operator=(const protect&) = delete;
-		protect& operator=(protect&& other) noexcept;
+        protect& operator=(protect&& other);
 
-		bool restore( ) noexcept;
-		bool has_value( ) const noexcept;
+        bool restore();
+        bool has_value() const;
 
-	private:
+      private:
 		value_type info_;
 	};
 }

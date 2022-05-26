@@ -8,7 +8,7 @@ module;
 export module nstd.one_instance;
 
 template <typename PtrT>
-constexpr size_t _Pointers_count() noexcept
+constexpr size_t _Pointers_count()
 {
     if constexpr (std::is_pointer_v<PtrT>)
         return _Pointers_count<std::remove_pointer_t<PtrT>>() + 1;
@@ -17,7 +17,7 @@ constexpr size_t _Pointers_count() noexcept
 }
 
 template <typename T>
-auto _Lowest_pointer(T* ptr) noexcept
+auto _Lowest_pointer(T* ptr)
 {
     constexpr auto count = _Pointers_count<T*>();
     if constexpr (count == 1)
@@ -34,7 +34,7 @@ auto _Lowest_pointer(T* ptr) noexcept
 }
 
 template <typename T>
-bool _Nullptr_check(T* ptr) noexcept
+bool _Nullptr_check(T* ptr)
 {
     if (ptr == nullptr)
         return true;
@@ -68,12 +68,12 @@ class pointer_wrapper
     {
     }
 
-    T operator->() const noexcept
+    T operator->() const
     {
         return ptr_;
     }
 
-    auto& operator*() const noexcept
+    auto& operator*() const
     {
         return *ptr_;
     }
@@ -84,12 +84,12 @@ class pointer_wrapper<T**>
 {
     T** ptr_;
 
-    bool is_null() const noexcept
+    bool is_null() const
     {
         return _Nullptr_check(ptr_);
     }
 
-    auto get() const noexcept
+    auto get() const
     {
         return _Lowest_pointer(ptr_);
     }
@@ -100,32 +100,32 @@ class pointer_wrapper<T**>
     {
     }
 
-    auto operator->() const noexcept
+    auto operator->() const
     {
         return get();
     }
 
-    auto& operator*() const noexcept
+    auto& operator*() const
     {
         return *get();
     }
 
-    /*  bool operator==(nullptr_t) const noexcept
+    /*  bool operator==(nullptr_t) const
      {
          return is_null();
      }
 
-     bool operator!=(nullptr_t) const noexcept
+     bool operator!=(nullptr_t) const
      {
          return !is_null();
      }
 
-    bool operator!() const noexcept
+    bool operator!() const
      {
          return is_null();
      } */
 
-    explicit operator bool() const noexcept
+    explicit operator bool() const
     {
         return !is_null();
     }
@@ -146,12 +146,12 @@ struct one_instance_getter
     {
     }
 
-    reference ref() noexcept
+    reference ref()
     {
         return item_;
     }
 
-    pointer ptr() noexcept
+    pointer ptr()
     {
         return std::addressof(item_);
     }
@@ -178,12 +178,12 @@ class one_instance_getter<std::unique_ptr<T, D>>
     {
     }
 
-    reference ref() noexcept
+    reference ref()
     {
         return *item_;
     }
 
-    pointer ptr() noexcept
+    pointer ptr()
     {
         return item_.get();
     }
@@ -205,12 +205,12 @@ class one_instance_getter<T*>
     template <size_t Instance>
     one_instance_getter(const std::in_place_index_t<Instance>);
 
-    reference ref() const noexcept
+    reference ref() const
     {
         return *_Lowest_pointer(item_);
     }
 
-    pointer ptr() const noexcept
+    pointer ptr() const
     {
         return item_;
     }
@@ -224,7 +224,7 @@ constexpr uint8_t time_offsets[] = {0, 3, 6};
 template <typename T, size_t Instance = 0>
 class one_instance
 {
-    static auto& _Buff() noexcept
+    static auto& _Buff()
     {
         static std::optional<one_instance_getter<T>> buff;
         return buff;
@@ -236,7 +236,7 @@ class one_instance
         return _Buff().emplace(std::in_place_index<Instance>, std::forward<Args>(args)...);
     }
 
-    static auto& _Get() noexcept
+    static auto& _Get()
     {
         static const auto once = [] {
             if (!initialized())
@@ -252,20 +252,20 @@ class one_instance
     constexpr one_instance() = default;
     constexpr one_instance(const one_instance& other) = delete;
     constexpr one_instance& operator=(const one_instance& other) = delete;
-    constexpr one_instance(one_instance&& other) noexcept = delete;
-    constexpr one_instance& operator=(one_instance&& other) noexcept = delete;
+    constexpr one_instance(one_instance&& other) = delete;
+    constexpr one_instance& operator=(one_instance&& other) = delete;
 
-    static bool initialized() noexcept
+    static bool initialized()
     {
         return _Buff().has_value();
     }
 
-    static auto& get() noexcept
+    static auto& get()
     {
         return _Get().ref();
     }
 
-    static auto get_ptr() noexcept
+    static auto get_ptr()
     {
         return _Get().ptr();
     }
@@ -287,37 +287,37 @@ class instance_of_t
     /*constexpr instance_of_t( ) = default;
     constexpr instance_of_t(const instance_of_t& other) = delete;
     constexpr instance_of_t& operator=(const instance_of_t& other) = delete;
-    constexpr instance_of_t(instance_of_t&& other) noexcept = delete;
-    constexpr instance_of_t& operator=(instance_of_t&& other) noexcept = delete;*/
+    constexpr instance_of_t(instance_of_t&& other) = delete;
+    constexpr instance_of_t& operator=(instance_of_t&& other) = delete;*/
 
-    bool initialized() const noexcept
+    bool initialized() const
     {
         return _Base::initialized();
     }
 
-    auto& operator*() const noexcept
+    auto& operator*() const
     {
         return _Base::get();
     }
 
-    auto operator->() const noexcept
+    auto operator->() const
     {
         return _Base::get_ptr();
     }
 
-    auto operator&() const noexcept
+    auto operator&() const
     {
         return _Base::get_ptr();
     }
 
     template <typename... Args>
-    auto& construct(Args&&... args) const noexcept
+    auto& construct(Args&&... args) const
     {
         return _Base::construct(std::forward<Args>(args)...);
     }
 
     template <std::same_as<size_t> T> // fake explicit
-    consteval operator T() const noexcept
+    consteval operator T() const
     {
         return Instance;
     }
