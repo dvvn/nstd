@@ -9,7 +9,7 @@ using DWORD = unsigned long;
 
 export namespace nstd::mem
 {
-    class block final : public std::span<uint8_t>
+    class block : public std::span<uint8_t>
     {
         using _Base = std::span<uint8_t>;
 
@@ -17,12 +17,15 @@ export namespace nstd::mem
         block() = default;
 
         template <typename Bg>
-        block(Bg* const begin, const size_type mem_size = sizeof(uintptr_t)) : _Base((uint8_t*)begin, mem_size)
+        block(Bg* const begin, const size_type mem_size = sizeof(uintptr_t))
+            : _Base((uint8_t*)begin, mem_size)
         {
             static_assert(sizeof(Bg) == sizeof(uint8_t));
         }
+
         template <typename Bg, typename Ed>
-        block(Bg* const begin, Ed* const end) : _Base((uint8_t*)begin, (uint8_t*)end)
+        block(Bg* const begin, Ed* const end)
+            : _Base((uint8_t*)begin, (uint8_t*)end)
         {
             static_assert(sizeof(Bg) + sizeof(Ed) == sizeof(uint8_t) * 2);
         }
