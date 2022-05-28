@@ -92,28 +92,24 @@ struct unknown_bytes_impl : abstract_storage<std::vector<unknown_bytes_data>, un
 
 struct unknown_bytes_data_dynamic
 {
-    std::unique_ptr<known_bytes_internal> buff_;
-    uint16_t skip_;
+    known_bytes_internal buff_;
+    uint16_t skip_ = 0;
 
   public:
-    unknown_bytes_data_dynamic()
-    {
-        buff_ = std::make_unique<known_bytes_internal>();
-        skip_ = 0;
-    }
+    unknown_bytes_data_dynamic() = default;
 
     operator unknown_bytes_data() &&
     {
         unknown_bytes_data out;
         static_assert(std::same_as<decltype(skip_), decltype(out.skip)>);
-        out.buff = std::move(buff_);
+        out.buff = std::make_unique<known_bytes_internal>(std::move(buff_));
         out.skip = skip_;
         return out;
     }
 
     void reset()
     {
-        buff_->get()->clear();
+        buff_.get()->clear();
         skip_ = 0;
     }
 
@@ -122,19 +118,19 @@ struct unknown_bytes_data_dynamic
         return skip_ > 0;
     }
 
-	void skip(const uint8_t step = 1)
+    void skip(const uint8_t step = 1)
     {
         skip_ += step;
     }
 
     bool empty() const
     {
-        return buff_->get()->empty() && skip_ == 0;
+        return buff_.get()->empty() && skip_ == 0;
     }
 
     void push_back(const uint8_t byte)
     {
-        buff_->get()->push_back(byte);
+        buff_.get()->push_back(byte);
     }
 };
 
@@ -226,7 +222,7 @@ class unknown_bytes_writer
     }
 
     void skip()
-	{
+    {
         target_.skip();
     }
 };
